@@ -1,0 +1,55 @@
+# ==============================================================================
+# ChiPanel Podman Quadlet Systemd Unit — EXAMPLE (secrets masked)
+# Location: ~/.config/containers/systemd/chipanel.container
+# User: chiserv (UID 1000)
+#
+# This is a template. Copy it to chipanel.container and fill in real values:
+#   cp chipanel.container.example chipanel.container
+# The real chipanel.container is gitignored because it contains plaintext
+# credentials (see AGENTS.md).
+# ==============================================================================
+
+[Unit]
+Description=ChiPanel Homelab & Minecraft Management Console
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Container]
+ContainerName=chipanel
+Image=localhost/chipanel:latest
+Pull=never
+UserNS=keep-id
+User=1000:1000
+Network=host
+
+Volume=%h/chipanel-data:/app/data
+Volume=%h/minecraft/data:/app/minecraft-data
+Volume=%h/.config/containers/systemd/minecraft.container:/app/systemd-config/minecraft.container
+Volume=%h/lazymc/lazymc.toml:/app/lazymc-config/lazymc.toml
+Volume=%t/podman/podman.sock:/run/user/1000/podman/podman.sock:ro
+Volume=%t/bus:/run/user/1000/bus:ro
+Volume=%t/systemd/private:/run/user/1000/systemd/private:ro
+
+Environment=HOST=0.0.0.0
+Environment=PORT=3000
+Environment=RUST_LOG=info
+Environment=ADMIN_USERNAME=admin
+Environment=ADMIN_PASSWORD=<SET_ME>
+Environment=RCON_HOST=127.0.0.1
+Environment=RCON_PORT=25575
+Environment=RCON_PASSWORD=<SET_ME>
+Environment=PODMAN_CONTAINER_NAME=minecraft-server
+Environment=MINECRAFT_DATA_DIR=/app/minecraft-data
+Environment=DATA_DIR=/app/data
+Environment=SYSTEMD_CONFIG_DIR=/app/systemd-config
+Environment=LAZYMC_CONFIG_FILE=/app/lazymc-config/lazymc.toml
+Environment=PODMAN_SOCKET=/run/user/1000/podman/podman.sock
+Environment=ALLOWED_ORIGINS=*
+
+[Service]
+Restart=always
+RestartSec=5s
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
