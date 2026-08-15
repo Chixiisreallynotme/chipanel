@@ -14,6 +14,13 @@ pub struct EngineTypeInfo {
     pub supports_mods: bool,
     pub icon: String,
     pub recommended_versions: Vec<String>,
+    pub min_version: Option<String>,
+    pub max_version: Option<String>,
+    pub recommended_ram: String,
+    pub pros: Vec<String>,
+    pub cons: Vec<String>,
+    pub stability: String,
+    pub supports_tools: bool,
 }
 
 pub fn get_available_engines() -> Vec<EngineTypeInfo> {
@@ -21,112 +28,252 @@ pub fn get_available_engines() -> Vec<EngineTypeInfo> {
         EngineTypeInfo {
             id: "PURPUR".to_string(),
             name: "Purpur".to_string(),
-            category: "Optimized Paper Fork".to_string(),
-            description: "Ultra-optimized Paper fork with extra performance tweaks & customizable gameplay mechanics.".to_string(),
+            category: "Optimisation & Plugins".to_string(),
+            description: "Fourche ultra-optimisée de Paper offrant les meilleures performances, une configuration poussée et des mécaniques personnalisables.".to_string(),
             supports_plugins: true,
             supports_mods: false,
             icon: "zap".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.4".to_string(), "1.21.1".to_string(), "1.20.4".to_string(), "1.20.1".to_string()],
+            min_version: Some("1.14.4".to_string()),
+            max_version: None,
+            recommended_ram: "2 à 4 Go".to_string(),
+            pros: vec![
+                "Performances exceptionnelles & TPS stable".to_string(),
+                "Hautement personnalisable (gameplay, redstone, chunks)".to_string(),
+                "100% compatible plugins Bukkit/Spigot/Paper".to_string(),
+                "Outils maison synchronisés (Spark, Chunky, LuckPerms)".to_string(),
+            ],
+            cons: vec!["Incompatible avec les mods Forge/Fabric".to_string()],
+            stability: "Recommandé Production".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "PAPER".to_string(),
             name: "PaperMC".to_string(),
-            category: "Bukkit/Spigot Fork".to_string(),
-            description: "Industry-standard high performance Spigot fork with critical bug fixes and exploit prevention.".to_string(),
+            category: "Optimisation & Plugins".to_string(),
+            description: "Le standard de l'industrie pour les serveurs Minecraft avec plugins. Corrige les bugs de Vanilla et prévient les failles d'exploit.".to_string(),
             supports_plugins: true,
             supports_mods: false,
             icon: "file-text".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.4".to_string(), "1.21.1".to_string(), "1.20.4".to_string(), "1.20.1".to_string()],
+            min_version: Some("1.8.8".to_string()),
+            max_version: None,
+            recommended_ram: "2 à 4 Go".to_string(),
+            pros: vec![
+                "Stabilité et fiabilité éprouvées".to_string(),
+                "Écosystème de plugins gigantesque".to_string(),
+                "Excellente gestion de mémoire asynchrone".to_string(),
+                "Outils maison synchronisés (Spark, Chunky, LuckPerms)".to_string(),
+            ],
+            cons: vec!["Incompatible avec les mods Forge/Fabric".to_string()],
+            stability: "Standard Industrie".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "FABRIC".to_string(),
             name: "Fabric".to_string(),
-            category: "Modded".to_string(),
-            description: "Lightweight, modular modding toolchain with fast updates and modern mod ecosystem.".to_string(),
+            category: "Moddé Moderne".to_string(),
+            description: "Chargeur de mods moderne, léger et ultra-rapide avec des mises à jour quasi instantanées lors des sorties de nouvelles versions Minecraft.".to_string(),
             supports_plugins: false,
             supports_mods: true,
             icon: "cpu".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.4".to_string(), "1.21.1".to_string(), "1.20.4".to_string(), "1.20.1".to_string()],
+            min_version: Some("1.14".to_string()),
+            max_version: None,
+            recommended_ram: "2 à 6 Go".to_string(),
+            pros: vec![
+                "Démarrage ultra-rapide et faible empreinte mémoire".to_string(),
+                "Mods d'optimisation réputés (Lithium, FerriteCore)".to_string(),
+                "Outils maison synchronisés (Spark, Chunky, LuckPerms, fabric-api)".to_string(),
+            ],
+            cons: vec!["Incompatible avec les plugins Bukkit/Paper natifs".to_string()],
+            stability: "Moddé Recommandé".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "FORGE".to_string(),
             name: "Minecraft Forge".to_string(),
-            category: "Modded".to_string(),
-            description: "The classic Minecraft modding platform supporting thousands of complex mods and modpacks.".to_string(),
+            category: "Moddé Classique".to_string(),
+            description: "La plateforme de modding historique de référence, indispensable pour les grands modpacks d'aventure et techniques complexes.".to_string(),
             supports_plugins: false,
             supports_mods: true,
             icon: "hammer".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.1".to_string(), "1.20.1".to_string(), "1.19.2".to_string(), "1.18.2".to_string(), "1.16.5".to_string(), "1.12.2".to_string()],
+            min_version: Some("1.7.10".to_string()),
+            max_version: None,
+            recommended_ram: "4 à 8 Go+".to_string(),
+            pros: vec![
+                "Immense catalogue de mods historiques (1.7.10 - 1.20.1)".to_string(),
+                "Compatible avec les grands modpacks CurseForge/Modrinth".to_string(),
+                "Outils maison synchronisés (Spark, Chunky, LuckPerms)".to_string(),
+            ],
+            cons: vec![
+                "Consommation de RAM et temps de chargement plus élevés".to_string(),
+                "Incompatible avec les plugins Bukkit".to_string(),
+            ],
+            stability: "Modpack Établi".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "NEOFORGE".to_string(),
             name: "NeoForge".to_string(),
-            category: "Modded".to_string(),
-            description: "Modern community-driven fork of Minecraft Forge for 1.20.2+ with improved APIs and performance.".to_string(),
+            category: "Moddé Moderne".to_string(),
+            description: "Fork communautaire moderne de Forge pour Minecraft 1.20.2+, avec une architecture refondue, de meilleures performances et des API modernes.".to_string(),
             supports_plugins: false,
             supports_mods: true,
             icon: "shield-alert".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.4".to_string(), "1.21.1".to_string(), "1.20.4".to_string()],
+            min_version: Some("1.20.2".to_string()),
+            max_version: None,
+            recommended_ram: "4 à 8 Go+".to_string(),
+            pros: vec![
+                "Architecture moderne plus rapide et propre que Forge".to_string(),
+                "Plateforme principale pour les mods récents (1.20.2+)".to_string(),
+                "Outils maison synchronisés (Spark, Chunky, LuckPerms)".to_string(),
+            ],
+            cons: vec![
+                "Uniquement disponible sur Minecraft 1.20.2 et supérieur".to_string(),
+                "Incompatible avec les plugins Bukkit".to_string(),
+            ],
+            stability: "Nouvelle Génération".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "SPIGOT".to_string(),
             name: "Spigot".to_string(),
-            category: "Bukkit/Spigot".to_string(),
-            description: "Classic plugin-compatible server engine built on Bukkit API.".to_string(),
+            category: "Bukkit / Plugins".to_string(),
+            description: "Moteur historique basé sur Bukkit, offrant une compatibilité étendue avec les anciens plugins.".to_string(),
             supports_plugins: true,
             supports_mods: false,
             icon: "layers".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.4".to_string(), "1.21.1".to_string(), "1.20.4".to_string()],
+            min_version: Some("1.8".to_string()),
+            max_version: None,
+            recommended_ram: "2 à 4 Go".to_string(),
+            pros: vec![
+                "Grande compatibilité avec les anciens plugins Bukkit".to_string(),
+                "Outils maison synchronisés (Spark, Chunky, LuckPerms)".to_string(),
+            ],
+            cons: vec![
+                "Moins de correctifs et d'optimisations que Paper/Purpur".to_string(),
+                "Incompatible avec les mods".to_string(),
+            ],
+            stability: "Legacy Stable".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "QUILT".to_string(),
             name: "Quilt".to_string(),
-            category: "Modded".to_string(),
-            description: "Modern, open-source mod loader compatible with most Fabric mods and enhanced tooling.".to_string(),
+            category: "Moddé Moderne".to_string(),
+            description: "Projet open-source moderne dérivé de Fabric, compatible avec la quasi-totalité des mods Fabric tout en offrant des fonctionnalités supplémentaires.".to_string(),
             supports_plugins: false,
             supports_mods: true,
             icon: "feather".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.1".to_string(), "1.20.4".to_string()],
+            min_version: Some("1.14".to_string()),
+            max_version: None,
+            recommended_ram: "2 à 6 Go".to_string(),
+            pros: vec![
+                "Compatible avec la majorité de l'écosystème Fabric".to_string(),
+                "Outils modernes de gestion de dépendances".to_string(),
+                "Outils maison synchronisés".to_string(),
+            ],
+            cons: vec!["Incompatible avec les plugins Bukkit".to_string()],
+            stability: "Moddé Alternatif".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "VANILLA".to_string(),
             name: "Vanilla".to_string(),
-            category: "Standard".to_string(),
-            description: "Official unmodified Minecraft server software directly from Mojang.".to_string(),
+            category: "Officiel Mojang".to_string(),
+            description: "Le logiciel serveur officiel pur produit par Mojang, garantissant une fidélité 100% absolue aux mécaniques du jeu original.".to_string(),
             supports_plugins: false,
             supports_mods: false,
             icon: "box".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.4".to_string(), "1.21.1".to_string(), "1.20.4".to_string()],
+            min_version: Some("1.0".to_string()),
+            max_version: None,
+            recommended_ram: "2 à 4 Go".to_string(),
+            pros: vec![
+                "100% conforme au gameplay et redstone Mojang sans modification".to_string(),
+                "Supporte tous les snapshots et pre-releases sans attente".to_string(),
+            ],
+            cons: vec![
+                "Aucun plugin ni mod supporté".to_string(),
+                "Aucune optimisation de TPS ni d'outils d'administration".to_string(),
+            ],
+            stability: "Officiel".to_string(),
+            supports_tools: false,
         },
         EngineTypeInfo {
             id: "FOLIA".to_string(),
             name: "Folia".to_string(),
-            category: "Multi-Threaded".to_string(),
-            description: "Regionized multithreading Paper fork designed for high player counts across multiple CPU cores.".to_string(),
+            category: "SMP Multithread".to_string(),
+            description: "Fourche Paper révolutionnaire avec multithreading régionalisé par chunks, conçu pour accueillir des centaines de joueurs simultanés sur plusieurs cœurs CPU.".to_string(),
             supports_plugins: true,
             supports_mods: false,
             icon: "activity".to_string(),
             recommended_versions: vec!["LATEST".to_string(), "26.2".to_string(), "1.21.4".to_string(), "1.20.4".to_string()],
+            min_version: Some("1.19.4".to_string()),
+            max_version: None,
+            recommended_ram: "6 à 12 Go+".to_string(),
+            pros: vec![
+                "Multi-threading par région : TPS parfait à 100+ joueurs".to_string(),
+                "Exploite pleinement les processeurs multi-cœurs modernes".to_string(),
+                "Outils maison synchronisés".to_string(),
+            ],
+            cons: vec![
+                "Uniquement disponible sur 1.19.4+".to_string(),
+                "Nécessite des plugins compatibles Folia (les plugins Bukkit standards crasheront)".to_string(),
+                "Incompatible avec les mods".to_string(),
+            ],
+            stability: "Haute Concurrence".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "MOHIST".to_string(),
             name: "Mohist".to_string(),
-            category: "Hybrid (Mods + Plugins)".to_string(),
-            description: "Forge + Paper hybrid server allowing running Forge mods alongside Bukkit/Paper plugins.".to_string(),
+            category: "Hybride (Mods + Plugins)".to_string(),
+            description: "Serveur hybride permettant d'exécuter simultanément des mods Forge et des plugins Bukkit/Paper sur un même serveur.".to_string(),
             supports_plugins: true,
             supports_mods: true,
             icon: "crosshair".to_string(),
             recommended_versions: vec!["1.20.1".to_string(), "1.19.2".to_string(), "1.16.5".to_string(), "1.12.2".to_string()],
+            min_version: Some("1.12.2".to_string()),
+            max_version: Some("1.20.1".to_string()),
+            recommended_ram: "4 à 8 Go".to_string(),
+            pros: vec![
+                "Combine mods Forge et plugins Bukkit/Paper".to_string(),
+                "Idéal pour administrer un modpack avec LuckPerms/WorldEdit Bukkit".to_string(),
+            ],
+            cons: vec![
+                "Limité aux versions 1.12.2 jusqu'à 1.20.1".to_string(),
+                "Possibles incompatibilités entre certains mods et plugins complexes".to_string(),
+            ],
+            stability: "Hybride Spécialisé".to_string(),
+            supports_tools: true,
         },
         EngineTypeInfo {
             id: "ARCLIGHT".to_string(),
             name: "Arclight".to_string(),
-            category: "Hybrid (Mods + Plugins)".to_string(),
-            description: "Mixes Forge/NeoForge or Fabric with Bukkit/Mixins for combined mod & plugin support.".to_string(),
+            category: "Hybride Moderne".to_string(),
+            description: "Solution hybride moderne basée sur Mixins permettant de combiner mods Forge/NeoForge/Fabric et plugins Bukkit sur les versions récentes.".to_string(),
             supports_plugins: true,
             supports_mods: true,
             icon: "sparkles".to_string(),
             recommended_versions: vec!["26.2".to_string(), "1.21.1".to_string(), "1.20.4".to_string(), "1.20.1".to_string()],
+            min_version: Some("1.16.5".to_string()),
+            max_version: None,
+            recommended_ram: "4 à 8 Go".to_string(),
+            pros: vec![
+                "Supporte les versions modernes (1.16.5 à 1.21+)".to_string(),
+                "Exécute mods et plugins ensemble avec une bonne stabilité".to_string(),
+            ],
+            cons: vec![
+                "Expérimental : nécessite de tester la compatibilité du pack d'addons".to_string(),
+            ],
+            stability: "Hybride Moderne".to_string(),
+            supports_tools: true,
         },
     ]
 }
@@ -328,6 +475,62 @@ pub async fn resolve_minecraft_version(version: &str) -> Option<String> {
     fetch_version_catalog().await.canonical(version)
 }
 
+/// Checks whether a Minecraft version is supported by a specific engine,
+/// respecting `min_version` and `max_version` boundaries based on the official
+/// chronological release list in `VersionCatalog`.
+pub fn is_engine_version_supported(
+    engine: &EngineTypeInfo,
+    version: &str,
+    catalog: &VersionCatalog,
+) -> bool {
+    let ver_upper = version.trim().to_uppercase();
+    if ver_upper == "LATEST" {
+        // LATEST is the newest release. If the engine has a max_version limit
+        // (like Mohist max 1.20.1), LATEST resolves beyond that limit.
+        if let Some(ref max_v) = engine.max_version {
+            if let Some(first_rel) = catalog.releases.first() {
+                if !first_rel.eq_ignore_ascii_case(max_v) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    if ver_upper == "SNAPSHOT" {
+        // Snapshots are bleeding edge. Valid only if engine has no max_version.
+        return engine.max_version.is_none();
+    }
+
+    // Check if the version is in releases list
+    if let Some(target_idx) = catalog.releases.iter().position(|r| r.eq_ignore_ascii_case(version)) {
+        if let Some(ref min_v) = engine.min_version {
+            if let Some(min_idx) = catalog.releases.iter().position(|r| r.eq_ignore_ascii_case(min_v)) {
+                // Since catalog.releases is sorted newest first (index 0 is newest),
+                // target_idx > min_idx means target is older than min_version.
+                if target_idx > min_idx {
+                    return false;
+                }
+            }
+        }
+        if let Some(ref max_v) = engine.max_version {
+            if let Some(max_idx) = catalog.releases.iter().position(|r| r.eq_ignore_ascii_case(max_v)) {
+                // target_idx < max_idx means target is newer than max_version.
+                if target_idx < max_idx {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // If it's a snapshot version (in catalog.snapshots)
+    if catalog.snapshots.iter().any(|s| s.eq_ignore_ascii_case(version)) {
+        return engine.max_version.is_none();
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -376,5 +579,37 @@ mod tests {
         let all = catalog.all_versions();
         assert_eq!(all[0], "LATEST");
         assert_eq!(all[1], "SNAPSHOT");
+    }
+
+    #[test]
+    fn test_engine_version_bounds() {
+        let catalog = fallback_version_catalog();
+        let engines = get_available_engines();
+
+        let neoforge = engines.iter().find(|e| e.id == "NEOFORGE").unwrap();
+        assert!(is_engine_version_supported(neoforge, "1.21.4", &catalog));
+        assert!(is_engine_version_supported(neoforge, "1.20.4", &catalog));
+        assert!(is_engine_version_supported(neoforge, "1.20.2", &catalog));
+        assert!(!is_engine_version_supported(neoforge, "1.20.1", &catalog));
+        assert!(!is_engine_version_supported(neoforge, "1.16.5", &catalog));
+        assert!(!is_engine_version_supported(neoforge, "1.12.2", &catalog));
+
+        let folia = engines.iter().find(|e| e.id == "FOLIA").unwrap();
+        assert!(is_engine_version_supported(folia, "1.21.4", &catalog));
+        assert!(is_engine_version_supported(folia, "1.19.4", &catalog));
+        assert!(!is_engine_version_supported(folia, "1.19.2", &catalog));
+        assert!(!is_engine_version_supported(folia, "1.16.5", &catalog));
+
+        let mohist = engines.iter().find(|e| e.id == "MOHIST").unwrap();
+        assert!(is_engine_version_supported(mohist, "1.20.1", &catalog));
+        assert!(is_engine_version_supported(mohist, "1.16.5", &catalog));
+        assert!(is_engine_version_supported(mohist, "1.12.2", &catalog));
+        assert!(!is_engine_version_supported(mohist, "1.21.4", &catalog));
+        assert!(!is_engine_version_supported(mohist, "LATEST", &catalog));
+
+        let purpur = engines.iter().find(|e| e.id == "PURPUR").unwrap();
+        assert!(is_engine_version_supported(purpur, "1.21.4", &catalog));
+        assert!(is_engine_version_supported(purpur, "1.14.4", &catalog));
+        assert!(!is_engine_version_supported(purpur, "1.12.2", &catalog));
     }
 }

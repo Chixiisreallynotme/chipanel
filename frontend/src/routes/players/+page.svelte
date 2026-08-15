@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
 	import PlayerList from '$lib/components/players/PlayerList.svelte';
@@ -15,12 +15,16 @@
 		Info,
 		X,
 		UserX,
-		ShieldCheck
+		ShieldCheck,
+		Radio
 	} from 'lucide-svelte';
 
 	// Page state
 	let players = $state([]);
 	let loading = $state(false);
+	let isSilentRefreshing = $state(false);
+	let autoRefreshEnabled = $state(true);
+	let lastUpdatedTime = $state('');
 
 	// Profile Modal state
 	let selectedPlayer = $state(null);
@@ -57,28 +61,81 @@
 		toasts = toasts.filter((t) => t.id !== id);
 	}
 
+	function updateTimestamp() {
+		const now = new Date();
+		lastUpdatedTime = now.toLocaleTimeString(undefined, {
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit'
+		});
+	}
+
 	// Fetch players from /api/players
-	async function loadPlayers() {
-		loading = true;
+	async function loadPlayers(showFullLoader = true) {
+		if (showFullLoader) {
+			loading = true;
+		} else {
+			isSilentRefreshing = true;
+		}
+
 		try {
 			const data = await apiGet('/api/players');
 			players = Array.isArray(data) ? data : [];
+			updateTimestamp();
 		} catch (err) {
 			console.error('Failed to load players:', err);
-			addToast('error', 'Failed to Load Players', err.message || 'Could not fetch player list from server.');
+			if (showFullLoader) {
+				addToast(
+					'error',
+					'Failed to Load Players',
+					err.message || 'Could not fetch player list from server.'
+				);
+			}
 		} finally {
-			loading = false;
+			if (showFullLoader) loading = false;
+			isSilentRefreshing = false;
 		}
 	}
 
+	// Auto-refresh interval (10s)
+	let autoRefreshTimer = null;
+
+	function setupAutoRefresh() {
+		if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+		autoRefreshTimer = setInterval(() => {
+			if (autoRefreshEnabled && !loading) {
+				loadPlayers(false);
+			}
+		}, 10000);
+	}
+
 	onMount(() => {
-		loadPlayers();
+		loadPlayers(true);
+		setupAutoRefresh();
+	});
+
+	onDestroy(() => {
+		if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+	});
+
+	// Reactive synchronization with WebSocket telemetry
+	let previousOnlineCount = $state(null);
+	$effect(() => {
+		const currentOnline = wsStore.telemetry.players?.online;
+		if (
+			currentOnline !== undefined &&
+			previousOnlineCount !== null &&
+			currentOnline !== previousOnlineCount
+		) {
+			// Trigger fast reactive update when player connects or disconnects
+			loadPlayers(false);
+		}
+		previousOnlineCount = currentOnline;
 	});
 
 	// Derived Hero Header Stats
 	let totalCount = $derived(players.length);
 	let onlineCount = $derived.by(() => {
-		// Use telemetry online count if websocket is active, or count from players list
 		const listOnline = players.filter((p) => p.is_online).length;
 		return wsStore.telemetry.players?.online ?? listOnline;
 	});
@@ -141,14 +198,10 @@
 			);
 
 			closeQuickActionModal();
-			await loadPlayers();
+			await loadPlayers(false);
 		} catch (err) {
 			console.error(`Failed quick ${action} action:`, err);
-			addToast(
-				'error',
-				`Action Failed`,
-				err.message || `Failed to ${action} ${username}`
-			);
+			addToast('error', `Action Failed`, err.message || `Failed to ${action} ${username}`);
 		} finally {
 			isExecutingQuickAction = false;
 		}
@@ -160,13 +213,24 @@
 			kick: 'Player Kicked',
 			ban: 'Player Banned',
 			pardon: 'Player Pardoned',
+			unban: 'Player Pardoned',
 			teleport: 'Teleport Executed',
 			op: 'Operator Granted',
-			deop: 'Operator Revoked'
+			deop: 'Operator Revoked',
+			gamemode: 'Gamemode Changed',
+			heal: 'Player Healed & Fed',
+			feed: 'Player Fed',
+			kill: 'Player Killed',
+			clear: 'Inventory Cleared',
+			give: 'Item Given',
+			whitelist_add: 'Added to Whitelist',
+			whitelist_remove: 'Removed from Whitelist',
+			effects: 'Status Effect Updated',
+			permissions: 'Permissions Updated'
 		};
 
 		addToast('success', actionTitleMap[actionType] || 'Action Executed', message);
-		loadPlayers();
+		loadPlayers(false);
 	}
 
 	function handleKeydown(e) {
@@ -188,15 +252,52 @@
 <div class="players-page">
 	<!-- Top Hero Banner -->
 	<div class="hero-header">
-		<div class="hero-title-section">
-			<div class="hero-icon-box">
-				<Users size={26} />
+		<div class="hero-header-top">
+			<div class="hero-title-section">
+				<div class="hero-icon-box">
+					<Users size={26} />
+				</div>
+				<div>
+					<h1 class="page-title">Player Directory & Moderation</h1>
+					<p class="page-subtitle">
+						Monitor active players, inspect inventories and effects, and execute admin moderation
+						commands in real-time.
+					</p>
+				</div>
 			</div>
-			<div>
-				<h1 class="page-title">Player Directory & Moderation</h1>
-				<p class="page-subtitle">
-					Monitor active server players, inspect player data files, and execute admin moderation commands in real-time.
-				</p>
+
+			<!-- Real-time Live Status Controls -->
+			<div class="hero-live-controls">
+				<button
+					class="live-status-pill {autoRefreshEnabled ? 'active' : ''}"
+					onclick={() => {
+						autoRefreshEnabled = !autoRefreshEnabled;
+						if (autoRefreshEnabled) setupAutoRefresh();
+					}}
+					title="Toggle 10s auto-refresh"
+				>
+					<span class="live-dot {autoRefreshEnabled ? 'pulse' : ''}"></span>
+					<span class="live-text"
+						>{autoRefreshEnabled ? 'Live Sync (10s)' : 'Auto-refresh Paused'}</span
+					>
+				</button>
+
+				{#if lastUpdatedTime}
+					<span class="last-sync-time" title="Last synced with Minecraft server">
+						Sync: {lastUpdatedTime}
+					</span>
+				{/if}
+
+				<button
+					class="btn btn-secondary btn-sm refresh-btn-hero {isSilentRefreshing
+						? 'btn-loading'
+						: ''}"
+					onclick={() => loadPlayers(false)}
+					disabled={isSilentRefreshing || loading}
+					title="Refresh now"
+				>
+					<RefreshCw size={14} class={isSilentRefreshing ? 'spinning' : ''} />
+				</button>
 			</div>
 		</div>
 
@@ -252,7 +353,7 @@
 			onViewProfile={handleViewProfile}
 			onKickPlayer={handleOpenQuickKick}
 			onBanPlayer={handleOpenQuickBan}
-			onRefresh={loadPlayers}
+			onRefresh={() => loadPlayers(false)}
 		/>
 	</div>
 
@@ -282,20 +383,29 @@
 					<div class="quick-title-row">
 						{#if quickActionType === 'kick'}
 							<UserX size={20} class="icon-warning" />
-							<h3 id="quick-action-title" class="modal-title">Kick {targetPlayerForQuickAction.username}</h3>
+							<h3 id="quick-action-title" class="modal-title">
+								Kick {targetPlayerForQuickAction.username}
+							</h3>
 						{:else}
 							<ShieldAlert size={20} class="icon-danger" />
-							<h3 id="quick-action-title" class="modal-title">Ban {targetPlayerForQuickAction.username}</h3>
+							<h3 id="quick-action-title" class="modal-title">
+								Ban {targetPlayerForQuickAction.username}
+							</h3>
 						{/if}
 					</div>
-					<button class="btn btn-ghost btn-icon btn-sm" onclick={closeQuickActionModal} aria-label="Close modal">
+					<button
+						class="btn btn-ghost btn-icon btn-sm"
+						onclick={closeQuickActionModal}
+						aria-label="Close modal"
+					>
 						<X size={18} />
 					</button>
 				</div>
 
 				<div class="modal-body">
 					<p class="quick-action-text">
-						Are you sure you want to {quickActionType} <strong>{targetPlayerForQuickAction.username}</strong> from the server?
+						Are you sure you want to {quickActionType}
+						<strong>{targetPlayerForQuickAction.username}</strong> from the server?
 					</p>
 
 					<div class="form-group mt-4 mb-0">
@@ -311,11 +421,17 @@
 				</div>
 
 				<div class="modal-footer">
-					<button class="btn btn-secondary" onclick={closeQuickActionModal} disabled={isExecutingQuickAction}>
+					<button
+						class="btn btn-secondary"
+						onclick={closeQuickActionModal}
+						disabled={isExecutingQuickAction}
+					>
 						Cancel
 					</button>
 					<button
-						class="btn {quickActionType === 'kick' ? 'btn-secondary' : 'btn-danger'} {isExecutingQuickAction ? 'btn-loading' : ''}"
+						class="btn {quickActionType === 'kick'
+							? 'btn-secondary'
+							: 'btn-danger'} {isExecutingQuickAction ? 'btn-loading' : ''}"
 						onclick={confirmQuickAction}
 						disabled={isExecutingQuickAction}
 					>
@@ -383,6 +499,14 @@
 		padding-bottom: var(--space-6);
 	}
 
+	.hero-header-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-4);
+		flex-wrap: wrap;
+	}
+
 	.hero-title-section {
 		display: flex;
 		align-items: center;
@@ -414,6 +538,90 @@
 		font-size: var(--font-size-sm);
 		color: var(--text-muted);
 		margin-top: 2px;
+	}
+
+	/* Hero Live Controls */
+	.hero-live-controls {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.live-status-pill {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-full);
+		padding: 4px 12px;
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-medium);
+		color: var(--text-secondary);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.live-status-pill:hover {
+		border-color: var(--border-hover);
+		color: var(--text-primary);
+	}
+
+	.live-status-pill.active {
+		border-color: var(--accent-green-border);
+		background-color: rgba(34, 197, 94, 0.08);
+		color: var(--accent-green);
+	}
+
+	.live-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background-color: var(--text-muted);
+	}
+
+	.live-status-pill.active .live-dot {
+		background-color: var(--accent-green);
+	}
+
+	.live-dot.pulse {
+		box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+		animation: livePulse 1.6s infinite;
+	}
+
+	@keyframes livePulse {
+		0% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+		}
+		70% {
+			transform: scale(1);
+			box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+		}
+		100% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+		}
+	}
+
+	.last-sync-time {
+		font-size: var(--font-size-xs);
+		font-family: var(--font-mono);
+		color: var(--text-muted);
+	}
+
+	.refresh-btn-hero {
+		padding: 6px;
+	}
+
+	.spinning {
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		100% {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* Stats Row */
@@ -505,8 +713,12 @@
 		color: var(--text-primary);
 	}
 
-	.mt-4 { margin-top: var(--space-4); }
-	.mb-0 { margin-bottom: 0; }
+	.mt-4 {
+		margin-top: var(--space-4);
+	}
+	.mb-0 {
+		margin-bottom: 0;
+	}
 
 	/* Toast Notification Container */
 	.toast-container {
@@ -548,7 +760,11 @@
 
 	.toast-success {
 		border-color: var(--accent-green-border);
-		background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(74, 222, 128, 0.05) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--bg-surface) 0%,
+			rgba(74, 222, 128, 0.05) 100%
+		);
 	}
 
 	.toast-success .toast-icon {

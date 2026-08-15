@@ -34,6 +34,9 @@ pub struct PlayerActionRequest {
     pub action: String,
     pub reason: Option<String>,
     pub target_coords: Option<String>,
+    pub gamemode: Option<String>,
+    pub item_id: Option<String>,
+    pub count: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -213,7 +216,7 @@ pub async fn player_action_handler(
                 format!("ban {}", target_name)
             }
         }
-        "pardon" => {
+        "pardon" | "unban" => {
             format!("pardon {}", target_name)
         }
         "teleport" => {
@@ -236,9 +239,61 @@ pub async fn player_action_handler(
         "deop" => {
             format!("deop {}", target_name)
         }
+        "gamemode" => {
+            let mode = payload.gamemode.as_deref().unwrap_or("survival").trim().to_lowercase();
+            match mode.as_str() {
+                "survival" | "creative" | "adventure" | "spectator" => {
+                    format!("gamemode {} {}", mode, target_name)
+                }
+                _ => {
+                    return Err(AppError::BadRequest(
+                        "Invalid gamemode: allowed values are survival, creative, adventure, spectator".into(),
+                    ));
+                }
+            }
+        }
+        "heal" => {
+            format!("effect give {} minecraft:instant_health 1 255", target_name)
+        }
+        "feed" => {
+            format!("effect give {} minecraft:saturation 1 255", target_name)
+        }
+        "kill" => {
+            format!("kill {}", target_name)
+        }
+        "clear" => {
+            format!("clear {}", target_name)
+        }
+        "whitelist_add" => {
+            format!("whitelist add {}", target_name)
+        }
+        "whitelist_remove" => {
+            format!("whitelist remove {}", target_name)
+        }
+        "give" => {
+            let raw_item = payload.item_id.as_deref().unwrap_or("minecraft:diamond").trim();
+            if raw_item.is_empty()
+                || raw_item.contains('\n')
+                || raw_item.contains('\r')
+                || raw_item.contains('\0')
+                || raw_item.contains(' ')
+            {
+                return Err(AppError::BadRequest("Invalid item_id format".into()));
+            }
+            if !raw_item.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':' || c == '-') {
+                return Err(AppError::BadRequest("Invalid item_id format".into()));
+            }
+            let clean_item = if !raw_item.contains(':') {
+                format!("minecraft:{}", raw_item.to_lowercase())
+            } else {
+                raw_item.to_lowercase()
+            };
+            let count = payload.count.unwrap_or(1).clamp(1, 64);
+            format!("give {} {} {}", target_name, clean_item, count)
+        }
         _ => {
             return Err(AppError::BadRequest(
-                "Invalid action. Allowed actions: kick, ban, pardon, teleport, op, deop".into(),
+                "Invalid action. Allowed actions: kick, ban, pardon, unban, teleport, op, deop, gamemode, heal, feed, kill, clear, whitelist_add, whitelist_remove, give".into(),
             ));
         }
     };

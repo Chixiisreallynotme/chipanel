@@ -17,6 +17,8 @@
 		releaseVersions = [],
 		snapshotVersions = [],
 		recommendedVersions = [],
+		minVersion = null,
+		maxVersion = null,
 		allowAll = true,
 		title = 'Sélectionner une version de Minecraft',
 		onSelect = () => {},
@@ -38,6 +40,37 @@
 	let safeReleases = $derived(Array.isArray(releaseVersions) ? releaseVersions : []);
 	let safeSnapshots = $derived(Array.isArray(snapshotVersions) ? snapshotVersions : []);
 	let safeRecommended = $derived(Array.isArray(recommendedVersions) ? recommendedVersions : []);
+
+	function isVersionSupported(ver) {
+		if (!ver) return true;
+		if (ver === 'all' || ver === 'LATEST') {
+			if (maxVersion && safeReleases.length > 0) {
+				const maxIdx = safeReleases.findIndex((r) => r.toLowerCase() === maxVersion.toLowerCase());
+				if (maxIdx > 0) return false;
+			}
+			return true;
+		}
+		if (ver === 'SNAPSHOT') {
+			return !maxVersion;
+		}
+		const relIdx = safeReleases.findIndex((r) => r.toLowerCase() === ver.toLowerCase());
+		if (relIdx !== -1) {
+			if (minVersion) {
+				const minIdx = safeReleases.findIndex((r) => r.toLowerCase() === minVersion.toLowerCase());
+				if (minIdx !== -1 && relIdx > minIdx) return false;
+			}
+			if (maxVersion) {
+				const maxIdx = safeReleases.findIndex((r) => r.toLowerCase() === maxVersion.toLowerCase());
+				if (maxIdx !== -1 && relIdx < maxIdx) return false;
+			}
+			return true;
+		}
+		// Snapshots
+		if (safeSnapshots.some((s) => s.toLowerCase() === ver.toLowerCase())) {
+			return !maxVersion;
+		}
+		return true;
+	}
 
 	// Filtered releases
 	let filteredReleases = $derived(
@@ -71,7 +104,7 @@
 	});
 
 	function handleConfirm() {
-		if (draftVersion) {
+		if (draftVersion && isVersionSupported(draftVersion)) {
 			onSelect(draftVersion);
 		}
 		onClose();
@@ -190,17 +223,24 @@
 											{@const isDraft = draftVersion === ver}
 											{@const isRecommended = safeRecommended.includes(ver)}
 											{@const isLatest = ver === safeReleases[0] || ver === 'LATEST'}
+											{@const supported = isVersionSupported(ver)}
 
 											<button
 												type="button"
-												class="version-pill {isDraft ? 'selected' : ''}"
-												onclick={() => (draftVersion = ver)}
+												class="version-pill {isDraft ? 'selected' : ''} {!supported ? 'unsupported' : ''}"
+												disabled={!supported}
+												onclick={() => {
+													if (supported) draftVersion = ver;
+												}}
+												title={!supported ? `Version non supportée (${minVersion ? `Min: ${minVersion}` : ''}${maxVersion ? ` Max: ${maxVersion}` : ''})` : ''}
 											>
 												<span class="version-name">{ver}</span>
 												{#if isDraft}
 													<Check size={14} class="check-icon" />
 												{/if}
-												{#if isRecommended}
+												{#if !supported}
+													<span class="badge badge-unsupported">Incompatible</span>
+												{:else if isRecommended}
 													<span class="badge badge-recommended" title="Version recommandée">
 														<Sparkles size={10} />
 														<span>Top</span>
@@ -242,16 +282,25 @@
 							<div class="version-grid">
 								{#each filteredSnapshots as ver}
 									{@const isDraft = draftVersion === ver}
+									{@const supported = isVersionSupported(ver)}
 									<button
 										type="button"
-										class="version-pill version-pill-snapshot {isDraft ? 'selected' : ''}"
-										onclick={() => (draftVersion = ver)}
+										class="version-pill version-pill-snapshot {isDraft ? 'selected' : ''} {!supported ? 'unsupported' : ''}"
+										disabled={!supported}
+										onclick={() => {
+											if (supported) draftVersion = ver;
+										}}
+										title={!supported ? 'Les snapshots ne sont pas supportées par ce moteur' : ''}
 									>
 										<span class="version-name">{ver}</span>
 										{#if isDraft}
 											<Check size={14} class="check-icon" />
 										{/if}
-										<span class="badge badge-snapshot">Exp</span>
+										{#if !supported}
+											<span class="badge badge-unsupported">Incompatible</span>
+										{:else}
+											<span class="badge badge-snapshot">Exp</span>
+										{/if}
 									</button>
 								{/each}
 							</div>
@@ -569,6 +618,25 @@
 		background: rgba(245, 158, 11, 0.2);
 		color: #fbbf24;
 		border: 1px solid rgba(245, 158, 11, 0.3);
+	}
+
+	.version-pill.unsupported {
+		opacity: 0.4;
+		cursor: not-allowed;
+		border-color: rgba(239, 68, 68, 0.2);
+		background: rgba(239, 68, 68, 0.04);
+	}
+
+	.version-pill.unsupported:hover {
+		background: rgba(239, 68, 68, 0.06);
+		border-color: rgba(239, 68, 68, 0.25);
+		color: #94a3b8;
+	}
+
+	.badge-unsupported {
+		background: rgba(239, 68, 68, 0.15);
+		color: #fca5a5;
+		border: 1px solid rgba(239, 68, 68, 0.3);
 	}
 
 	.badge-snapshot {

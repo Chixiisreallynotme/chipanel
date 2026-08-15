@@ -83,43 +83,7 @@ pub fn parse_player_inventory_with_dir(base_dir: &Path, uuid: &str) -> Result<Pl
         return Err(AppError::BadRequest("Invalid player UUID format".into()));
     }
 
-    let playerdata_dir = base_dir.join("world").join("playerdata");
-
-    let candidate_files = [
-        playerdata_dir.join(format!("{}.dat", formatted_uuid)),
-        playerdata_dir.join(format!("{}.dat", norm_uuid)),
-    ];
-
-    let mut found_path: Option<PathBuf> = None;
-    for path in &candidate_files {
-        if path.exists() && path.is_file() {
-            found_path = Some(path.clone());
-            break;
-        }
-    }
-
-    if found_path.is_none() && playerdata_dir.exists() && playerdata_dir.is_dir() {
-        if let Ok(entries) = fs::read_dir(&playerdata_dir) {
-            let mut processed_files = 0;
-            for entry in entries.flatten() {
-                if processed_files >= 500 {
-                    break;
-                }
-                processed_files += 1;
-
-                let file_name_os = entry.file_name();
-                if let Some(file_name) = file_name_os.to_str() {
-                    let stem = file_name.trim_end_matches(".dat");
-                    if normalize_uuid(stem) == norm_uuid {
-                        found_path = Some(entry.path());
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    let file_path = found_path.ok_or_else(|| {
+    let file_path = crate::minecraft::player::find_player_dat_file(base_dir, uuid).ok_or_else(|| {
         AppError::NotFound(format!("Player data file for UUID '{}' not found", uuid))
     })?;
 

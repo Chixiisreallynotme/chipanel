@@ -25,6 +25,9 @@ pub struct PlayerSummary {
     pub food: i32,
     pub dimension: String,
     pub last_seen: u64,
+    pub is_op: bool,
+    pub is_banned: bool,
+    pub ban_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,6 +290,112 @@ pub fn read_nbt_player_file(file_path: &Path) -> Result<(RawNbtPlayerData, u64, 
     Ok((nbt_data, first_joined, last_joined))
 }
 
+/// Discovers active world directories in base_dir.
+/// Checks `server.properties` `level-name`, default `world`, and scans directory for any folder containing `level.dat`.
+pub fn get_active_world_dirs(base_dir: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    let props_path = base_dir.join("server.properties");
+    if let Ok(content) = fs::read_to_string(&props_path) {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if let Some(level_val) = trimmed.strip_prefix("level-name=") {
+                let clean = level_val.trim();
+                if !clean.is_empty() {
+                    let p = base_dir.join(clean);
+                    if p.exists() && p.is_dir() && !dirs.contains(&p) {
+                        dirs.push(p);
+                    }
+                }
+            }
+        }
+    }
+
+    let default_world = base_dir.join("world");
+    if default_world.exists() && default_world.is_dir() && !dirs.contains(&default_world) {
+        dirs.push(default_world);
+    }
+
+    // Also scan all direct subdirectories in base_dir
+    if let Ok(entries) = fs::read_dir(base_dir) {
+        for entry in entries.flatten() {
+            if let Ok(ft) = entry.file_type() {
+                if ft.is_dir() {
+                    let path = entry.path();
+                    if (path.join("level.dat").exists() || path.join("playerdata").exists() || path.join("players").exists())
+                        && !dirs.contains(&path)
+                    {
+                        dirs.push(path);
+                    }
+                }
+            }
+        }
+    }
+
+    if dirs.is_empty() {
+        dirs.push(base_dir.join("world"));
+    }
+
+    dirs
+}
+
+/// Returns all possible candidate directories where `.dat` playerdata files may be stored.
+pub fn get_playerdata_dirs(base_dir: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    for world_dir in get_active_world_dirs(base_dir) {
+        let c1 = world_dir.join("playerdata");
+        if c1.exists() && c1.is_dir() && !dirs.contains(&c1) {
+            dirs.push(c1);
+        }
+        let c2 = world_dir.join("players").join("data");
+        if c2.exists() && c2.is_dir() && !dirs.contains(&c2) {
+            dirs.push(c2);
+        }
+        let c3 = world_dir.join("players");
+        if c3.exists() && c3.is_dir() && !dirs.contains(&c3) {
+            dirs.push(c3);
+        }
+    }
+    if dirs.is_empty() {
+        dirs.push(base_dir.join("world").join("playerdata"));
+    }
+    dirs
+}
+
+/// Finds the player `.dat` file path for a given UUID across all world directories.
+pub fn find_player_dat_file(base_dir: &Path, uuid: &str) -> Option<PathBuf> {
+    let norm_uuid = normalize_uuid(uuid);
+    let formatted_uuid = format_uuid(uuid);
+    if norm_uuid.is_empty() {
+        return None;
+    }
+
+    for dir in get_playerdata_dirs(base_dir) {
+        let f1 = dir.join(format!("{}.dat", formatted_uuid));
+        if f1.exists() && f1.is_file() {
+            return Some(f1);
+        }
+        let f2 = dir.join(format!("{}.dat", norm_uuid));
+        if f2.exists() && f2.is_file() {
+            return Some(f2);
+        }
+        if let Ok(entries) = fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    if let Some(file_name) = path.file_name().and_then(|s| s.to_str()) {
+                        if let Some(stem) = file_name.strip_suffix(".dat") {
+                            if normalize_uuid(stem) == norm_uuid {
+                                return Some(path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn get_playtime_seconds(base_dir: &Path, uuid_str: &str) -> u64 {
     let formatted_uuid = format_uuid(uuid_str);
     let norm_uuid = normalize_uuid(uuid_str);
@@ -295,21 +404,31 @@ pub fn get_playtime_seconds(base_dir: &Path, uuid_str: &str) -> u64 {
         return 0;
     }
 
-    let candidate_paths = [
-        base_dir.join("world").join("stats").join(format!("{}.json", formatted_uuid)),
-        base_dir.join("world").join("stats").join(format!("{}.json", norm_uuid)),
-    ];
+    for world_dir in get_active_world_dirs(base_dir) {
+        let stats_dirs = [
+            world_dir.join("stats"),
+            world_dir.join("players").join("stats"),
+            world_dir.join("players"),
+        ];
 
-    for path in &candidate_paths {
-        if let Ok(content) = fs::read_to_string(path) {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(stats) = val.get("stats") {
-                    if let Some(custom) = stats.get("minecraft:custom") {
-                        if let Some(ticks) = custom.get("minecraft:play_time").and_then(|v| v.as_u64()) {
-                            return ticks / 20;
-                        }
-                        if let Some(ticks) = custom.get("minecraft:time_since_rest").and_then(|v| v.as_u64()) {
-                            return ticks / 20;
+        for s_dir in &stats_dirs {
+            let candidate_paths = [
+                s_dir.join(format!("{}.json", formatted_uuid)),
+                s_dir.join(format!("{}.json", norm_uuid)),
+            ];
+
+            for path in &candidate_paths {
+                if let Ok(content) = fs::read_to_string(path) {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(stats) = val.get("stats") {
+                            if let Some(custom) = stats.get("minecraft:custom") {
+                                if let Some(ticks) = custom.get("minecraft:play_time").and_then(|v| v.as_u64()) {
+                                    return ticks / 20;
+                                }
+                                if let Some(ticks) = custom.get("minecraft:time_since_rest").and_then(|v| v.as_u64()) {
+                                    return ticks / 20;
+                                }
+                            }
                         }
                     }
                 }
@@ -319,27 +438,61 @@ pub fn get_playtime_seconds(base_dir: &Path, uuid_str: &str) -> u64 {
     0
 }
 
+pub fn strip_mc_formatting(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '§' {
+            chars.next(); // Skip formatting character
+        } else if c == '\x1b' {
+            if chars.peek() == Some(&'[') {
+                chars.next();
+                while let Some(&next_c) = chars.peek() {
+                    chars.next();
+                    if next_c.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 pub fn parse_online_players_from_rcon(output: &str) -> HashSet<String> {
     let mut online_set = HashSet::new();
-    if output.is_empty() {
+    let clean_output = strip_mc_formatting(output);
+    let trimmed = clean_output.trim();
+    if trimmed.is_empty() {
         return online_set;
     }
 
-    let players_part = match output.find(':') {
-        Some(idx) => &output[idx + 1..],
-        None => output,
+    let players_part = match trimmed.find(':') {
+        Some(idx) => &trimmed[idx + 1..],
+        None => {
+            let lower = trimmed.to_lowercase();
+            if lower.contains("0 players")
+                || lower.contains("0 of a max")
+                || lower.contains("no players")
+            {
+                return online_set;
+            }
+            trimmed
+        }
     };
 
     for item in players_part.split(',') {
-        let trimmed = item.trim();
-        if trimmed.is_empty() {
+        let item_trimmed = item.trim();
+        if item_trimmed.is_empty() {
             continue;
         }
 
-        if let Some(open_paren) = trimmed.find('(') {
-            if let Some(close_paren) = trimmed.find(')') {
-                let name = trimmed[..open_paren].trim();
-                let uuid = trimmed[open_paren + 1..close_paren].trim();
+        if let Some(open_paren) = item_trimmed.find('(') {
+            if let Some(close_paren) = item_trimmed.find(')') {
+                let name = item_trimmed[..open_paren].trim();
+                let uuid = item_trimmed[open_paren + 1..close_paren].trim();
                 if !name.is_empty() {
                     online_set.insert(name.to_lowercase());
                 }
@@ -353,7 +506,7 @@ pub fn parse_online_players_from_rcon(output: &str) -> HashSet<String> {
             }
         }
 
-        online_set.insert(trimmed.to_lowercase());
+        online_set.insert(item_trimmed.to_lowercase());
     }
 
     online_set
@@ -378,8 +531,7 @@ pub async fn get_all_players(
     }
 
     tokio::task::spawn_blocking(move || {
-        let playerdata_dir = base_dir.join("world").join("playerdata");
-        let (uuid_to_name, _name_to_uuid) = load_usercache(&base_dir);
+        let (uuid_to_name, name_to_uuid) = load_usercache(&base_dir);
         let ops_set = load_ops(&base_dir);
         let banned_map = load_banned_players(&base_dir);
 
@@ -410,11 +562,13 @@ pub async fn get_all_players(
         for u in &online_set {
             if is_valid_uuid(u) {
                 all_uuids.insert(normalize_uuid(u));
+            } else if let Some(norm) = name_to_uuid.get(&u.to_lowercase()) {
+                all_uuids.insert(norm.clone());
             }
         }
 
-        if playerdata_dir.exists() && playerdata_dir.is_dir() {
-            if let Ok(entries) = fs::read_dir(&playerdata_dir) {
+        for dir in get_playerdata_dirs(&base_dir) {
+            if let Ok(entries) = fs::read_dir(&dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     if !path.is_file() {
@@ -449,7 +603,13 @@ pub async fn get_all_players(
                 .unwrap_or_else(|| formatted_uuid.clone());
 
             let is_online = online_set.contains(&norm_uuid) || online_set.contains(&username.to_lowercase());
+            let is_op = ops_set.contains(&norm_uuid) || ops_set.contains(&username.to_lowercase());
             let is_banned = banned_map.contains_key(&norm_uuid) || banned_map.contains_key(&username.to_lowercase());
+            let ban_reason = banned_map
+                .get(&norm_uuid)
+                .or_else(|| banned_map.get(&username.to_lowercase()))
+                .cloned()
+                .flatten();
 
             if let Some(ref q) = query_lower {
                 if !username.to_lowercase().contains(q) && !formatted_uuid.to_lowercase().contains(q) {
@@ -468,21 +628,16 @@ pub async fn get_all_players(
                         continue;
                     }
                 }
+                "op" => {
+                    if !is_op {
+                        continue;
+                    }
+                }
                 _ => {}
             }
 
-            let dat_file = playerdata_dir.join(format!("{}.dat", formatted_uuid));
-            let alt_dat_file = playerdata_dir.join(format!("{}.dat", norm_uuid));
-            let dat_path = if dat_file.exists() {
-                Some(dat_file)
-            } else if alt_dat_file.exists() {
-                Some(alt_dat_file)
-            } else {
-                None
-            };
-
-            let (health, food, dimension, last_joined) = if let Some(path) = dat_path {
-                match read_nbt_player_file(&path) {
+            let (health, food, dimension, last_joined) = if let Some(dat_path) = find_player_dat_file(&base_dir, &norm_uuid) {
+                match read_nbt_player_file(&dat_path) {
                     Ok((nbt_data, _first, last)) => (
                         nbt_data.health.unwrap_or(20.0),
                         nbt_data.food_level.unwrap_or(20),
@@ -507,6 +662,9 @@ pub async fn get_all_players(
                 food,
                 dimension,
                 last_seen: last_joined,
+                is_op,
+                is_banned,
+                ban_reason,
             };
 
             players.push(summary);
@@ -540,8 +698,6 @@ pub async fn get_player_detail(config: &AppConfig, uuid_str: &str) -> Result<Pla
     }
 
     tokio::task::spawn_blocking(move || {
-        let playerdata_dir = base_dir.join("world").join("playerdata");
-
         let (uuid_to_name, _name_to_uuid) = load_usercache(&base_dir);
         let ops_set = load_ops(&base_dir);
         let banned_map = load_banned_players(&base_dir);
@@ -560,45 +716,13 @@ pub async fn get_player_detail(config: &AppConfig, uuid_str: &str) -> Result<Pla
         let is_banned = banned_map.contains_key(&norm_uuid) || banned_map.contains_key(&username.to_lowercase());
         let is_online = online_set.contains(&norm_uuid) || online_set.contains(&username.to_lowercase());
 
-        let candidate_files = [
-            playerdata_dir.join(format!("{}.dat", formatted_uuid)),
-            playerdata_dir.join(format!("{}.dat", norm_uuid)),
-        ];
+        let dat_path_opt = find_player_dat_file(&base_dir, &norm_uuid);
 
-        let mut found_path: Option<PathBuf> = None;
-        for path in &candidate_files {
-            if path.exists() && path.is_file() {
-                found_path = Some(path.clone());
-                break;
-            }
-        }
-
-        if found_path.is_none() && playerdata_dir.exists() && playerdata_dir.is_dir() {
-            if let Ok(entries) = fs::read_dir(&playerdata_dir) {
-                let mut processed_files = 0;
-                for entry in entries.flatten() {
-                    if processed_files >= 500 {
-                        break;
-                    }
-                    processed_files += 1;
-
-                    let path = entry.path();
-                    if let Some(file_name) = path.file_name().and_then(|s| s.to_str()) {
-                        let stem = file_name.trim_end_matches(".dat");
-                        if normalize_uuid(stem) == norm_uuid {
-                            found_path = Some(path);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if found_path.is_none() && !uuid_to_name.contains_key(&norm_uuid) && !is_op && !is_banned && !is_online {
+        if dat_path_opt.is_none() && !uuid_to_name.contains_key(&norm_uuid) && !is_op && !is_banned && !is_online {
             return Err(AppError::NotFound(format!("Player UUID '{}' not found", uuid_owned)));
         }
 
-        let (nbt_data, first_joined, last_joined) = if let Some(ref file_path) = found_path {
+        let (nbt_data, first_joined, last_joined) = if let Some(ref file_path) = dat_path_opt {
             read_nbt_player_file(file_path).unwrap_or((RawNbtPlayerData::default(), 0, 0))
         } else {
             (RawNbtPlayerData::default(), 0, 0)

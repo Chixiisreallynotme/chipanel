@@ -7,6 +7,8 @@
 		releaseVersions = [],
 		snapshotVersions = [],
 		recommendedVersions = [],
+		minVersion = null,
+		maxVersion = null,
 		allowAll = true,
 		label = '',
 		disabled = false,
@@ -62,6 +64,8 @@
 		{releaseVersions}
 		{snapshotVersions}
 		{recommendedVersions}
+		{minVersion}
+		{maxVersion}
 		{allowAll}
 		onSelect={handleVersionChosen}
 		onClose={() => (modalOpen = false)}

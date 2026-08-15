@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
 	import { UNAVAILABLE } from '$lib/components/dashboard/serverState.js';
 	import InventoryVisualizer from './InventoryVisualizer.svelte';
@@ -25,7 +25,18 @@
 		Loader2,
 		Package,
 		Activity,
-		Key
+		Key,
+		Gift,
+		RefreshCw,
+		Flame,
+		Skull,
+		Trash2,
+		UserCheck,
+		Search,
+		Plus,
+		Check,
+		Gamepad2,
+		Sliders
 	} from 'lucide-svelte';
 
 	/**
@@ -60,7 +71,7 @@
 	// Detailed state fetched from API
 	let detail = $state(null);
 	let loadingDetail = $state(false);
-	let actionLoading = $state(null); // 'kick' | 'ban' | 'pardon' | 'teleport' | 'op' | 'deop'
+	let actionLoading = $state(null); // 'kick' | 'ban' | 'pardon' | 'teleport' | 'op' | 'deop' | 'gamemode' | 'heal' | 'feed' | 'kill' | 'clear' | 'give' | 'whitelist_add' | 'whitelist_remove'
 	let errorMessage = $state('');
 
 	// Inventory NBT state
@@ -74,7 +85,127 @@
 	let tpX = $state(0);
 	let tpY = $state(64);
 	let tpZ = $state(0);
-	let activeTab = $state('overview'); // 'overview' | 'inventory' | 'effects' | 'permissions' | 'moderation'
+	let activeTab = $state('overview'); // 'overview' | 'inventory' | 'effects' | 'give' | 'permissions' | 'moderation'
+
+	// Gamemode selection
+	let selectedGamemode = $state('survival');
+
+	// Give Items state
+	let giveSearch = $state('');
+	let giveCategory = $state('all');
+	let giveSelectedItemId = $state('minecraft:diamond');
+	let giveSelectedCount = $state(64);
+	let giveCustomItemId = $state('');
+
+	// Auto-refresh timer inside modal
+	let refreshInterval = null;
+
+	const POPULAR_ITEMS = [
+		// Resources & Ores
+		{ id: 'minecraft:diamond', name: 'Diamond', cat: 'resources' },
+		{ id: 'minecraft:diamond_block', name: 'Diamond Block', cat: 'resources' },
+		{ id: 'minecraft:netherite_ingot', name: 'Netherite Ingot', cat: 'resources' },
+		{ id: 'minecraft:netherite_block', name: 'Netherite Block', cat: 'resources' },
+		{ id: 'minecraft:iron_ingot', name: 'Iron Ingot', cat: 'resources' },
+		{ id: 'minecraft:iron_block', name: 'Iron Block', cat: 'resources' },
+		{ id: 'minecraft:gold_ingot', name: 'Gold Ingot', cat: 'resources' },
+		{ id: 'minecraft:gold_block', name: 'Gold Block', cat: 'resources' },
+		{ id: 'minecraft:emerald', name: 'Emerald', cat: 'resources' },
+		{ id: 'minecraft:emerald_block', name: 'Emerald Block', cat: 'resources' },
+		{ id: 'minecraft:lapis_lazuli', name: 'Lapis Lazuli', cat: 'resources' },
+		{ id: 'minecraft:redstone', name: 'Redstone', cat: 'resources' },
+		{ id: 'minecraft:coal', name: 'Coal', cat: 'resources' },
+		{ id: 'minecraft:copper_ingot', name: 'Copper Ingot', cat: 'resources' },
+		{ id: 'minecraft:amethyst_shard', name: 'Amethyst Shard', cat: 'resources' },
+		{ id: 'minecraft:ancient_debris', name: 'Ancient Debris', cat: 'resources' },
+
+		// Weapons
+		{ id: 'minecraft:netherite_sword', name: 'Netherite Sword', cat: 'weapons' },
+		{ id: 'minecraft:diamond_sword', name: 'Diamond Sword', cat: 'weapons' },
+		{ id: 'minecraft:iron_sword', name: 'Iron Sword', cat: 'weapons' },
+		{ id: 'minecraft:netherite_axe', name: 'Netherite Axe', cat: 'weapons' },
+		{ id: 'minecraft:diamond_axe', name: 'Diamond Axe', cat: 'weapons' },
+		{ id: 'minecraft:bow', name: 'Bow', cat: 'weapons' },
+		{ id: 'minecraft:crossbow', name: 'Crossbow', cat: 'weapons' },
+		{ id: 'minecraft:trident', name: 'Trident', cat: 'weapons' },
+		{ id: 'minecraft:mace', name: 'Mace', cat: 'weapons' },
+		{ id: 'minecraft:arrow', name: 'Arrow', cat: 'weapons' },
+		{ id: 'minecraft:spectral_arrow', name: 'Spectral Arrow', cat: 'weapons' },
+		{ id: 'minecraft:shield', name: 'Shield', cat: 'weapons' },
+
+		// Tools
+		{ id: 'minecraft:netherite_pickaxe', name: 'Netherite Pickaxe', cat: 'tools' },
+		{ id: 'minecraft:diamond_pickaxe', name: 'Diamond Pickaxe', cat: 'tools' },
+		{ id: 'minecraft:netherite_shovel', name: 'Netherite Shovel', cat: 'tools' },
+		{ id: 'minecraft:diamond_shovel', name: 'Diamond Shovel', cat: 'tools' },
+		{ id: 'minecraft:netherite_hoe', name: 'Netherite Hoe', cat: 'tools' },
+		{ id: 'minecraft:diamond_hoe', name: 'Diamond Hoe', cat: 'tools' },
+		{ id: 'minecraft:flint_and_steel', name: 'Flint and Steel', cat: 'tools' },
+		{ id: 'minecraft:shears', name: 'Shears', cat: 'tools' },
+		{ id: 'minecraft:fishing_rod', name: 'Fishing Rod', cat: 'tools' },
+		{ id: 'minecraft:spyglass', name: 'Spyglass', cat: 'tools' },
+		{ id: 'minecraft:compass', name: 'Compass', cat: 'tools' },
+		{ id: 'minecraft:clock', name: 'Clock', cat: 'tools' },
+		{ id: 'minecraft:lead', name: 'Lead', cat: 'tools' },
+		{ id: 'minecraft:name_tag', name: 'Name Tag', cat: 'tools' },
+
+		// Armor
+		{ id: 'minecraft:netherite_helmet', name: 'Netherite Helmet', cat: 'armor' },
+		{ id: 'minecraft:netherite_chestplate', name: 'Netherite Chestplate', cat: 'armor' },
+		{ id: 'minecraft:netherite_leggings', name: 'Netherite Leggings', cat: 'armor' },
+		{ id: 'minecraft:netherite_boots', name: 'Netherite Boots', cat: 'armor' },
+		{ id: 'minecraft:diamond_helmet', name: 'Diamond Helmet', cat: 'armor' },
+		{ id: 'minecraft:diamond_chestplate', name: 'Diamond Chestplate', cat: 'armor' },
+		{ id: 'minecraft:diamond_leggings', name: 'Diamond Leggings', cat: 'armor' },
+		{ id: 'minecraft:diamond_boots', name: 'Diamond Boots', cat: 'armor' },
+		{ id: 'minecraft:elytra', name: 'Elytra', cat: 'armor' },
+		{ id: 'minecraft:turtle_helmet', name: 'Turtle Helmet', cat: 'armor' },
+
+		// Food & Potions
+		{ id: 'minecraft:enchanted_golden_apple', name: 'Enchanted Golden Apple', cat: 'food' },
+		{ id: 'minecraft:golden_apple', name: 'Golden Apple', cat: 'food' },
+		{ id: 'minecraft:golden_carrot', name: 'Golden Carrot', cat: 'food' },
+		{ id: 'minecraft:cooked_beef', name: 'Steak (Cooked Beef)', cat: 'food' },
+		{ id: 'minecraft:cooked_porkchop', name: 'Cooked Porkchop', cat: 'food' },
+		{ id: 'minecraft:bread', name: 'Bread', cat: 'food' },
+		{ id: 'minecraft:baked_potato', name: 'Baked Potato', cat: 'food' },
+		{ id: 'minecraft:cake', name: 'Cake', cat: 'food' },
+		{ id: 'minecraft:potion', name: 'Potion', cat: 'food' },
+		{ id: 'minecraft:splash_potion', name: 'Splash Potion', cat: 'food' },
+
+		// Utility & Magic
+		{ id: 'minecraft:totem_of_undying', name: 'Totem of Undying', cat: 'utility' },
+		{ id: 'minecraft:ender_pearl', name: 'Ender Pearl', cat: 'utility' },
+		{ id: 'minecraft:eye_of_ender', name: 'Eye of Ender', cat: 'utility' },
+		{ id: 'minecraft:experience_bottle', name: "Bottle o' Enchanting", cat: 'utility' },
+		{ id: 'minecraft:firework_rocket', name: 'Firework Rocket', cat: 'utility' },
+		{ id: 'minecraft:saddle', name: 'Saddle', cat: 'utility' },
+		{ id: 'minecraft:shulker_box', name: 'Shulker Box', cat: 'utility' },
+		{ id: 'minecraft:ender_chest', name: 'Ender Chest', cat: 'utility' },
+		{ id: 'minecraft:beacon', name: 'Beacon', cat: 'utility' },
+		{ id: 'minecraft:enchanting_table', name: 'Enchanting Table', cat: 'utility' },
+		{ id: 'minecraft:anvil', name: 'Anvil', cat: 'utility' },
+		{ id: 'minecraft:bookshelf', name: 'Bookshelf', cat: 'utility' },
+		{ id: 'minecraft:nether_star', name: 'Nether Star', cat: 'utility' },
+		{ id: 'minecraft:tnt', name: 'TNT', cat: 'utility' },
+		{ id: 'minecraft:water_bucket', name: 'Water Bucket', cat: 'utility' },
+		{ id: 'minecraft:lava_bucket', name: 'Lava Bucket', cat: 'utility' }
+	];
+
+	// Filtered catalog items for Give panel
+	let filteredItems = $derived.by(() => {
+		let list = POPULAR_ITEMS;
+		if (giveCategory !== 'all') {
+			list = list.filter((item) => item.cat === giveCategory);
+		}
+		if (giveSearch.trim()) {
+			const q = giveSearch.toLowerCase().trim();
+			list = list.filter(
+				(item) => item.name.toLowerCase().includes(q) || item.id.toLowerCase().includes(q)
+			);
+		}
+		return list;
+	});
 
 	// Fetch detailed player stats whenever modal opens or player UUID changes
 	$effect(() => {
@@ -83,7 +214,19 @@
 			if (activeTab === 'inventory') {
 				fetchPlayerInventory(player.uuid);
 			}
+
+			// Clear previous timer and set 10s auto-refresh
+			if (refreshInterval) clearInterval(refreshInterval);
+			refreshInterval = setInterval(() => {
+				if (open && player?.uuid) {
+					refreshPlayerData(false);
+				}
+			}, 10000);
 		} else if (!open) {
+			if (refreshInterval) {
+				clearInterval(refreshInterval);
+				refreshInterval = null;
+			}
 			detail = null;
 			inventoryData = null;
 			inventoryError = '';
@@ -92,12 +235,36 @@
 		}
 	});
 
+	onDestroy(() => {
+		if (refreshInterval) clearInterval(refreshInterval);
+	});
+
 	// Reactively fetch inventory data when user switches to inventory tab
 	$effect(() => {
-		if (open && (detail?.uuid || player?.uuid) && activeTab === 'inventory' && !inventoryData && !loadingInventory) {
+		if (
+			open &&
+			(detail?.uuid || player?.uuid) &&
+			activeTab === 'inventory' &&
+			!inventoryData &&
+			!loadingInventory
+		) {
 			fetchPlayerInventory((detail || player).uuid);
 		}
 	});
+
+	async function refreshPlayerData(showSpinner = true) {
+		const targetUuid = (detail || player)?.uuid;
+		if (!targetUuid) return;
+		if (showSpinner) loadingDetail = true;
+		try {
+			await fetchPlayerDetail(targetUuid, showSpinner);
+			if (activeTab === 'inventory') {
+				await fetchPlayerInventory(targetUuid);
+			}
+		} finally {
+			if (showSpinner) loadingDetail = false;
+		}
+	}
 
 	async function fetchPlayerInventory(uuid) {
 		if (!uuid) return;
@@ -114,38 +281,29 @@
 		}
 	}
 
-	async function fetchPlayerDetail(uuid) {
-		loadingDetail = true;
+	async function fetchPlayerDetail(uuid, showSpinner = true) {
+		if (showSpinner) loadingDetail = true;
 		errorMessage = '';
 		try {
 			const res = await apiGet(`/api/players/${uuid}`);
 			detail = res;
 			if (res) {
-				// `|| 0` used to coerce a genuine position of 0 (and a genuine y=0) into
-				// the placeholder, silently retargeting a teleport. These are form
-				// defaults for an unknown position only.
 				tpX = res.position_x == null ? 0 : Math.round(res.position_x);
 				tpY = res.position_y == null ? 64 : Math.round(res.position_y);
 				tpZ = res.position_z == null ? 0 : Math.round(res.position_z);
 			}
 		} catch (err) {
 			console.error(`Failed to fetch detail for player ${uuid}:`, err);
-			// Do NOT synthesise a detail record here. The old fallback invented a
-			// complete, plausible player (20/20 HP, level 0, spawn coords, Overworld,
-			// zero playtime) that was indistinguishable from real telemetry (B1).
-			// `detail` stays null; the template falls back to the summary `player`,
-			// and every field the summary lacks renders as "—".
 			detail = null;
 			errorMessage =
 				err.message || 'Failed to load full player detail — showing summary data only.';
 		} finally {
-			loadingDetail = false;
+			if (showSpinner) loadingDetail = false;
 		}
 	}
 
 	// Format helpers
 	function formatPlaytime(seconds) {
-		// An unreported playtime is unknown, not zero.
 		if (seconds == null) return UNAVAILABLE;
 		if (seconds <= 0) return '0 mins';
 		const hours = Math.floor(seconds / 3600);
@@ -174,16 +332,12 @@
 		});
 	}
 
-	// An unreported dimension is unknown, NOT the Overworld (B1). An unrecognised
-	// dimension string is shown verbatim rather than coerced.
 	function formatDimension(dimStr) {
 		if (!dimStr) return UNAVAILABLE;
 		const d = dimStr.toLowerCase();
 		if (d.includes('nether')) return 'Nether';
 		if (d.includes('end')) return 'The End';
 		if (d.includes('overworld')) return 'Overworld';
-		// Modded dimension: show it rather than guessing, but drop the namespace so a
-		// long id cannot stretch this nowrap badge past the stat box.
 		return dimStr.split(':').pop();
 	}
 
@@ -195,22 +349,22 @@
 		return 'badge-secondary';
 	}
 
-	/** Bar width for a 0..max vital, or null when there is nothing to draw. */
 	function vitalPercent(value, max) {
 		if (value == null || max == null || !max) return null;
 		return Math.min(100, Math.max(0, (value / max) * 100));
 	}
 
-	/** @param {number | null | undefined} v */
 	function fmtCoord(v) {
 		return v == null ? UNAVAILABLE : v.toFixed(1);
 	}
 
+	function getItemIconUrl(itemId) {
+		const clean = (itemId || '').replace('minecraft:', '').toLowerCase();
+		return `https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.20.4/items/${clean}.png`;
+	}
+
 	// Action Handler: Execute moderation commands via /api/players/action
-	async function handleExecuteAction(actionType) {
-		// `detail` is null whenever the detail fetch failed — the same summary the
-		// template renders is still a valid action target, so key off that rather
-		// than requiring a detail record we may never get.
+	async function handleExecuteAction(actionType, extraParams = {}) {
 		const target = detail || player;
 		if (!target?.uuid || actionLoading) return;
 		actionLoading = actionType;
@@ -218,7 +372,8 @@
 
 		let body = {
 			uuid: target.uuid,
-			action: actionType
+			action: actionType,
+			...extraParams
 		};
 
 		if (actionType === 'kick') {
@@ -227,17 +382,17 @@
 			body.reason = banReason.trim() || 'Banned by admin via ChiPanel';
 		} else if (actionType === 'teleport') {
 			body.target_coords = `${tpX} ${tpY} ${tpZ}`;
+		} else if (actionType === 'gamemode') {
+			body.gamemode = selectedGamemode;
 		}
 
 		try {
 			const res = await apiPost('/api/players/action', body);
 
-			// Locally update state if relevant. Applied to whichever record the
-			// template is actually rendering (`detail || player`).
 			if (actionType === 'ban') {
 				target.is_banned = true;
 				target.ban_reason = body.reason;
-			} else if (actionType === 'pardon') {
+			} else if (actionType === 'pardon' || actionType === 'unban') {
 				target.is_banned = false;
 				target.ban_reason = null;
 			} else if (actionType === 'op') {
@@ -248,8 +403,12 @@
 				target.is_online = false;
 			}
 
-			const successMessage = res.message || res.output || `Action '${actionType}' executed successfully.`;
+			const successMessage =
+				res.message || res.output || `Action '${actionType}' executed successfully.`;
 			onActionSuccess(actionType, successMessage);
+
+			// Automatically refresh telemetry
+			await refreshPlayerData(false);
 		} catch (err) {
 			console.error(`Failed to execute player action ${actionType}:`, err);
 			errorMessage = err.message || `Failed to execute action ${actionType}`;
@@ -257,15 +416,32 @@
 			actionLoading = null;
 		}
 	}
+
+	async function handleGiveItemSubmit() {
+		const targetItem = giveCustomItemId.trim() || giveSelectedItemId;
+		if (!targetItem) {
+			errorMessage = 'Please select or enter an item ID to give';
+			return;
+		}
+		const count = parseInt(giveSelectedCount, 10) || 1;
+		await handleExecuteAction('give', {
+			item_id: targetItem,
+			count: Math.min(64, Math.max(1, count))
+		});
+	}
 </script>
 
-<svelte:window onkeydown={(e) => { if (e.key === 'Escape' && open) onClose(); }} />
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape' && open) onClose();
+	}}
+/>
 
 {#if open && (detail || player)}
 	{@const p = detail || player}
-		{@const healthPct = vitalPercent(p.health, p.max_health)}
-		{@const foodPct = vitalPercent(p.food, 20)}
-		{@const expPct = vitalPercent(p.exp_progress, 1)}
+	{@const healthPct = vitalPercent(p.health, p.max_health)}
+	{@const foodPct = vitalPercent(p.food, 20)}
+	{@const expPct = vitalPercent(p.exp_progress, 1)}
 	<div class="modal-backdrop" onclick={onClose}>
 		<div
 			class="modal profile-modal-drawer"
@@ -314,7 +490,20 @@
 						<span class="badge badge-secondary">OFFLINE</span>
 					{/if}
 
-					<button class="btn btn-ghost btn-icon btn-sm close-modal-btn" onclick={onClose} aria-label="Close modal">
+					<button
+						class="btn btn-ghost btn-icon btn-sm"
+						onclick={() => refreshPlayerData(true)}
+						title="Refresh player telemetry"
+						disabled={loadingDetail}
+					>
+						<RefreshCw size={16} class={loadingDetail ? 'spinning' : ''} />
+					</button>
+
+					<button
+						class="btn btn-ghost btn-icon btn-sm close-modal-btn"
+						onclick={onClose}
+						aria-label="Close modal"
+					>
 						<X size={18} />
 					</button>
 				</div>
@@ -355,7 +544,19 @@
 					aria-controls="tabpanel-effects"
 				>
 					<Activity size={15} />
-					<span>Status Effects</span>
+					<span>Effects</span>
+				</button>
+
+				<button
+					id="tab-give"
+					class="nav-tab-btn {activeTab === 'give' ? 'active' : ''}"
+					onclick={() => (activeTab = 'give')}
+					role="tab"
+					aria-selected={activeTab === 'give'}
+					aria-controls="tabpanel-give"
+				>
+					<Gift size={15} />
+					<span>Give Item</span>
 				</button>
 
 				<button
@@ -396,7 +597,7 @@
 				{#if loadingDetail}
 					<div class="loading-overlay">
 						<Loader2 size={32} class="spinner" />
-						<span>Fetching full player telemetry data...</span>
+						<span>Fetching player telemetry data...</span>
 					</div>
 				{/if}
 
@@ -451,10 +652,7 @@
 									<div class="stat-value-container">
 										<span class="stat-main-value">{p.food ?? UNAVAILABLE} / 20</span>
 										{#if foodPct == null}
-											<div
-												class="gauge-bar gauge-unknown"
-												title="Food level not reported for this player"
-											></div>
+											<div class="gauge-bar gauge-unknown" title="Food level not reported for this player"></div>
 										{:else}
 											<div class="gauge-bar">
 												<div class="gauge-fill gauge-fill-warning" style="width: {foodPct}%;"></div>
@@ -463,21 +661,24 @@
 									</div>
 								</div>
 
-								<!-- EXP Level & Progress -->
+								<!-- Experience -->
 								<div class="stat-box">
 									<div class="stat-header">
 										<Zap size={16} class="icon-green" />
-										<span class="stat-title">EXP Level</span>
+										<span class="stat-title">Experience</span>
 									</div>
 									<div class="stat-value-container">
 										<span class="stat-main-value">
-											{p.exp_level == null ? UNAVAILABLE : `Level ${p.exp_level}`}
+											Level {p.exp_level ?? UNAVAILABLE}
+											<span class="stat-small-text">
+												({expPct == null ? UNAVAILABLE : `${Math.round(expPct)}%`})
+											</span>
 										</span>
 										{#if expPct == null}
-											<div class="gauge-bar gauge-unknown" title="EXP progress not reported"></div>
+											<div class="gauge-bar gauge-unknown" title="Experience not reported for this player"></div>
 										{:else}
 											<div class="gauge-bar">
-												<div class="gauge-fill gauge-fill-success" style="width: {expPct}%;"></div>
+												<div class="gauge-fill gauge-fill-primary" style="width: {expPct}%;"></div>
 											</div>
 										{/if}
 									</div>
@@ -489,14 +690,16 @@
 										<Clock size={16} class="icon-blue" />
 										<span class="stat-title">Total Playtime</span>
 									</div>
-									<span class="stat-large-text">{formatPlaytime(p.playtime_seconds)}</span>
+									<div class="stat-value-container">
+										<span class="stat-large-text">{formatPlaytime(p.playtime_seconds)}</span>
+									</div>
 								</div>
 
-								<!-- Position Coords -->
+								<!-- Coordinates -->
 								<div class="stat-box stat-box-wide">
 									<div class="stat-header">
 										<MapPin size={16} class="icon-purple" />
-										<span class="stat-title">World Position Coords</span>
+										<span class="stat-title">Current Coordinates</span>
 									</div>
 									<div class="coords-display">
 										<div class="coord-pill">
@@ -517,30 +720,32 @@
 								<!-- Dimension -->
 								<div class="stat-box">
 									<div class="stat-header">
-										<Globe size={16} class="icon-blue" />
+										<Globe size={16} class="icon-green" />
 										<span class="stat-title">Dimension</span>
 									</div>
-									<span class="badge {getDimensionBadgeClass(p.dimension)} stat-badge">
-										{formatDimension(p.dimension)}
-									</span>
+									<div class="stat-badge">
+										<span class="badge {getDimensionBadgeClass(p.dimension)}">
+											{formatDimension(p.dimension)}
+										</span>
+									</div>
 								</div>
 
-								<!-- First Joined -->
-								<div class="stat-box">
+								<!-- First & Last Joined -->
+								<div class="stat-box stat-box-wide">
 									<div class="stat-header">
 										<Calendar size={16} class="icon-muted" />
-										<span class="stat-title">First Joined</span>
+										<span class="stat-title">Activity Timeline</span>
 									</div>
-									<span class="stat-small-text">{formatDate(p.first_joined_timestamp)}</span>
-								</div>
-
-								<!-- Last Joined / Seen -->
-								<div class="stat-box">
-									<div class="stat-header">
-										<Calendar size={16} class="icon-muted" />
-										<span class="stat-title">Last Seen</span>
+									<div class="timeline-row">
+										<div>
+											<span class="timeline-lbl">First Seen:</span>
+											<span class="timeline-val">{formatDate(p.first_joined_timestamp)}</span>
+										</div>
+										<div>
+											<span class="timeline-lbl">Last Seen:</span>
+											<span class="timeline-val">{formatDate(p.last_joined_timestamp || p.last_seen)}</span>
+										</div>
 									</div>
-									<span class="stat-small-text">{formatDate(p.last_joined_timestamp)}</span>
 								</div>
 							</div>
 						</div>
@@ -552,23 +757,314 @@
 							inventory={inventoryData}
 							loading={loadingInventory}
 							error={inventoryError}
-							onRefresh={() => fetchPlayerInventory(p.uuid)}
 						/>
 					</div>
 				{:else if activeTab === 'effects'}
-					<!-- Status Effects Tab -->
+					<!-- Active Status Effects & Potion Modifiers Tab -->
 					<div role="tabpanel" id="tabpanel-effects" aria-labelledby="tab-effects">
-						<StatusEffectsPanel uuid={p.uuid} isOnline={p.is_online} />
+						<StatusEffectsPanel
+							playerUuid={p.uuid}
+							playerName={p.username}
+							isOnline={p.is_online}
+							onActionSuccess={(msg) => onActionSuccess('effects', msg)}
+						/>
+					</div>
+				{:else if activeTab === 'give'}
+					<!-- Give Item Visual Catalog Tab -->
+					<div role="tabpanel" id="tabpanel-give" aria-labelledby="tab-give">
+						<div class="give-panel">
+							<!-- Top Controls: Search, Category, Count & Direct Give Action -->
+							<div class="give-header-card">
+								<div class="give-search-row">
+									<div class="search-input-wrapper">
+										<Search size={16} class="search-icon" />
+										<input
+											type="text"
+											class="input search-input"
+											placeholder="Search item name or ID (e.g. Diamond, Netherite, Apple)..."
+											bind:value={giveSearch}
+										/>
+										{#if giveSearch}
+											<button class="clear-search-btn" onclick={() => (giveSearch = '')}>
+												<X size={14} />
+											</button>
+										{/if}
+									</div>
+
+									<div class="count-selector-group">
+										<span class="count-label">Quantity:</span>
+										<div class="count-buttons">
+											{#each [1, 16, 32, 64] as cnt}
+												<button
+													class="btn btn-sm count-btn {giveSelectedCount === cnt ? 'active' : ''}"
+													onclick={() => (giveSelectedCount = cnt)}
+												>
+													{cnt}
+												</button>
+											{/each}
+										</div>
+										<input
+											type="number"
+											min="1"
+											max="64"
+											class="input count-custom-input"
+											bind:value={giveSelectedCount}
+										/>
+									</div>
+								</div>
+
+								<!-- Category Filter Pills -->
+								<div class="category-pills">
+									{#each [{ id: 'all', label: 'All Items' }, { id: 'resources', label: 'Resources' }, { id: 'weapons', label: 'Weapons' }, { id: 'tools', label: 'Tools' }, { id: 'armor', label: 'Armor' }, { id: 'food', label: 'Food' }, { id: 'utility', label: 'Utility' }] as cat}
+										<button
+											class="cat-pill {giveCategory === cat.id ? 'active' : ''}"
+											onclick={() => (giveCategory = cat.id)}
+										>
+											{cat.label}
+										</button>
+									{/each}
+								</div>
+
+								<!-- Selected Item Action Strip -->
+								<div class="give-action-strip">
+									<div class="selected-item-preview">
+										<div class="item-icon-box">
+											<img
+												src={getItemIconUrl(giveCustomItemId || giveSelectedItemId)}
+												alt={giveSelectedItemId}
+												class="give-preview-img"
+												onerror={(e) => {
+													e.target.style.opacity = '0.3';
+												}}
+											/>
+										</div>
+										<div class="selected-item-info">
+											<span class="selected-item-title">
+												{POPULAR_ITEMS.find((i) => i.id === giveSelectedItemId)?.name ||
+													giveCustomItemId ||
+													giveSelectedItemId}
+											</span>
+											<span class="selected-item-id"
+												>{giveCustomItemId.trim() || giveSelectedItemId} × {giveSelectedCount}</span
+											>
+										</div>
+									</div>
+
+									<div class="give-action-buttons">
+										<div class="custom-id-input-box">
+											<input
+												type="text"
+												class="input input-sm"
+												placeholder="Or type custom ID (e.g. mod:item)..."
+												bind:value={giveCustomItemId}
+											/>
+										</div>
+										<button
+											class="btn btn-primary {actionLoading === 'give' ? 'btn-loading' : ''}"
+											onclick={handleGiveItemSubmit}
+											disabled={!p.is_online || actionLoading === 'give'}
+										>
+											{#if actionLoading !== 'give'}
+												<Gift size={16} />
+											{/if}
+											<span
+												>{p.is_online
+													? `Give to ${p.username}`
+													: 'Player Offline (RCON Give Requires Online)'}</span
+											>
+										</button>
+									</div>
+								</div>
+							</div>
+
+							<!-- Item Grid Cards -->
+							<div class="items-grid-catalog">
+								{#each filteredItems as item}
+									<button
+										class="item-grid-card {giveSelectedItemId === item.id && !giveCustomItemId
+											? 'selected'
+											: ''}"
+										onclick={() => {
+											giveSelectedItemId = item.id;
+											giveCustomItemId = '';
+										}}
+									>
+										<div class="item-card-icon">
+											<img
+												src={getItemIconUrl(item.id)}
+												alt={item.name}
+												class="item-card-img"
+												loading="lazy"
+												onerror={(e) => {
+													e.target.style.opacity = '0.3';
+												}}
+											/>
+										</div>
+										<div class="item-card-details">
+											<span class="item-card-name">{item.name}</span>
+											<span class="item-card-id">{item.id.replace('minecraft:', '')}</span>
+										</div>
+										{#if giveSelectedItemId === item.id && !giveCustomItemId}
+											<div class="selected-check-badge">
+												<Check size={12} />
+											</div>
+										{/if}
+									</button>
+								{/each}
+							</div>
+						</div>
 					</div>
 				{:else if activeTab === 'permissions'}
-					<!-- Basic Permissions Tab -->
+					<!-- LuckPerms Permissions Manager Tab -->
 					<div role="tabpanel" id="tabpanel-permissions" aria-labelledby="tab-permissions">
-						<BasicPermissionsPanel uuid={p.uuid} />
+						<BasicPermissionsPanel
+							playerUuid={p.uuid}
+							playerName={p.username}
+							onActionSuccess={(msg) => onActionSuccess('permissions', msg)}
+						/>
 					</div>
-				{:else}
-					<!-- Moderation Action Panel Tab -->
+				{:else if activeTab === 'moderation'}
+					<!-- Comprehensive Moderation & Actions Tab -->
 					<div role="tabpanel" id="tabpanel-moderation" aria-labelledby="tab-moderation">
 						<div class="moderation-panel">
+							<!-- Gamemode Switcher Section -->
+							<div class="mod-card">
+								<div class="mod-card-header">
+									<div class="mod-title-group">
+										<Gamepad2 size={18} class="icon-blue" />
+										<div>
+											<h4 class="mod-title">Gamemode Switcher</h4>
+											<p class="mod-desc">Change player's active game mode instantly.</p>
+										</div>
+									</div>
+								</div>
+								<div class="mod-card-body">
+									<div class="gamemode-buttons-grid">
+										{#each [{ id: 'survival', label: 'Survival', desc: 'Default survival mode' }, { id: 'creative', label: 'Creative', desc: 'Unlimited items & flight' }, { id: 'adventure', label: 'Adventure', desc: 'Block break restrictions' }, { id: 'spectator', label: 'Spectator', desc: 'Fly through blocks invisible' }] as gm}
+											<button
+												class="gamemode-select-btn {selectedGamemode === gm.id ? 'active' : ''}"
+												onclick={() => (selectedGamemode = gm.id)}
+											>
+												<span class="gm-label">{gm.label}</span>
+												<span class="gm-desc">{gm.desc}</span>
+											</button>
+										{/each}
+									</div>
+								</div>
+								<div class="mod-card-footer">
+									<button
+										class="btn btn-primary {actionLoading === 'gamemode' ? 'btn-loading' : ''}"
+										onclick={() => handleExecuteAction('gamemode')}
+										disabled={!p.is_online || actionLoading === 'gamemode'}
+									>
+										{#if actionLoading !== 'gamemode'}
+											<Gamepad2 size={16} />
+										{/if}
+										<span
+											>{p.is_online ? `Set to ${selectedGamemode}` : 'Player Offline'}</span
+										>
+									</button>
+								</div>
+							</div>
+
+							<!-- Quick Vitality & Inventory Actions -->
+							<div class="mod-card">
+								<div class="mod-card-header">
+									<div class="mod-title-group">
+										<Flame size={18} class="icon-warning" />
+										<div>
+											<h4 class="mod-title">Quick Vitality & Actions</h4>
+											<p class="mod-desc">Instantly restore health, satiate food, kill, or wipe player inventory.</p>
+										</div>
+									</div>
+								</div>
+								<div class="mod-card-body">
+									<div class="quick-actions-row">
+										<button
+											class="btn btn-secondary {actionLoading === 'heal' ? 'btn-loading' : ''}"
+											onclick={() => handleExecuteAction('heal')}
+											disabled={!p.is_online || actionLoading === 'heal'}
+											title="Applies Instant Health 255 & Saturation"
+										>
+											<Heart size={16} class="icon-danger" />
+											<span>Heal & Feed</span>
+										</button>
+
+										<button
+											class="btn btn-secondary {actionLoading === 'feed' ? 'btn-loading' : ''}"
+											onclick={() => handleExecuteAction('feed')}
+											disabled={!p.is_online || actionLoading === 'feed'}
+											title="Applies Max Saturation"
+										>
+											<Utensils size={16} class="icon-warning" />
+											<span>Feed</span>
+										</button>
+
+										<button
+											class="btn btn-secondary {actionLoading === 'kill' ? 'btn-loading' : ''}"
+											onclick={() => handleExecuteAction('kill')}
+											disabled={!p.is_online || actionLoading === 'kill'}
+											title="Executes /kill command"
+										>
+											<Skull size={16} class="icon-danger" />
+											<span>Kill Player</span>
+										</button>
+
+										<button
+											class="btn btn-danger {actionLoading === 'clear' ? 'btn-loading' : ''}"
+											onclick={() => {
+												if (confirm(`Are you sure you want to completely clear ${p.username}'s inventory?`)) {
+													handleExecuteAction('clear');
+												}
+											}}
+											disabled={!p.is_online || actionLoading === 'clear'}
+											title="Clears player inventory"
+										>
+											<Trash2 size={16} />
+											<span>Clear Inventory</span>
+										</button>
+									</div>
+								</div>
+							</div>
+
+							<!-- Whitelist Section -->
+							<div class="mod-card">
+								<div class="mod-card-header">
+									<div class="mod-title-group">
+										<UserCheck size={18} class="icon-green" />
+										<div>
+											<h4 class="mod-title">Whitelist Access</h4>
+											<p class="mod-desc">Add or remove player from the server whitelist.</p>
+										</div>
+									</div>
+								</div>
+								<div class="mod-card-body">
+									<p class="op-desc-text">
+										Allow this player to join when whitelist enforcement is enabled on the server.
+									</p>
+								</div>
+								<div class="mod-card-footer">
+									<div class="whitelist-btns">
+										<button
+											class="btn btn-secondary {actionLoading === 'whitelist_remove' ? 'btn-loading' : ''}"
+											onclick={() => handleExecuteAction('whitelist_remove')}
+											disabled={actionLoading === 'whitelist_remove'}
+										>
+											<X size={16} />
+											<span>Remove Whitelist</span>
+										</button>
+										<button
+											class="btn btn-primary {actionLoading === 'whitelist_add' ? 'btn-loading' : ''}"
+											onclick={() => handleExecuteAction('whitelist_add')}
+											disabled={actionLoading === 'whitelist_add'}
+										>
+											<Check size={16} />
+											<span>Add to Whitelist</span>
+										</button>
+									</div>
+								</div>
+							</div>
+
 							<!-- Kick Section -->
 							<div class="mod-card">
 								<div class="mod-card-header">
@@ -766,11 +1262,37 @@
 
 <style>
 	.profile-modal-drawer {
-		max-width: 720px;
-		width: 100%;
-		max-height: 90vh;
+		max-width: 900px;
+		width: 95vw;
+		height: 90vh;
 		display: flex;
 		flex-direction: column;
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-modal);
+		box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+		overflow: hidden;
+		animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	@keyframes modalFadeIn {
+		from {
+			opacity: 0;
+			transform: scale(0.98);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--space-4) var(--space-5);
+		border-bottom: 1px solid var(--border);
+		background-color: var(--bg-elevated);
 	}
 
 	.player-header-info {
@@ -780,12 +1302,10 @@
 	}
 
 	.header-avatar {
-		width: 32px;
-		height: 32px;
-		border-radius: 4px;
-		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-sm);
 		image-rendering: pixelated;
-		background-color: var(--bg-elevated);
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
 	}
 
 	.title-row {
@@ -798,12 +1318,11 @@
 		font-size: var(--font-size-lg);
 		font-weight: var(--font-weight-bold);
 		color: var(--text-primary);
-		line-height: 1.2;
 	}
 
 	.header-uuid {
-		font-family: var(--font-mono);
 		font-size: var(--font-size-xs);
+		font-family: var(--font-mono);
 		color: var(--text-muted);
 	}
 
@@ -813,43 +1332,109 @@
 		gap: var(--space-3);
 	}
 
-	.close-modal-btn {
-		color: var(--text-muted);
+	.spinning {
+		animation: spin 1s linear infinite;
 	}
 
-	/* Modal Sub Nav Tabs */
+	@keyframes spin {
+		100% {
+			transform: rotate(360deg);
+		}
+	}
+
+	.status-dot {
+		display: inline-block;
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		margin-right: 4px;
+	}
+
+	.status-dot-success {
+		background-color: var(--accent-green);
+	}
+
+	.status-dot-pulse {
+		box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+		animation: pulse 1.6s infinite;
+	}
+
+	@keyframes pulse {
+		0% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+		}
+		70% {
+			transform: scale(1);
+			box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+		}
+		100% {
+			transform: scale(0.95);
+			box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+		}
+	}
+
+	/* Navigation Tabs */
 	.modal-nav-tabs {
 		display: flex;
-		align-items: center;
-		gap: var(--space-2);
 		background-color: var(--bg-base);
-		padding: var(--space-2) var(--space-4);
 		border-bottom: 1px solid var(--border);
+		padding: 0 var(--space-3);
+		overflow-x: auto;
 	}
 
 	.nav-tab-btn {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-2) var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		background: none;
+		border: none;
+		border-bottom: 2px solid transparent;
+		color: var(--text-muted);
 		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-medium);
-		color: var(--text-muted);
-		background: transparent;
-		border: none;
-		border-radius: var(--radius-btn);
 		cursor: pointer;
-		transition: color var(--transition-fast), background-color var(--transition-fast);
+		transition: all var(--transition-fast);
+		white-space: nowrap;
 	}
 
 	.nav-tab-btn:hover {
 		color: var(--text-primary);
-		background-color: rgba(255, 255, 255, 0.04);
 	}
 
 	.nav-tab-btn.active {
 		color: var(--accent-blue-text);
-		background-color: var(--accent-blue-bg);
+		border-bottom-color: var(--accent-blue);
+		background-color: rgba(59, 130, 246, 0.05);
+	}
+
+	/* Modal Body */
+	.modal-body {
+		padding: var(--space-5);
+		overflow-y: auto;
+		flex: 1;
+		position: relative;
+	}
+
+	.loading-overlay {
+		position: absolute;
+		inset: 0;
+		background-color: rgba(15, 23, 42, 0.75);
+		backdrop-filter: blur(2px);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-3);
+		z-index: 10;
+		color: var(--text-secondary);
+		font-size: var(--font-size-sm);
+	}
+
+	.spinner {
+		animation: spin 1s linear infinite;
+		color: var(--accent-blue);
 	}
 
 	.error-banner {
@@ -857,79 +1442,54 @@
 		align-items: center;
 		gap: var(--space-3);
 		background-color: var(--danger-bg);
-		border-bottom: 1px solid var(--danger-border);
+		border: 1px solid var(--danger-border);
 		color: var(--danger-text);
-		padding: var(--space-3) var(--space-6);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-input);
+		margin: var(--space-3) var(--space-5) 0;
 		font-size: var(--font-size-sm);
 	}
 
-	.profile-body {
-		padding: var(--space-6);
-		position: relative;
-		overflow-y: auto;
-		flex: 1;
-	}
-
-	.loading-overlay {
-		position: absolute;
-		inset: 0;
-		background-color: rgba(17, 17, 24, 0.75);
-		backdrop-filter: blur(2px);
-		z-index: 10;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-3);
-		color: var(--text-muted);
-		font-size: var(--font-size-sm);
-	}
-
-	/* Overview Tab Layout */
+	/* Overview Layout */
 	.overview-layout {
 		display: grid;
-		grid-template-columns: 180px 1fr;
-		gap: var(--space-6);
+		grid-template-columns: 200px 1fr;
+		gap: var(--space-5);
+		align-items: start;
 	}
 
-	@media (max-width: 640px) {
+	@media (max-width: 700px) {
 		.overview-layout {
 			grid-template-columns: 1fr;
 		}
 	}
 
 	.skin-viewer-card {
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		padding: var(--space-4);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		background-color: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-card);
-		padding: var(--space-4);
-		gap: var(--space-3);
+		gap: var(--space-2);
 	}
 
 	.skin-viewer-container {
-		width: 150px;
-		height: 220px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		min-height: 220px;
 	}
 
 	.skin-body-image {
-		width: 150px;
-		height: 220px;
 		image-rendering: pixelated;
-		object-fit: contain;
-		filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+		filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.4));
 	}
 
 	.skin-caption {
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
-		font-family: var(--font-mono);
 	}
 
 	.stats-grid {
@@ -940,9 +1500,9 @@
 
 	.stat-box {
 		background-color: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-input);
-		padding: var(--space-3);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		padding: var(--space-3) var(--space-4);
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
@@ -993,6 +1553,40 @@
 		margin-top: 2px;
 	}
 
+	.gauge-bar {
+		width: 100%;
+		height: 6px;
+		background-color: var(--bg-elevated);
+		border-radius: var(--radius-full);
+		overflow: hidden;
+	}
+
+	.gauge-fill {
+		height: 100%;
+		border-radius: var(--radius-full);
+		transition: width var(--transition-normal);
+	}
+
+	.gauge-fill-success {
+		background-color: var(--accent-green);
+	}
+	.gauge-fill-warning {
+		background-color: var(--warning);
+	}
+	.gauge-fill-primary {
+		background-color: var(--accent-blue);
+	}
+
+	.gauge-unknown {
+		background: repeating-linear-gradient(
+			45deg,
+			var(--bg-elevated),
+			var(--bg-elevated) 4px,
+			var(--border) 4px,
+			var(--border) 8px
+		);
+	}
+
 	.coords-display {
 		display: flex;
 		align-items: center;
@@ -1018,6 +1612,307 @@
 
 	.coord-val {
 		color: var(--text-primary);
+	}
+
+	.timeline-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		font-size: var(--font-size-xs);
+	}
+
+	.timeline-lbl {
+		color: var(--text-muted);
+		margin-right: var(--space-1);
+	}
+
+	.timeline-val {
+		color: var(--text-secondary);
+		font-family: var(--font-mono);
+	}
+
+	/* Give Item Panel Styles */
+	.give-panel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	.give-header-card {
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		padding: var(--space-4);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+
+	.give-search-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-4);
+		flex-wrap: wrap;
+	}
+
+	.search-input-wrapper {
+		position: relative;
+		flex: 1;
+		min-width: 250px;
+	}
+
+	.search-icon {
+		position: absolute;
+		left: var(--space-3);
+		top: 50%;
+		transform: translateY(-50%);
+		color: var(--text-muted);
+		pointer-events: none;
+	}
+
+	.search-input {
+		padding-left: calc(var(--space-3) + 22px);
+		padding-right: var(--space-8);
+		width: 100%;
+	}
+
+	.clear-search-btn {
+		position: absolute;
+		right: var(--space-3);
+		top: 50%;
+		transform: translateY(-50%);
+		background: none;
+		border: none;
+		color: var(--text-muted);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.count-selector-group {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.count-label {
+		font-size: var(--font-size-xs);
+		color: var(--text-muted);
+		font-weight: var(--font-weight-medium);
+	}
+
+	.count-buttons {
+		display: flex;
+		background-color: var(--bg-elevated);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+	}
+
+	.count-btn {
+		border: none;
+		border-radius: 0;
+		background: none;
+		color: var(--text-secondary);
+		padding: 4px 10px;
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-semibold);
+		cursor: pointer;
+	}
+
+	.count-btn.active {
+		background-color: var(--accent-blue);
+		color: #ffffff;
+	}
+
+	.count-custom-input {
+		width: 60px;
+		padding: 4px 8px;
+		font-size: var(--font-size-xs);
+		text-align: center;
+	}
+
+	.category-pills {
+		display: flex;
+		gap: var(--space-2);
+		overflow-x: auto;
+		padding-bottom: 2px;
+	}
+
+	.cat-pill {
+		background-color: var(--bg-elevated);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-full);
+		color: var(--text-secondary);
+		padding: 4px 12px;
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-medium);
+		cursor: pointer;
+		white-space: nowrap;
+		transition: all var(--transition-fast);
+	}
+
+	.cat-pill:hover {
+		border-color: var(--border-hover);
+		color: var(--text-primary);
+	}
+
+	.cat-pill.active {
+		background-color: rgba(59, 130, 246, 0.15);
+		border-color: var(--accent-blue);
+		color: var(--accent-blue-text);
+	}
+
+	.give-action-strip {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-4);
+		padding: var(--space-3) var(--space-4);
+		background-color: var(--bg-elevated);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		flex-wrap: wrap;
+	}
+
+	.selected-item-preview {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.item-icon-box {
+		width: 40px;
+		height: 40px;
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.give-preview-img {
+		width: 28px;
+		height: 28px;
+		image-rendering: pixelated;
+	}
+
+	.selected-item-info {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.selected-item-title {
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-primary);
+	}
+
+	.selected-item-id {
+		font-size: var(--font-size-xs);
+		font-family: var(--font-mono);
+		color: var(--accent-blue-text);
+	}
+
+	.give-action-buttons {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		flex-wrap: wrap;
+	}
+
+	.custom-id-input-box {
+		min-width: 200px;
+	}
+
+	.items-grid-catalog {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		gap: var(--space-3);
+		max-height: 420px;
+		overflow-y: auto;
+		padding-right: 4px;
+	}
+
+	.item-grid-card {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		padding: var(--space-2) var(--space-3);
+		cursor: pointer;
+		text-align: left;
+		position: relative;
+		transition: all var(--transition-fast);
+	}
+
+	.item-grid-card:hover {
+		border-color: var(--border-hover);
+		background-color: var(--bg-elevated);
+		transform: translateY(-1px);
+	}
+
+	.item-grid-card.selected {
+		border-color: var(--accent-blue);
+		background-color: rgba(59, 130, 246, 0.1);
+	}
+
+	.item-card-icon {
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.item-card-img {
+		width: 28px;
+		height: 28px;
+		image-rendering: pixelated;
+	}
+
+	.item-card-details {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.item-card-name {
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-medium);
+		color: var(--text-primary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.item-card-id {
+		font-size: 10px;
+		font-family: var(--font-mono);
+		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.selected-check-badge {
+		position: absolute;
+		top: 4px;
+		right: 4px;
+		background-color: var(--accent-blue);
+		color: #ffffff;
+		border-radius: 50%;
+		width: 16px;
+		height: 16px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	/* Moderation Panel */
@@ -1071,6 +1966,57 @@
 		justify-content: flex-end;
 	}
 
+	.gamemode-buttons-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+		gap: var(--space-3);
+	}
+
+	.gamemode-select-btn {
+		display: flex;
+		flex-direction: column;
+		padding: var(--space-3);
+		background-color: var(--bg-elevated);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		text-align: left;
+		transition: all var(--transition-fast);
+	}
+
+	.gamemode-select-btn:hover {
+		border-color: var(--border-hover);
+		transform: translateY(-1px);
+	}
+
+	.gamemode-select-btn.active {
+		border-color: var(--accent-blue);
+		background-color: rgba(59, 130, 246, 0.15);
+	}
+
+	.gm-label {
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-primary);
+	}
+
+	.gm-desc {
+		font-size: 11px;
+		color: var(--text-muted);
+		margin-top: 2px;
+	}
+
+	.quick-actions-row {
+		display: flex;
+		gap: var(--space-3);
+		flex-wrap: wrap;
+	}
+
+	.whitelist-btns {
+		display: flex;
+		gap: var(--space-3);
+	}
+
 	.tp-coords-inputs {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
@@ -1103,7 +2049,6 @@
 		color: var(--text-muted);
 	}
 
-	/* White label, so it needs the solid (white-safe) fill, not the palette hue. */
 	.btn-purple {
 		background-color: var(--accent-purple-solid);
 		border-color: var(--accent-purple-solid);
@@ -1129,10 +2074,22 @@
 	}
 
 	/* Icon Accents */
-	.icon-danger { color: var(--danger-text); }
-	.icon-warning { color: var(--warning); }
-	.icon-green { color: var(--accent-green); }
-	.icon-blue { color: var(--accent-blue-text); }
-	.icon-purple { color: var(--accent-purple-text); }
-	.icon-muted { color: var(--text-muted); }
+	.icon-danger {
+		color: var(--danger-text);
+	}
+	.icon-warning {
+		color: var(--warning);
+	}
+	.icon-green {
+		color: var(--accent-green);
+	}
+	.icon-blue {
+		color: var(--accent-blue-text);
+	}
+	.icon-purple {
+		color: var(--accent-purple-text);
+	}
+	.icon-muted {
+		color: var(--text-muted);
+	}
 </style>

@@ -394,7 +394,7 @@ pub(crate) async fn current_quadlet_version(systemd_config_dir: &Path) -> Option
 
 /// `current_type` / `current_version` are `None` when the real configuration could not
 /// be read - the frontend must render "unknown", never a fabricated default.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct ServerEngineResponse {
     pub current_type: Option<String>,
     pub current_version: Option<String>,
@@ -412,12 +412,26 @@ pub struct ServerEngineResponse {
     /// Background watcher state: latest known release/snapshot and any newly
     /// detected version since the persisted baseline.
     pub version_watch: VersionWatchInfo,
+    /// Active Minecraft world name (e.g. "world")
+    pub active_world: Option<String>,
+    /// World data version read from level.dat
+    pub world_data_version: Option<i64>,
+    /// Number of installed Bukkit plugins
+    pub installed_plugins_count: usize,
+    /// Number of installed Fabric/Forge mods
+    pub installed_mods_count: usize,
+    /// Number of currently online players
+    pub online_players_count: usize,
+    /// "running" | "hibernating" | "stopped"
+    pub server_state: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateEngineRequest {
     pub engine_type: String,
     pub version: Option<String>,
+    #[serde(default)]
+    pub backup_world: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -428,6 +442,25 @@ pub struct EngineUpdateResponse {
     pub resolved_version: String,
     /// Non-blocking advisory (e.g. world data-version mismatch), surfaced by the UI.
     pub warning: Option<String>,
+    /// Filename of the safety backup created before switching, if requested.
+    pub backup_file: Option<String>,
+}
+
+async fn count_jars_in_dir(dir: &std::path::Path) -> usize {
+    let mut count = 0;
+    if let Ok(mut entries) = tokio::fs::read_dir(dir).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            if let Ok(ft) = entry.file_type().await {
+                if ft.is_file() {
+                    let path = entry.path();
+                    if path.extension().and_then(|e| e.to_str()) == Some("jar") {
+                        count += 1;
+                    }
+                }
+            }
+        }
+    }
+    count
 }
 
 /// Handler for GET /api/server/engine
@@ -501,6 +534,48 @@ pub async fn get_engine_handler(
 
     let catalog = fetch_version_catalog().await;
 
+    // Active world & data version
+    let active_world = crate::minecraft::worlds::get_active_world_name(&config.minecraft_data_dir)
+        .await
+        .unwrap_or_else(|| "world".to_string());
+    let level_dat = config.minecraft_data_dir.join(&active_world).join("level.dat");
+    let world_data_version = crate::minecraft::worlds::read_world_data_version(&level_dat);
+
+    // Count installed plugins and mods
+    let installed_plugins_count = count_jars_in_dir(&config.minecraft_data_dir.join("plugins")).await;
+    let installed_mods_count = count_jars_in_dir(&config.minecraft_data_dir.join("mods")).await;
+
+    // Server state & live player count
+    let podman_client = PodmanClient::default();
+    let container = podman_client.inspect_container(&config.podman_container).await.ok();
+    let is_running = container.as_ref().map(|c| c.status == ServerStatus::Running).unwrap_or(false);
+    let power_mode = read_power_mode(&config.data_dir).await;
+    let lazymc_active = probe_tcp(&config.rcon_host, 25565).await;
+
+    let server_state = if is_running {
+        "running".to_string()
+    } else if power_mode == "hibernate" || lazymc_active {
+        "hibernating".to_string()
+    } else {
+        "stopped".to_string()
+    };
+
+    let mut online_players_count = 0;
+    if is_running {
+        if let Ok(mut client) = RconClient::connect(&config.rcon_host, config.rcon_port, &config.rcon_password).await {
+            if let Ok(list_out) = client.exec("list").await {
+                if let Some(pos) = list_out.find("There are ") {
+                    let rest = &list_out[pos + 10..];
+                    if let Some(space_pos) = rest.find(' ') {
+                        if let Ok(count) = rest[..space_pos].parse::<usize>() {
+                            online_players_count = count;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Ok(Json(ServerEngineResponse {
         current_type,
         current_version,
@@ -511,6 +586,12 @@ pub async fn get_engine_handler(
         release_versions: catalog.releases.clone(),
         snapshot_versions: catalog.snapshots.clone(),
         version_watch: get_version_watch_info().await,
+        active_world: Some(active_world),
+        world_data_version,
+        installed_plugins_count,
+        installed_mods_count,
+        online_players_count,
+        server_state,
     }))
 }
 
@@ -534,9 +615,10 @@ pub async fn update_engine_handler(
     let old_engine = crate::minecraft::tools::detect_engine(&config).await.engine;
 
     let valid_engines = get_available_engines();
-    if !valid_engines.iter().any(|e| e.id == req_type) {
-        return Err(AppError::BadRequest(format!("Unsupported engine type '{}'", req_type)));
-    }
+    let target_engine_info = valid_engines
+        .iter()
+        .find(|e| e.id == req_type)
+        .ok_or_else(|| AppError::BadRequest(format!("Unsupported engine type '{}'", req_type)))?;
 
     // Snapshot ids are case-sensitive on Mojang's side ("24w14a"), so the version is
     // NOT uppercased like the engine type: validate case-insensitively, then write
@@ -563,13 +645,34 @@ pub async fn update_engine_handler(
         _ => canonical.clone(),
     };
 
+    // Engine version compatibility check (bounds guard)
+    if !crate::routes::engine_catalog::is_engine_version_supported(target_engine_info, &req_version, &catalog) {
+        let min_desc = target_engine_info
+            .min_version
+            .as_deref()
+            .map(|v| format!(" (version minimale supportée : {})", v))
+            .unwrap_or_default();
+        let max_desc = target_engine_info
+            .max_version
+            .as_deref()
+            .map(|v| format!(" (version maximale supportée : {})", v))
+            .unwrap_or_default();
+        return Err(AppError::BadRequest(format!(
+            "La version '{}' n'est pas compatible avec le moteur {}{}{}.",
+            req_version, target_engine_info.name, min_desc, max_desc
+        )));
+    }
+
     // Protocol + data version for the concrete version, and a world-compatibility
     // advisory (warn only — never block the switch).
     let meta = version_meta(&req_version).await;
     let protocol = meta.map(|m| m.protocol);
 
     let mut warnings = Vec::new();
-    let level_dat = config.minecraft_data_dir.join("world").join("level.dat");
+    let active_world_name = crate::minecraft::worlds::get_active_world_name(&config.minecraft_data_dir)
+        .await
+        .unwrap_or_else(|| "world".to_string());
+    let level_dat = config.minecraft_data_dir.join(&active_world_name).join("level.dat");
     if let Some(world_dv) = read_world_data_version(&level_dat) {
         if let Some(target_dv) = meta.map(|m| m.data_version) {
             if world_dv > 0 && target_dv > 0 && world_dv != target_dv {
@@ -585,6 +688,25 @@ pub async fn update_engine_handler(
             "Protocole réseau introuvable pour {} : le hint du proxy d'hibernation n'a pas été mis à jour.",
             req_version
         ));
+    }
+
+    // 0) Optional pre-switch safety world backup
+    let mut backup_file = None;
+    if payload.backup_world.unwrap_or(false) {
+        let backups_dir = config.data_dir.join("backups");
+        match crate::minecraft::worlds::create_backup(&config.minecraft_data_dir, &backups_dir, &active_world_name).await {
+            Ok(backup_info) => {
+                info!(
+                    "Pre-switch safety backup created for world '{}': {}",
+                    active_world_name, backup_info.filename
+                );
+                backup_file = Some(backup_info.filename);
+            }
+            Err(e) => {
+                warn!("Pre-switch safety backup failed (continuing switch): {}", e);
+                warnings.push(format!("La sauvegarde automatique pré-switch a échoué : {}", e));
+            }
+        }
     }
 
     // 1) minecraft.container — engine type + concrete version.
@@ -694,6 +816,7 @@ pub async fn update_engine_handler(
         message: format!("Server engine changed to {} ({})", req_type, req_version),
         resolved_version: req_version,
         warning: if warnings.is_empty() { None } else { Some(warnings.join("\n")) },
+        backup_file,
     }))
 }
 
