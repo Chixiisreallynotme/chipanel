@@ -477,8 +477,13 @@ pub async fn get_world_detail(
 pub fn parse_chunky_status(output: &str) -> ChunkyStatus {
     let output_lower = output.to_lowercase();
 
+    // "No task(s) running" / "not running" must read as idle, not running.
+    let idle = output_lower.contains("no task")
+        || output_lower.contains("no tasks")
+        || output_lower.contains("not running")
+        || output_lower.contains("nothing running");
     let is_paused = output_lower.contains("paused");
-    let is_running = output_lower.contains("running") && !is_paused;
+    let is_running = !idle && output_lower.contains("running") && !is_paused;
 
     let mut percent_complete: f32 = 0.0;
     let mut chunks_rendered: u64 = 0;
@@ -1116,6 +1121,16 @@ pub fn validate_gamerule_value(v: &serde_json::Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn chunky_status_idle_is_not_running() {
+        // "No tasks running" must read as idle, not running — otherwise the UI
+        // shows "Pre-generating" when nothing is actually running.
+        assert!(!parse_chunky_status("[Chunky] No tasks running.").is_running);
+        assert!(!parse_chunky_status("[Chunky] No task is currently running.").is_running);
+        assert!(!parse_chunky_status("Chunky is not running any tasks.").is_running);
+        assert!(parse_chunky_status("[Chunky] Task for world 'world' is running.").is_running);
+    }
 
     #[test]
     fn validators_accept_known_and_reject_unknown() {
