@@ -30,7 +30,7 @@ use crate::{
     models::podman::ServerStatus,
     podman::PodmanClient,
     rcon::RconClient,
-    routes::server::{current_quadlet_version, restart_lazymc_if_up},
+    routes::server::{current_quadlet_version, probe_tcp, restart_lazymc_if_up},
 };
 
 #[derive(Debug, Deserialize)]
@@ -191,6 +191,52 @@ async fn wait_for_server_stopped(config: &AppConfig, timeout: Duration) -> Resul
             ));
         }
         tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+}
+
+/// Polls the Minecraft container until it reaches a stable state (Running or
+/// Stopped), so a delete can't race against a server that is mid-restart and still
+/// saving the world being removed.
+async fn wait_for_server_settled(config: &AppConfig, timeout: Duration) -> Result<(), AppError> {
+    let client = PodmanClient::default();
+    let start = std::time::Instant::now();
+    loop {
+        match client.inspect_container(&config.podman_container).await {
+            Ok(status) => match status.status {
+                ServerStatus::Running | ServerStatus::Stopped => return Ok(()),
+                ServerStatus::Starting | ServerStatus::Stopping => {}
+                ServerStatus::Unknown => return Ok(()),
+            },
+            Err(_) => return Ok(()), // container gone → settled
+        }
+        if start.elapsed() > timeout {
+            return Err(AppError::InternalError(
+                "Timed out waiting for the server to settle".into(),
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+}
+
+/// Applies a world change (switch/create): if lazymc is serving (not "off" mode),
+/// the Minecraft container is restarted directly in the background to load/generate
+/// the target world. In "off" mode the change is deferred, and a pending world is
+/// flagged so the next operator "on" start generates it (the wake wrapper refuses a
+/// player-triggered start when the world is missing). Returns whether a restart was
+/// issued now.
+async fn apply_world_change(config: &AppConfig, name: &str) -> Result<bool, AppError> {
+    let lazymc_up = probe_tcp(&config.rcon_host, 25565).await;
+    if lazymc_up {
+        crate::podman::try_systemd_action("minecraft", "restart").await?;
+        Ok(true)
+    } else {
+        if !config.minecraft_data_dir.join(name).join("level.dat").exists() {
+            let flag = config.minecraft_data_dir.join(".generate-world.flag");
+            tokio::fs::write(&flag, name.as_bytes()).await.map_err(|e| {
+                AppError::InternalError(format!("Failed to write generation flag: {}", e))
+            })?;
+        }
+        Ok(false)
     }
 }
 
@@ -508,10 +554,8 @@ pub async fn switch_world_handler(
     let props_path = config.minecraft_data_dir.join("server.properties");
     set_properties(&props_path, &[("level-name".to_string(), name.clone())]).await?;
 
-    // Restart the container directly (bypassing lazymc's wake wrapper, which blocks
-    // a player-triggered start when the world is missing). This queues the restart
-    // and returns immediately — the new world generates/loads in the background.
-    crate::podman::try_systemd_action("minecraft", "restart").await?;
+    // Background restart to load/generate the target world (deferred in "off" mode).
+    let restarted = apply_world_change(&config, &name).await?;
 
     // Only meaningful for an already-generated world; a pending world has no
     // level.dat yet and simply generates against the current server version.
@@ -520,7 +564,7 @@ pub async fn switch_world_handler(
     Ok(Json(WorldMutationResponse {
         success: true,
         message: format!("Active world switched to '{}'", name),
-        restarted: true,
+        restarted,
         warning,
         backup_filename: None,
     }))
@@ -593,16 +637,13 @@ pub async fn create_world_handler(
     let props_path = config.minecraft_data_dir.join("server.properties");
     set_properties(&props_path, &updates).await?;
 
-    // Generate the world immediately by restarting the Minecraft container
-    // directly. This bypasses lazymc's wake wrapper, which deliberately refuses to
-    // start a server whose world is missing (see minecraft-wake.sh) so that a
-    // player connecting can never auto-generate a world.
-    crate::podman::try_systemd_action("minecraft", "restart").await?;
+    // Background restart to generate the new world (deferred in "off" mode).
+    let restarted = apply_world_change(&config, &name).await?;
 
     Ok(Json(WorldMutationResponse {
         success: true,
         message: format!("World '{}' created and generated", name),
-        restarted: true,
+        restarted,
         warning: None,
         backup_filename: None,
     }))
@@ -632,6 +673,11 @@ pub async fn delete_world_handler(
     if is_active {
         crate::podman::try_systemd_action("minecraft", "stop").await?;
         wait_for_server_stopped(&config, Duration::from_secs(30)).await?;
+    } else {
+        // Not the active world, but the server may be mid-restart and still saving
+        // this world (e.g. a switch-away just happened). Wait for it to settle so a
+        // shutdown save can't re-create the folder after deletion.
+        wait_for_server_settled(&config, Duration::from_secs(60)).await?;
     }
 
     let backups_dir = config.data_dir.join("backups");
