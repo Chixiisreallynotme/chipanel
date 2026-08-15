@@ -20,11 +20,14 @@
 		Shield,
 		Sliders,
 		Plus,
-		Upload
+		Upload,
+		Play,
+		Trash2
 	} from 'lucide-svelte';
 
 	// Main Page Data States
 	let worlds = $state([]);
+	let pendingWorlds = $state([]);
 	let activeWorld = $state(null);
 	let serverDataVersion = $state(null);
 	let borders = $state({}); // Keyed by world folder_name
@@ -135,6 +138,7 @@
 			]);
 
 			worlds = Array.isArray(worldsRes?.worlds) ? worldsRes.worlds : [];
+			pendingWorlds = Array.isArray(worldsRes?.pending_worlds) ? worldsRes.pending_worlds : [];
 			activeWorld = worldsRes?.active_world ?? null;
 			serverDataVersion = worldsRes?.server_data_version ?? null;
 			if (chunkyRes) {
@@ -198,12 +202,7 @@
 	});
 
 	// Derived Header Quick Indicators
-	let totalWorldsCount = $derived(worlds.length);
-	// The active world is "pending" when it has been selected but its folder
-	// hasn't been generated yet (the background restart is still working on it).
-	let pendingActive = $derived(
-		activeWorld !== null && !worlds.some((w) => w.folder_name === activeWorld)
-	);
+	let totalWorldsCount = $derived(worlds.length + pendingWorlds.length);
 	let chunkyQuickStatus = $derived.by(() => {
 		if (chunkyStatus.is_running) {
 			return {
@@ -292,24 +291,28 @@
 
 	// --- World lifecycle actions ---
 
-	async function handleSwitch(world) {
+	async function switchTo(name) {
 		if (switchInFlight) return;
 		switchInFlight = true;
 		try {
 			// Optimistic: the active world updates immediately; the background
 			// restart generates/loads it asynchronously (polled into place).
-			activeWorld = world.folder_name;
-			const res = await apiPost('/api/worlds/switch', { name: world.folder_name });
-			addToast('success', 'World Switched', res.message || `Active world set to '${world.folder_name}'.`);
+			activeWorld = name;
+			const res = await apiPost('/api/worlds/switch', { name });
+			addToast('success', 'World Switched', res.message || `Active world set to '${name}'.`);
 			if (res.warning) addToast('info', 'Warning', res.warning);
-			addToast('info', 'Generating in background', 'The world is loading in the background — it will appear as ready shortly.');
+			addToast('info', 'Generating in background', 'The server is restarting on this world in the background.');
 			await loadWorldsData();
 		} catch (err) {
-			addToast('error', 'Switch Failed', err.message || `Could not switch to '${world.folder_name}'.`);
+			addToast('error', 'Switch Failed', err.message || `Could not switch to '${name}'.`);
 			await loadWorldsData();
 		} finally {
 			switchInFlight = false;
 		}
+	}
+
+	function handleSwitch(world) {
+		switchTo(world.folder_name);
 	}
 
 	function handleDeleteRequest(world) {
@@ -456,35 +459,69 @@
 	<!-- Main Worlds Grid Section -->
 	<div class="page-section">
 		<div class="section-title-row">
-			<h2 class="section-title">Server Dimensions & Worlds ({worlds.length})</h2>
+			<h2 class="section-title">Worlds ({totalWorldsCount})</h2>
 		</div>
 
-		{#if loading && worlds.length === 0 && !pendingActive}
+		{#if loading && worlds.length === 0 && pendingWorlds.length === 0}
 			<div class="empty-state-card card">
 				<RefreshCw size={36} class="spin-slow empty-icon" />
-				<p class="empty-title">Loading server dimensions...</p>
+				<p class="empty-title">Loading worlds...</p>
 			</div>
-		{:else if worlds.length === 0 && !pendingActive}
+		{:else if worlds.length === 0 && pendingWorlds.length === 0}
 			<div class="empty-state-card card">
 				<Globe size={36} class="empty-icon" />
-				<p class="empty-title">No worlds detected on the server</p>
+				<p class="empty-title">No worlds on the server</p>
 				<p class="empty-desc">Create a world to get started.</p>
 			</div>
 		{:else}
 			<div class="worlds-grid">
-				{#if pendingActive}
-					<div class="card world-card pending-card">
+				{#each pendingWorlds as pending (pending.name)}
+					<div class="card world-card pending-card {activeWorld === pending.name ? 'pending-active' : ''}">
 						<div class="pending-card-body">
-							<RefreshCw size={24} class="spin-slow pending-icon" />
-							<div>
-								<h3 class="pending-title">« {activeWorld} » en génération…</h3>
+							<div class="dimension-icon-box">
+								<Plus size={18} class="pending-icon" />
+							</div>
+							<div class="pending-meta">
+								<h3 class="pending-title">
+									{pending.name}
+									{#if activeWorld === pending.name}
+										<span class="badge badge-warning active-badge">Active · generating…</span>
+									{/if}
+								</h3>
 								<p class="pending-desc">
-									Le serveur génère ce monde en arrière-plan. Il apparaîtra ici dès qu'il sera prêt.
+									Pas encore généré — sera créé quand tu le choisiras.
+									{#if pending.level_type !== 'default'}
+										· générateur <span class="font-mono">{pending.level_type}</span>
+									{/if}
+									{#if pending.seed}
+										· seed <span class="font-mono">{pending.seed}</span>
+									{/if}
 								</p>
 							</div>
 						</div>
+						<div class="card-footer world-card-footer">
+							<button
+								type="button"
+								class="btn btn-primary btn-sm action-btn {switchInFlight ? 'btn-loading' : ''}"
+								onclick={() => switchTo(pending.name)}
+								disabled={switchInFlight}
+								title="Choose this world (restarts the server to generate/load it)"
+							>
+								<Play size={14} />
+								<span>Choose world</span>
+							</button>
+							<button
+								type="button"
+								class="btn btn-danger btn-sm action-btn"
+								onclick={() => handleDeleteRequest({ folder_name: pending.name, level_name: pending.name })}
+								title="Delete this pending world"
+							>
+								<Trash2 size={14} />
+								<span>Delete</span>
+							</button>
+						</div>
 					</div>
-				{/if}
+				{/each}
 
 				{#each worlds as world (world.folder_name)}
 					<WorldCard
@@ -909,17 +946,23 @@
 		color: var(--text-muted);
 	}
 
-	/* Pending (generating) world card */
+	/* Pending (not-yet-generated) world card */
 	.pending-card {
 		border-style: dashed;
 		border-color: var(--accent-blue-border);
 	}
 
+	.pending-card.pending-active {
+		border-style: solid;
+		border-color: var(--accent-green-border);
+	}
+
 	.pending-card-body {
 		display: flex;
-		align-items: center;
-		gap: var(--space-4);
+		align-items: flex-start;
+		gap: var(--space-3);
 		padding: var(--space-6);
+		flex: 1;
 	}
 
 	.pending-icon {
@@ -927,10 +970,19 @@
 		flex-shrink: 0;
 	}
 
+	.pending-meta {
+		flex: 1;
+		min-width: 0;
+	}
+
 	.pending-title {
 		font-size: var(--font-size-md);
 		font-weight: var(--font-weight-semibold);
 		color: var(--text-primary);
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
 	}
 
 	.pending-desc {

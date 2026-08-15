@@ -30,6 +30,71 @@ pub struct WorldInfo {
     pub data_version: Option<i64>,
 }
 
+/// A world "slot" the operator created but that has not been generated yet (no
+/// folder/level.dat). Its generation params are stored here and applied when the
+/// world is chosen (switch) and the server restarts on it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PendingWorld {
+    pub name: String,
+    #[serde(default)]
+    pub seed: String,
+    #[serde(default)]
+    pub level_type: String,
+    #[serde(default)]
+    pub gamemode: String,
+    #[serde(default)]
+    pub difficulty: String,
+}
+
+const PENDING_WORLDS_FILE: &str = "pending_worlds.json";
+
+/// Reads the pending-world slots persisted in `data_dir/pending_worlds.json`.
+pub async fn read_pending_worlds(data_dir: &Path) -> Vec<PendingWorld> {
+    let path = data_dir.join(PENDING_WORLDS_FILE);
+    match tokio::fs::read_to_string(&path).await {
+        Ok(data) => serde_json::from_str(&data).unwrap_or_default(),
+        Err(_) => Vec::new(),
+    }
+}
+
+async fn write_pending_worlds(data_dir: &Path, worlds: &[PendingWorld]) -> Result<(), AppError> {
+    let path = data_dir.join(PENDING_WORLDS_FILE);
+    let body = serde_json::to_string_pretty(worlds)
+        .map_err(|e| AppError::InternalError(format!("Failed to serialize pending worlds: {}", e)))?;
+    tokio::fs::write(&path, body)
+        .await
+        .map_err(|e| AppError::InternalError(format!("Failed to write {:?}: {}", path, e)))
+}
+
+/// Adds or replaces a pending-world slot.
+pub async fn add_pending_world(data_dir: &Path, world: PendingWorld) -> Result<(), AppError> {
+    let mut worlds = read_pending_worlds(data_dir).await;
+    worlds.retain(|w| w.name != world.name);
+    worlds.push(world);
+    write_pending_worlds(data_dir, &worlds).await
+}
+
+/// Removes a pending-world slot; returns whether it existed.
+pub async fn remove_pending_world(data_dir: &Path, name: &str) -> Result<bool, AppError> {
+    let mut worlds = read_pending_worlds(data_dir).await;
+    let before = worlds.len();
+    worlds.retain(|w| w.name != name);
+    if worlds.len() != before {
+        write_pending_worlds(data_dir, &worlds).await?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// Looks up a pending-world slot by name.
+pub async fn find_pending_world(data_dir: &Path, name: &str) -> Option<PendingWorld> {
+    read_pending_worlds(data_dir)
+        .await
+        .into_iter()
+        .find(|w| w.name == name)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorldBorderInfo {
     pub size: f64,

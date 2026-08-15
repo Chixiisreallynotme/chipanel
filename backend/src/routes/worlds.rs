@@ -19,12 +19,14 @@ use crate::{
         server_properties::set_properties,
         version_meta::version_meta,
         worlds::{
-            create_backup, delete_backup, delete_world_dir, export_world_to_temp,
-            extract_zip_world, get_active_world_name, get_world_detail, is_valid_backup_filename,
-            is_valid_world_name, list_backups, parse_chunky_status, restore_backup,
+            add_pending_world, create_backup, delete_backup, delete_world_dir,
+            export_world_to_temp, extract_zip_world, find_pending_world, get_active_world_name,
+            get_world_detail, is_valid_backup_filename, is_valid_world_name, list_backups,
+            parse_chunky_status, read_pending_worlds, remove_pending_world, restore_backup,
             sanitize_backup_filename, sanitize_name, scan_worlds, validate_difficulty,
             validate_gamemode, validate_gamerule_rule, validate_gamerule_value,
-            validate_level_type, ChunkyStatus, WorldBackupInfo, WorldBorderInfo, WorldInfo,
+            validate_level_type, ChunkyStatus, PendingWorld, WorldBackupInfo, WorldBorderInfo,
+            WorldInfo,
         },
     },
     models::podman::ServerStatus,
@@ -74,6 +76,8 @@ pub struct WorldListResponse {
     /// Data version of the currently-configured server version (from the quadlet),
     /// used by the UI to badge each world as compatible/incompatible.
     pub server_data_version: Option<i64>,
+    /// World "slots" created but not yet generated (no folder/level.dat yet).
+    pub pending_worlds: Vec<PendingWorld>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -276,10 +280,23 @@ pub async fn list_worlds_handler(
         Some(version) => version_meta(&version).await.map(|m| m.data_version),
         None => None,
     };
+
+    // Pending slots that already have a generated folder are no longer "pending".
+    let generated: std::collections::HashSet<&str> = worlds
+        .iter()
+        .map(|w| w.folder_name.as_str())
+        .collect();
+    let pending_worlds = read_pending_worlds(&config.data_dir)
+        .await
+        .into_iter()
+        .filter(|p| !generated.contains(p.name.as_str()))
+        .collect();
+
     Ok(Json(WorldListResponse {
         worlds,
         active_world,
         server_data_version,
+        pending_worlds,
     }))
 }
 
@@ -552,7 +569,26 @@ pub async fn switch_world_handler(
     }
 
     let props_path = config.minecraft_data_dir.join("server.properties");
-    set_properties(&props_path, &[("level-name".to_string(), name.clone())]).await?;
+
+    // Build the property updates. For a pending world, apply its stored generation
+    // params (seed/level-type) and rules (gamemode/difficulty) so the server
+    // generates it exactly as configured. For a generated world, only level-name.
+    let mut updates: Vec<(String, String)> = vec![("level-name".to_string(), name.clone())];
+    if let Some(pending) = find_pending_world(&config.data_dir, &name).await {
+        if !pending.seed.is_empty() {
+            updates.push(("level-seed".to_string(), pending.seed));
+        }
+        if !pending.level_type.is_empty() {
+            updates.push(("level-type".to_string(), pending.level_type));
+        }
+        if !pending.gamemode.is_empty() {
+            updates.push(("gamemode".to_string(), pending.gamemode));
+        }
+        if !pending.difficulty.is_empty() {
+            updates.push(("difficulty".to_string(), pending.difficulty));
+        }
+    }
+    set_properties(&props_path, &updates).await?;
 
     // Background restart to load/generate the target world (deferred in "off" mode).
     let restarted = apply_world_change(&config, &name).await?;
@@ -571,8 +607,9 @@ pub async fn switch_world_handler(
 }
 
 /// POST /api/worlds/create
-/// Points `level-name` at a new folder (plus seed/generator/gamemode/difficulty) and
-/// restarts lazymc (when up) so the server generates the world.
+/// Creates a pending world "slot" instantly (no server restart, no generation): the
+/// world's params are stored and it becomes available in the list. It is generated
+/// only when chosen (switch) — the switch restarts the server on it.
 pub async fn create_world_handler(
     _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
@@ -591,12 +628,13 @@ pub async fn create_world_handler(
             name
         )));
     }
+    if find_pending_world(&config.data_dir, &name).await.is_some() {
+        return Err(AppError::Conflict(format!(
+            "World '{}' already exists",
+            name
+        )));
+    }
 
-    let mut updates: Vec<(String, String)> = vec![("level-name".to_string(), name.clone())];
-
-    // level-type and level-seed only apply at world generation, and are global in
-    // server.properties — a previous flat/amplified world would otherwise leak into
-    // this new one. Always write them explicitly (defaulting when unspecified).
     let level_type = payload
         .level_type
         .as_deref()
@@ -609,7 +647,28 @@ pub async fn create_world_handler(
             level_type
         )));
     }
-    updates.push(("level-type".to_string(), level_type));
+
+    let gamemode = match &payload.gamemode {
+        Some(gm) => {
+            let gm = gm.trim().to_lowercase();
+            if !validate_gamemode(&gm) {
+                return Err(AppError::BadRequest(format!("Invalid gamemode '{}'", gm)));
+            }
+            gm
+        }
+        None => "survival".to_string(),
+    };
+
+    let difficulty = match &payload.difficulty {
+        Some(d) => {
+            let d = d.trim().to_lowercase();
+            if !validate_difficulty(&d) {
+                return Err(AppError::BadRequest(format!("Invalid difficulty '{}'", d)));
+            }
+            d
+        }
+        None => "normal".to_string(),
+    };
 
     let seed = payload
         .seed
@@ -617,33 +676,23 @@ pub async fn create_world_handler(
         .map(str::trim)
         .unwrap_or("")
         .to_string();
-    updates.push(("level-seed".to_string(), seed));
 
-    if let Some(gm) = &payload.gamemode {
-        let gm = gm.trim().to_lowercase();
-        if !validate_gamemode(&gm) {
-            return Err(AppError::BadRequest(format!("Invalid gamemode '{}'", gm)));
-        }
-        updates.push(("gamemode".to_string(), gm));
-    }
-    if let Some(diff) = &payload.difficulty {
-        let diff = diff.trim().to_lowercase();
-        if !validate_difficulty(&diff) {
-            return Err(AppError::BadRequest(format!("Invalid difficulty '{}'", diff)));
-        }
-        updates.push(("difficulty".to_string(), diff));
-    }
-
-    let props_path = config.minecraft_data_dir.join("server.properties");
-    set_properties(&props_path, &updates).await?;
-
-    // Background restart to generate the new world (deferred in "off" mode).
-    let restarted = apply_world_change(&config, &name).await?;
+    add_pending_world(
+        &config.data_dir,
+        PendingWorld {
+            name: name.clone(),
+            seed,
+            level_type,
+            gamemode,
+            difficulty,
+        },
+    )
+    .await?;
 
     Ok(Json(WorldMutationResponse {
         success: true,
-        message: format!("World '{}' created and generated", name),
-        restarted,
+        message: format!("World '{}' created — choose it to switch and generate", name),
+        restarted: false,
         warning: None,
         backup_filename: None,
     }))
@@ -668,6 +717,31 @@ pub async fn delete_world_handler(
     let active = get_active_world_name(&config.minecraft_data_dir).await;
     let is_active = active.as_deref() == Some(name.as_str());
 
+    // A world is "generated" once its folder/level.dat exists. Delete the folder
+    // when it does; otherwise just drop a pending slot from the store.
+    let folder_exists = config.minecraft_data_dir.join(&name).join("level.dat").exists();
+
+    if !folder_exists {
+        if remove_pending_world(&config.data_dir, &name).await? {
+            let warning = if is_active {
+                Some(format!(
+                    "Vous avez supprimé le monde en attente '{}' qui était actif — créez ou changez de monde.",
+                    name
+                ))
+            } else {
+                None
+            };
+            return Ok(Json(WorldMutationResponse {
+                success: true,
+                message: format!("Pending world '{}' removed", name),
+                restarted: false,
+                warning,
+                backup_filename: None,
+            }));
+        }
+        return Err(AppError::NotFound(format!("World '{}' not found", name)));
+    }
+
     // Stop the server before removing the active world's files, and wait for it to
     // finish its graceful save so it cannot re-create the folder mid-delete.
     if is_active {
@@ -684,6 +758,9 @@ pub async fn delete_world_handler(
     let backup = create_backup(&config.minecraft_data_dir, &backups_dir, &name).await?;
 
     delete_world_dir(&config.minecraft_data_dir, &name).await?;
+
+    // A pending slot that has since been generated is now stale — drop it too.
+    let _ = remove_pending_world(&config.data_dir, &name).await?;
 
     let warning = if is_active {
         Some(format!(
