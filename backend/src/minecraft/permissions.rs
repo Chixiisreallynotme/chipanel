@@ -46,12 +46,15 @@ impl From<GroupDetail> for LuckPermsGroup {
 /// Sanitizes and validates a group name.
 /// Rejects empty names, spaces, slashes, control characters, and unsafe characters.
 pub fn sanitize_group_name(name: &str) -> Result<String, AppError> {
+    if name.chars().any(|c| c.is_control()) {
+        return Err(AppError::BadRequest("Group name contains control characters".to_string()));
+    }
     let trimmed = name.trim();
     if trimmed.is_empty() {
         return Err(AppError::BadRequest("Group name cannot be empty".to_string()));
     }
 
-    if trimmed.chars().any(|c| c.is_control() || c.is_whitespace() || c == '/' || c == '\\') {
+    if trimmed.chars().any(|c| c.is_whitespace() || c == '/' || c == '\\') {
         return Err(AppError::BadRequest(format!(
             "Invalid group name '{}': spaces, slashes, and control characters are not allowed",
             trimmed
@@ -79,16 +82,23 @@ pub fn sanitize_permission_node(permission: &str) -> Result<String, AppError> {
         return Err(AppError::BadRequest("Permission node cannot be empty".to_string()));
     }
 
-    if trimmed.chars().any(|c| c.is_control() || c.is_whitespace() || c == '/' || c == '\\') {
+    if trimmed.chars().any(|c| c.is_control() || c == '/' || c == '\\' || c == ';') {
         return Err(AppError::BadRequest(format!(
-            "Invalid permission node '{}': spaces, slashes, and control characters are not allowed",
+            "Invalid permission node '{}': slashes, semicolons, and control characters are not allowed",
+            trimmed
+        )));
+    }
+
+    if !trimmed.starts_with("prefix.") && !trimmed.starts_with("suffix.") && trimmed.contains(' ') {
+        return Err(AppError::BadRequest(format!(
+            "Invalid permission node '{}': spaces are not allowed in standard permissions",
             trimmed
         )));
     }
 
     if !trimmed
         .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' || c == ':' || c == '*')
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' || c == ':' || c == '*' || c == '[' || c == ']' || c == ' ' || c == '&')
     {
         return Err(AppError::BadRequest(format!(
             "Invalid permission node '{}': contains forbidden characters",
@@ -321,23 +331,27 @@ pub fn parse_group_permission_info(output: &str) -> Vec<LuckPermsPermissionNode>
             }
         }
 
-        if let Some(c_start) = node_str.find('[') {
-            if let Some(c_end) = node_str[c_start..].find(']') {
-                let inside = &node_str[c_start + 1..c_start + c_end];
+        let (perm_part, val_and_context) = if let Some(idx) = node_str.find(" (") {
+            (&node_str[..idx], &node_str[idx..])
+        } else if let Some(idx) = node_str.find(" =") {
+            (&node_str[..idx], &node_str[idx..])
+        } else {
+            (node_str, "")
+        };
+
+        if let Some(c_start) = val_and_context.find('[') {
+            if let Some(c_end) = val_and_context[c_start..].find(']') {
+                let inside = &val_and_context[c_start + 1..c_start + c_end];
                 if !inside.starts_with("expires") {
                     context = Some(inside.to_string());
                 }
             }
         }
 
-        let perm_part = node_str
-            .split(&['(', '=', '['][..])
-            .next()
-            .unwrap_or(node_str)
-            .trim();
+        let perm_trimmed = perm_part.trim();
 
-        if !perm_part.is_empty() && (perm_part.contains('.') || perm_part.contains('*')) {
-            if let Ok(valid_perm) = sanitize_permission_node(perm_part) {
+        if !perm_trimmed.is_empty() && (perm_trimmed.contains('.') || perm_trimmed.contains('*')) {
+            if let Ok(valid_perm) = sanitize_permission_node(perm_trimmed) {
                 if !nodes.iter().any(|n: &LuckPermsPermissionNode| n.permission == valid_perm) {
                     nodes.push(LuckPermsPermissionNode {
                         permission: valid_perm,
@@ -382,7 +396,17 @@ pub fn parse_group_detail(group_name: &str, info_output: &str, perm_output: Opti
         } else if contains_ignore_ascii_case(clean, "prefix:") || contains_ignore_ascii_case(clean, "prefix =") {
             if let Some(colon_idx) = clean.find(':') {
                 let val_str = clean[colon_idx + 1..].trim();
-                let trimmed_val = val_str.trim_matches(|c| c == '"' || c == '\'' || c == ' ');
+                let trimmed_val = if (val_str.starts_with('"') && val_str.ends_with('"'))
+                    || (val_str.starts_with('\'') && val_str.ends_with('\''))
+                {
+                    if val_str.len() >= 2 {
+                        &val_str[1..val_str.len() - 1]
+                    } else {
+                        val_str
+                    }
+                } else {
+                    val_str.trim()
+                };
                 if !trimmed_val.is_empty() && !trimmed_val.eq_ignore_ascii_case("none") {
                     prefix = Some(trimmed_val.to_string());
                 }
@@ -390,7 +414,17 @@ pub fn parse_group_detail(group_name: &str, info_output: &str, perm_output: Opti
         } else if contains_ignore_ascii_case(clean, "suffix:") || contains_ignore_ascii_case(clean, "suffix =") {
             if let Some(colon_idx) = clean.find(':') {
                 let val_str = clean[colon_idx + 1..].trim();
-                let trimmed_val = val_str.trim_matches(|c| c == '"' || c == '\'' || c == ' ');
+                let trimmed_val = if (val_str.starts_with('"') && val_str.ends_with('"'))
+                    || (val_str.starts_with('\'') && val_str.ends_with('\''))
+                {
+                    if val_str.len() >= 2 {
+                        &val_str[1..val_str.len() - 1]
+                    } else {
+                        val_str
+                    }
+                } else {
+                    val_str.trim()
+                };
                 if !trimmed_val.is_empty() && !trimmed_val.eq_ignore_ascii_case("none") {
                     suffix = Some(trimmed_val.to_string());
                 }

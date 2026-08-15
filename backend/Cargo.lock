@@ -286,6 +286,7 @@ dependencies = [
  "hyper-util",
  "jsonwebtoken",
  "libc",
+ "percent-encoding",
  "reqwest",
  "serde",
  "serde_json",

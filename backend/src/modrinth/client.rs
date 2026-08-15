@@ -433,18 +433,38 @@ impl ModrinthClient {
             )));
         }
 
+        let temp_dest = dest_path.with_extension(format!("tmp_{}", std::process::id()));
+
         let byte_stream = response
             .bytes_stream()
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
         let mut reader = StreamReader::new(byte_stream);
 
-        let mut file = tokio::fs::File::create(dest_path)
-            .await
-            .map_err(|e| AppError::InternalError(format!("Failed to create destination file {:?}: {}", dest_path, e)))?;
+        let mut file = match tokio::fs::File::create(&temp_dest).await {
+            Ok(f) => f,
+            Err(e) => return Err(AppError::InternalError(format!("Failed to create temp destination file {:?}: {}", temp_dest, e))),
+        };
 
-        let bytes_written = tokio::io::copy(&mut reader, &mut file)
-            .await
-            .map_err(|e| AppError::InternalError(format!("Failed to stream file to disk: {}", e)))?;
+        let bytes_written = match tokio::io::copy(&mut reader, &mut file).await {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                let _ = tokio::fs::remove_file(&temp_dest).await;
+                return Err(AppError::InternalError(format!("Failed to stream file to disk: {}", e)));
+            }
+        };
+
+        // Ensure buffers flushed to disk
+        if let Err(e) = file.sync_all().await {
+            let _ = tokio::fs::remove_file(&temp_dest).await;
+            return Err(AppError::InternalError(format!("Failed to sync file to disk: {}", e)));
+        }
+        drop(file);
+
+        // Atomic rename to final destination
+        if let Err(e) = tokio::fs::rename(&temp_dest, dest_path).await {
+            let _ = tokio::fs::remove_file(&temp_dest).await;
+            return Err(AppError::InternalError(format!("Failed to rename temp file to {:?}: {}", dest_path, e)));
+        }
 
         Ok(bytes_written)
     }

@@ -131,7 +131,7 @@ async fn telemetry_loop(
 /// running while ChiPanel merely lost its Podman socket, and RCON is then the only source of
 /// tps/players, so we still try.
 fn should_try_rcon(container_running: Option<bool>) -> bool {
-    container_running == Some(true)
+    container_running != Some(false)
 }
 
 async fn fetch_telemetry(podman_client: &PodmanClient, config: &AppConfig) -> WsServerMessage {

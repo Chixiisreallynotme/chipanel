@@ -556,6 +556,10 @@ pub async fn apply_updates_handler(
                     if old_file_path.exists() {
                         let _ = tokio::fs::remove_file(&old_file_path).await;
                     }
+                    let old_file_disabled = target_dir_path.join(format!("{}.disabled", item.old_filename));
+                    if old_file_disabled.exists() {
+                        let _ = tokio::fs::remove_file(&old_file_disabled).await;
+                    }
                 }
                 updated_count += 1;
             }

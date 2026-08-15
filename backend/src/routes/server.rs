@@ -841,24 +841,36 @@ pub async fn public_resourcepack_handler(
     Extension(config): Extension<Arc<AppConfig>>,
     axum::extract::Path(filename): axum::extract::Path<String>,
 ) -> Result<axum::response::Response, AppError> {
-    crate::minecraft::plugins::sanitize_target_dir_and_filename("resourcepacks", &filename)?;
-    let pack_path = config.minecraft_data_dir.join("resourcepacks").join(&filename);
+    let decoded_filename = percent_encoding::percent_decode_str(&filename)
+        .decode_utf8()
+        .map_err(|_| AppError::BadRequest("Invalid UTF-8 filename".to_string()))?
+        .into_owned();
+
+    crate::minecraft::plugins::sanitize_target_dir_and_filename("resourcepacks", &decoded_filename)?;
+    let pack_path = config.minecraft_data_dir.join("resourcepacks").join(&decoded_filename);
     if !pack_path.exists() {
-        return Err(AppError::NotFound(format!("Resource pack '{}' not found", filename)));
+        return Err(AppError::NotFound(format!("Resource pack '{}' not found", decoded_filename)));
     }
 
     let file = tokio::fs::File::open(&pack_path)
         .await
         .map_err(|e| AppError::InternalError(format!("Failed to open resource pack: {}", e)))?;
 
+    let metadata = file
+        .metadata()
+        .await
+        .map_err(|e| AppError::InternalError(format!("Failed to read resource pack metadata: {}", e)))?;
+    let file_size = metadata.len();
+
     let stream = tokio_util::io::ReaderStream::new(file);
     let body = axum::body::Body::from_stream(stream);
 
     let response = axum::response::Response::builder()
         .header(axum::http::header::CONTENT_TYPE, "application/zip")
+        .header(axum::http::header::CONTENT_LENGTH, file_size)
         .header(
             axum::http::header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{}\"", filename),
+            format!("attachment; filename=\"{}\"", decoded_filename),
         )
         .body(body)
         .map_err(|e| AppError::InternalError(format!("Failed to build response: {}", e)))?;
