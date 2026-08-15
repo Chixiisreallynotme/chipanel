@@ -20,14 +20,25 @@
 		Check,
 		Info,
 		RotateCw,
-		Sliders
+		Sliders,
+		Search,
+		Users,
+		ShieldCheck,
+		HardDrive,
+		AlertCircle,
+		CheckCheck,
+		Radio,
+		ArrowRight,
+		FolderArchive,
+		Wrench
 	} from 'lucide-svelte';
 
-	const UNKNOWN = 'inconnu';
+	const UNKNOWN = 'Inconnu';
 
-	// Page State — `null` means "ChiPanel could not read the config", never a default.
+	// Page State — `null` means "ChiPanel could not read the config"
 	let currentType = $state(null);
 	let currentVersion = $state(null);
+	let configSource = $state('unavailable');
 	let configError = $state(null);
 	let availableTypes = $state([]);
 	let allVersions = $state([]);
@@ -35,18 +46,27 @@
 	let releaseVersions = $state([]);
 	/** @type {string[]} */
 	let snapshotVersions = $state([]);
-	/** @type {any} — background version-watch state (latest release/snapshot + alerts) */
+	/** @type {any} */
 	let versionWatch = $state(null);
+	let activeWorld = $state('world');
+	let worldDataVersion = $state(null);
+	let installedPluginsCount = $state(0);
+	let installedModsCount = $state(0);
+	let onlinePlayersCount = $state(0);
+	let serverState = $state('stopped');
+
 	let isLoading = $state(true);
 	let isSubmitting = $state(false);
 
-	// Category filter state
+	// Filters & Search
+	let searchQuery = $state('');
 	let selectedCategory = $state('ALL');
 
 	// Selection modal state
 	let selectedEngine = $state(null);
 	let selectedVersionMap = $state({}); // engine_id -> selected_version
 	let showConfirmModal = $state(false);
+	let autoBackupWorld = $state(true);
 	/** @type {{ detail: string, serverMessage: string } | null} */
 	let switchError = $state(null);
 
@@ -73,14 +93,19 @@
 			if (res) {
 				currentType = res.current_type ?? null;
 				currentVersion = res.current_version ?? null;
+				configSource = res.config_source ?? 'unavailable';
 				configError = res.config_error ?? null;
 				availableTypes = res.available_types || [];
-				// No hardcoded fallback list: the backend allow-list is the only
-				// source of accepted versions, and anything off it now 400s.
 				allVersions = res.all_versions || [];
 				releaseVersions = res.release_versions || [];
 				snapshotVersions = res.snapshot_versions || [];
 				versionWatch = res.version_watch ?? null;
+				activeWorld = res.active_world || 'world';
+				worldDataVersion = res.world_data_version ?? null;
+				installedPluginsCount = res.installed_plugins_count ?? 0;
+				installedModsCount = res.installed_mods_count ?? 0;
+				onlinePlayersCount = res.online_players_count ?? 0;
+				serverState = res.server_state ?? 'stopped';
 
 				// Initialize default version map
 				const map = {};
@@ -90,8 +115,8 @@
 				selectedVersionMap = map;
 			}
 		} catch (err) {
-			console.error('Failed to load server engine config:', err);
-			addToast('error', 'Error Loading Engine Config', err.message || 'Could not fetch engine types.');
+			console.error('Échec du chargement de la configuration des moteurs:', err);
+			addToast('error', 'Erreur de chargement', err.message || 'Impossible de récupérer la liste des moteurs.');
 		} finally {
 			isLoading = false;
 		}
@@ -103,11 +128,13 @@
 
 	function openConfirmModal(engine) {
 		selectedEngine = engine;
+		autoBackupWorld = true;
 		switchError = null;
 		showConfirmModal = true;
 	}
 
 	function closeConfirmModal() {
+		if (isSubmitting) return;
 		showConfirmModal = false;
 		selectedEngine = null;
 		switchError = null;
@@ -115,7 +142,7 @@
 
 	/** @type {Record<number, string>} */
 	const SWITCH_ERRORS = {
-		400: 'Version refusée : elle ne fait pas partie des versions supportées.',
+		400: 'Version ou moteur refusé : vérifiez la compatibilité.',
 		403: "Accès refusé : cette action est réservée à l'administrateur.",
 		500: "Erreur interne du serveur : le moteur n'a pas été modifié."
 	};
@@ -125,17 +152,20 @@
 		const targetType = selectedEngine.id;
 		const targetVersion = selectedVersionMap[targetType];
 		if (!targetVersion) {
-			switchError = { detail: 'Sélectionnez une version avant de confirmer.', serverMessage: '' };
+			switchError = { detail: 'Veuillez sélectionner une version avant de confirmer.', serverMessage: '' };
 			return;
 		}
 
 		isSubmitting = true;
 		switchError = null;
 		try {
-			// apiFetch serializes plain objects; the cast only satisfies RequestInit.
 			const res = await apiFetch('/api/server/engine', {
 				method: 'POST',
-				body: /** @type {any} */ ({ engine_type: targetType, version: targetVersion })
+				body: /** @type {any} */ ({
+					engine_type: targetType,
+					version: targetVersion,
+					backup_world: autoBackupWorld
+				})
 			});
 			const data = await res.json().catch(() => ({}));
 
@@ -147,13 +177,19 @@
 				return;
 			}
 
-			addToast('success', 'Engine Switched!', data?.message || `Switched to ${targetType} (${targetVersion}). Server is restarting...`);
+			let successMsg = `Moteur basculé vers ${selectedEngine.name} (${targetVersion}).`;
+			if (data?.backup_file) {
+				successMsg += ` Sauvegarde créée : ${data.backup_file}`;
+			}
+			addToast('success', 'Moteur mis à jour !', successMsg);
+
 			currentType = targetType;
 			currentVersion = data?.resolved_version ?? targetVersion;
 			if (data?.warning) {
-				addToast('warning', 'Attention', data.warning);
+				addToast('warning', 'Avertissement', data.warning);
 			}
 			closeConfirmModal();
+			await loadEngineData();
 		} catch (err) {
 			switchError = {
 				detail: "Requête impossible — le panneau n'a pas pu joindre le backend.",
@@ -165,8 +201,7 @@
 	}
 
 	/**
-	 * Human date for a watch alert: Mojang's ISO publication date when available,
-	 * otherwise the unix detection timestamp.
+	 * Date lisible pour une alerte de nouvelle version Mojang.
 	 * @param {string | undefined} iso
 	 * @param {number | undefined} fallbackTs
 	 */
@@ -178,12 +213,33 @@
 
 	// Filtered engines calculation
 	let filteredEngines = $derived.by(() => {
-		if (selectedCategory === 'ALL') return availableTypes;
-		if (selectedCategory === 'PLUGINS') return availableTypes.filter((e) => e.supports_plugins && !e.supports_mods);
-		if (selectedCategory === 'MODS') return availableTypes.filter((e) => e.supports_mods && !e.supports_plugins);
-		if (selectedCategory === 'HYBRID') return availableTypes.filter((e) => e.supports_mods && e.supports_plugins);
-		if (selectedCategory === 'VANILLA') return availableTypes.filter((e) => e.id === 'VANILLA');
-		return availableTypes;
+		let list = availableTypes;
+
+		// Category filter
+		if (selectedCategory === 'PERFORMANCE') {
+			list = list.filter((e) => ['PURPUR', 'PAPER', 'FOLIA'].includes(e.id));
+		} else if (selectedCategory === 'MODS') {
+			list = list.filter((e) => ['FABRIC', 'FORGE', 'NEOFORGE', 'QUILT'].includes(e.id));
+		} else if (selectedCategory === 'HYBRID') {
+			list = list.filter((e) => ['MOHIST', 'ARCLIGHT'].includes(e.id));
+		} else if (selectedCategory === 'VANILLA') {
+			list = list.filter((e) => e.id === 'VANILLA');
+		}
+
+		// Search query filter
+		const q = searchQuery.trim().toLowerCase();
+		if (q) {
+			list = list.filter(
+				(e) =>
+					e.name.toLowerCase().includes(q) ||
+					e.id.toLowerCase().includes(q) ||
+					e.description.toLowerCase().includes(q) ||
+					e.category.toLowerCase().includes(q) ||
+					(e.pros && e.pros.some((p) => p.toLowerCase().includes(q)))
+			);
+		}
+
+		return list;
 	});
 
 	function getEngineIcon(iconName) {
@@ -205,7 +261,7 @@
 </script>
 
 <svelte:head>
-	<title>Server Engine Switcher | ChiPanel</title>
+	<title>Moteurs & Versions | ChiPanel</title>
 </svelte:head>
 
 <div class="engine-page">
@@ -214,16 +270,16 @@
 		<div class="header-content">
 			<div class="header-title-group">
 				<div class="header-icon-box">
-					<Sliders size={24} />
+					<Sliders size={26} />
 				</div>
 				<div>
-					<h1>Server Engine & Version Switcher</h1>
-					<p class="subtitle">Switch dynamically between Purpur, Paper, Fabric, Forge, NeoForge, Spigot, Vanilla, Quilt, and Folia.</p>
+					<h1>Moteurs & Versions du Serveur</h1>
+					<p class="subtitle">Basculez dynamiquement entre Purpur, Paper, Fabric, Forge, NeoForge, Spigot, Vanilla, Quilt, Folia, Mohist et Arclight.</p>
 				</div>
 			</div>
 			<button class="btn btn-secondary btn-sm" onclick={loadEngineData} disabled={isLoading}>
 				<RefreshCw size={15} class={isLoading ? 'spin' : ''} />
-				<span>Refresh</span>
+				<span>Actualiser</span>
 			</button>
 		</div>
 	</header>
@@ -235,17 +291,17 @@
 		</div>
 	{/if}
 
-	<!-- New version alerts (background watcher) -->
+	<!-- New version alerts (background Mojang watcher) -->
 	{#if versionWatch?.new_release}
 		{@const alert = versionWatch.new_release}
 		<div class="new-release-banner" role="status">
-			<Sparkles size={20} />
+			<Sparkles size={20} class="text-emerald" />
 			<div class="new-version-text">
-				<strong>Minecraft {alert.id} est sorti !</strong>
+				<strong>Minecraft {alert.id} est sorti officiellement !</strong>
 				<span>
-					{alert.previous ? `Succède à ${alert.previous}` : 'Nouvelle release officielle'}
-					{formatVersionDate(alert.published_at, alert.detected_at) ? ` · sortie le ${formatVersionDate(alert.published_at, alert.detected_at)}` : ''}
-					{currentVersion && !['LATEST', alert.id].includes(currentVersion) ? ` — ce serveur est en ${currentVersion}` : ''}
+					{alert.previous ? `Succède à ${alert.previous}` : 'Nouvelle release officielle Mojang'}
+					{formatVersionDate(alert.published_at, alert.detected_at) ? ` · Publié le ${formatVersionDate(alert.published_at, alert.detected_at)}` : ''}
+					{currentVersion && !['LATEST', alert.id].includes(currentVersion) ? ` — Votre serveur tourne actuellement en ${currentVersion}` : ''}
 				</span>
 			</div>
 		</div>
@@ -254,59 +310,111 @@
 		<div class="new-snapshot-banner" role="status">
 			<Sparkles size={18} />
 			<div class="new-version-text">
-				<strong>Nouveau snapshot : {alert.id}</strong>
+				<strong>Nouveau snapshot disponible : {alert.id}</strong>
 				<span>
-					{alert.previous ? `succède à ${alert.previous}` : ''}
+					{alert.previous ? `Succède à ${alert.previous}` : 'Nouvelle pré-version de test'}
 					{formatVersionDate(alert.published_at, alert.detected_at) ? ` · ${formatVersionDate(alert.published_at, alert.detected_at)}` : ''}
 				</span>
 			</div>
 		</div>
 	{/if}
 
-	<!-- Current Engine Status Banner -->
+	<!-- Current Engine Status Bento Card -->
 	<section class="banner-card glow-card">
 		<div class="banner-info">
-			<div class="banner-badge">ACTIVE ENGINE</div>
+			<div class="banner-badge">
+				<Radio size={12} class="pulse-icon" />
+				<span>MOTEUR DU SERVEUR ACTIF</span>
+			</div>
 			<div class="banner-title-row">
 				<span class="active-engine-name {currentType ? '' : 'unknown-val'}">{currentType ?? UNKNOWN}</span>
-				<span class="badge {currentVersion ? 'badge-success' : 'badge-muted'}">{currentVersion ?? UNKNOWN}</span>
+				<span class="badge {currentVersion ? 'badge-version' : 'badge-muted'}">{currentVersion ?? UNKNOWN}</span>
 			</div>
 			{#if currentType && currentVersion}
-				<p class="banner-desc">The server is configured to run <strong>{currentType}</strong> on version <strong>{currentVersion}</strong>. Switching engines triggers an automatic download and container restart.</p>
+				<p class="banner-desc">
+					Le serveur est configuré pour exécuter <strong>{currentType}</strong> sur la version <strong>{currentVersion}</strong>.
+					Le changement de moteur reconfigure automatiquement le conteneur et synchronise les outils.
+				</p>
 			{:else}
-				<p class="banner-desc">ChiPanel cannot read the current engine configuration, so the active engine and version are unknown. Switching still works and will rewrite the configuration.</p>
+				<p class="banner-desc">
+					La configuration actuelle n'a pas pu être lue depuis le fichier Quadlet. Un changement appliquera une nouvelle configuration propre.
+				</p>
 			{/if}
 		</div>
+
 		<div class="banner-stats">
 			<div class="stat-chip">
-				<span class="stat-label">Latest Release</span>
-				<span class="stat-value text-primary">{versionWatch?.latest_release?.id ?? '—'}</span>
+				<span class="stat-label">Statut Serveur</span>
+				<span class="stat-value flex-align">
+					{#if serverState === 'running'}
+						<span class="status-dot dot-green"></span>
+						<span class="text-green">En ligne</span>
+					{:else if serverState === 'hibernating'}
+						<span class="status-dot dot-amber"></span>
+						<span class="text-amber">En veille (lazymc)</span>
+					{:else}
+						<span class="status-dot dot-gray"></span>
+						<span class="text-muted">Arrêté</span>
+					{/if}
+				</span>
 			</div>
+
 			<div class="stat-chip">
-				<span class="stat-label">Auto-Download</span>
-				<span class="stat-value text-emerald">Enabled</span>
+				<span class="stat-label">Joueurs en ligne</span>
+				<span class="stat-value text-primary flex-align">
+					<Users size={14} />
+					<span>{onlinePlayersCount}</span>
+				</span>
 			</div>
+
 			<div class="stat-chip">
-				<span class="stat-label">Container</span>
-				<span class="stat-value">itzg/minecraft-server</span>
+				<span class="stat-label">Monde Actif</span>
+				<span class="stat-value flex-align" title="Data Version: {worldDataVersion ?? 'N/A'}">
+					<HardDrive size={14} class="text-muted" />
+					<span>{activeWorld}</span>
+				</span>
+			</div>
+
+			<div class="stat-chip">
+				<span class="stat-label">Outils Auto-Gérés</span>
+				<span class="stat-value text-emerald flex-align">
+					<ShieldCheck size={14} />
+					<span>Spark, Chunky, LuckPerms</span>
+				</span>
 			</div>
 		</div>
 	</section>
 
-	<!-- Category Filters & Search -->
-	<div class="filters-bar">
+	<!-- Filters & Search Toolbar -->
+	<div class="filters-toolbar">
+		<div class="search-box">
+			<Search size={16} class="search-icon" />
+			<input
+				type="text"
+				class="search-input"
+				placeholder="Rechercher un moteur (ex: Purpur, Forge, Folia, SMP, moddé)..."
+				bind:value={searchQuery}
+			/>
+			{#if searchQuery}
+				<button class="clear-btn" onclick={() => (searchQuery = '')} aria-label="Effacer">✕</button>
+			{/if}
+		</div>
+
 		<div class="category-tabs">
 			<button class="tab-btn {selectedCategory === 'ALL' ? 'active' : ''}" onclick={() => (selectedCategory = 'ALL')}>
-				All Engines ({availableTypes.length})
+				Tous ({availableTypes.length})
 			</button>
-			<button class="tab-btn {selectedCategory === 'PLUGINS' ? 'active' : ''}" onclick={() => (selectedCategory = 'PLUGINS')}>
-				Bukkit/Paper (Plugins)
+			<button class="tab-btn {selectedCategory === 'PERFORMANCE' ? 'active' : ''}" onclick={() => (selectedCategory = 'PERFORMANCE')}>
+				⚡ Performance & SMP
 			</button>
 			<button class="tab-btn {selectedCategory === 'MODS' ? 'active' : ''}" onclick={() => (selectedCategory = 'MODS')}>
-				Modded (Forge/Fabric)
+				🧩 Moddé
 			</button>
 			<button class="tab-btn {selectedCategory === 'HYBRID' ? 'active' : ''}" onclick={() => (selectedCategory = 'HYBRID')}>
-				Hybrid (Mods + Plugins)
+				✨ Hybride (Mods + Plugins)
+			</button>
+			<button class="tab-btn {selectedCategory === 'VANILLA' ? 'active' : ''}" onclick={() => (selectedCategory = 'VANILLA')}>
+				📦 Officiel Mojang
 			</button>
 		</div>
 	</div>
@@ -315,7 +423,15 @@
 	{#if isLoading}
 		<div class="loading-state">
 			<RefreshCw size={32} class="spin text-primary" />
-			<p>Fetching available server engines...</p>
+			<p>Chargement des spécifications des moteurs...</p>
+		</div>
+	{:else if filteredEngines.length === 0}
+		<div class="empty-state">
+			<Info size={32} class="text-muted" />
+			<p>Aucun moteur ne correspond à votre recherche "{searchQuery}".</p>
+			<button class="btn btn-secondary btn-sm" onclick={() => { searchQuery = ''; selectedCategory = 'ALL'; }}>
+				Réinitialiser les filtres
+			</button>
 		</div>
 	{:else}
 		<div class="engine-grid">
@@ -323,6 +439,7 @@
 				{@const IconComp = getEngineIcon(engine.icon)}
 				{@const isActive = currentType === engine.id}
 				<div class="engine-card {isActive ? 'active-card' : ''}">
+					<!-- Card Header -->
 					<div class="card-header">
 						<div class="icon-wrapper {isActive ? 'active-icon' : ''}">
 							<IconComp size={24} />
@@ -331,39 +448,78 @@
 							<div class="title-row">
 								<h3>{engine.name}</h3>
 								{#if isActive}
-									<span class="badge badge-emerald"><Check size={12} /> Active</span>
+									<span class="badge badge-active"><Check size={12} /> Actif</span>
 								{/if}
 							</div>
-							<span class="category-tag">{engine.category}</span>
+							<div class="tag-row">
+								<span class="category-tag">{engine.category}</span>
+								{#if engine.stability}
+									<span class="stability-tag">{engine.stability}</span>
+								{/if}
+							</div>
 						</div>
 					</div>
 
-					<p class="engine-description">{engine.description}</p>
-
-					<div class="features-row">
-						{#if engine.supports_plugins}
-							<span class="feature-badge plugins-badge">
-								<CheckCircle2 size={13} /> Plugins Supported
-							</span>
-						{/if}
-						{#if engine.supports_mods}
-							<span class="feature-badge mods-badge">
-								<Cpu size={13} /> Mods Supported
-							</span>
-						{/if}
-						{#if !engine.supports_plugins && !engine.supports_mods}
-							<span class="feature-badge vanilla-badge">
-								<Info size={13} /> Vanilla Gameplay
-							</span>
+					<!-- RAM and Specs Chip -->
+					<div class="specs-bar">
+						<div class="spec-item">
+							<span class="spec-label">RAM conseillée :</span>
+							<span class="spec-val">{engine.recommended_ram || '2 à 4 Go'}</span>
+						</div>
+						{#if engine.min_version}
+							<div class="spec-item">
+								<span class="spec-label">Support :</span>
+								<span class="spec-val">
+									{engine.min_version}+ {engine.max_version ? `(max ${engine.max_version})` : ''}
+								</span>
+							</div>
 						{/if}
 					</div>
 
+					<!-- Description -->
+					<p class="engine-description">{engine.description}</p>
+
+					<!-- Pros & Cons list -->
+					<div class="features-list">
+						{#if engine.pros && engine.pros.length > 0}
+							<div class="pros-section">
+								{#each engine.pros.slice(0, 2) as pro}
+									<div class="feature-item pro-item">
+										<CheckCircle2 size={13} class="text-green flex-shrink-0" />
+										<span>{pro}</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+						{#if engine.cons && engine.cons.length > 0}
+							<div class="cons-section">
+								{#each engine.cons.slice(0, 1) as con}
+									<div class="feature-item con-item">
+										<AlertCircle size={13} class="text-amber flex-shrink-0" />
+										<span>{con}</span>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Tools Sync Badge -->
+					{#if engine.supports_tools}
+						<div class="tools-sync-badge">
+							<ShieldCheck size={13} class="text-emerald" />
+							<span>Outils auto-gérés : Spark, Chunky, LuckPerms</span>
+						</div>
+					{/if}
+
+					<!-- Card Footer: Version Picker and Switch Button -->
 					<div class="card-footer">
 						<VersionPickerButton
 							selectedVersion={selectedVersionMap[engine.id]}
 							{releaseVersions}
 							{snapshotVersions}
 							recommendedVersions={engine.recommended_versions}
+							minVersion={engine.min_version}
+							maxVersion={engine.max_version}
 							allowAll={false}
 							label="Version Cible :"
 							disabled={isActive}
@@ -372,11 +528,11 @@
 
 						{#if isActive}
 							<button class="btn btn-secondary w-full" disabled>
-								<Check size={16} /> Currently Active
+								<Check size={16} /> Moteur Actif
 							</button>
 						{:else}
 							<button class="btn btn-primary w-full" onclick={() => openConfirmModal(engine)}>
-								<RotateCw size={16} /> Switch to {engine.name}
+								<RotateCw size={16} /> Passer à {engine.name}
 							</button>
 						{/if}
 					</div>
@@ -386,39 +542,149 @@
 	{/if}
 </div>
 
-<!-- Confirmation Modal -->
+<!-- Detailed Confirmation & Impact Modal ("Tout ce qui va être modifié") -->
 {#if showConfirmModal && selectedEngine}
-	<div class="modal-backdrop" onclick={closeConfirmModal} onkeydown={(e) => e.key === 'Escape' && closeConfirmModal()} role="button" tabindex="0">
-		<div class="modal-card" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" tabindex="-1">
+	{@const targetType = selectedEngine.id}
+	{@const targetVersion = selectedVersionMap[targetType] || UNKNOWN}
+	<div
+		class="modal-backdrop"
+		onclick={closeConfirmModal}
+		onkeydown={(e) => e.key === 'Escape' && closeConfirmModal()}
+		role="button"
+		tabindex="0"
+	>
+		<div
+			class="modal-card impact-modal"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={() => {}}
+			role="dialog"
+			tabindex="-1"
+		>
 			<div class="modal-header">
-				<div class="modal-icon-box danger-icon">
-					<AlertTriangle size={24} />
+				<div class="modal-icon-box">
+					<RotateCw size={24} />
 				</div>
 				<div>
-					<h2>Confirm Engine Switch</h2>
-					<p class="modal-subtitle">Reconfiguring Minecraft Server Core</p>
+					<h2>Changement de Moteur du Serveur</h2>
+					<p class="modal-subtitle">Bilan d'impact et reconfiguration sécurisée</p>
 				</div>
 			</div>
 
 			<div class="modal-body">
-				<p>You are about to switch the server engine to:</p>
-				<div class="confirm-summary-box">
-					<div class="summary-item">
-						<span class="summary-label">Target Engine:</span>
-						<span class="summary-val text-primary">{selectedEngine.name} ({selectedEngine.id})</span>
+				<!-- Engine Change Diff Header -->
+				<div class="switch-diff-card">
+					<div class="diff-side">
+						<span class="diff-label">Moteur Actuel</span>
+						<span class="diff-title">{currentType ?? UNKNOWN}</span>
+						<span class="diff-sub">{currentVersion ?? UNKNOWN}</span>
 					</div>
-					<div class="summary-item">
-						<span class="summary-label">Target Version:</span>
-						<span class="summary-val text-emerald">{selectedVersionMap[selectedEngine.id] || UNKNOWN}</span>
+					<div class="diff-arrow">
+						<ArrowRight size={22} />
+					</div>
+					<div class="diff-side diff-target">
+						<span class="diff-label">Nouveau Moteur</span>
+						<span class="diff-title text-primary">{selectedEngine.name}</span>
+						<span class="diff-sub text-emerald">{targetVersion}</span>
 					</div>
 				</div>
-				<p class="modal-warning">
-					⚠️ <strong>Important Note:</strong> Switching engines will restart the server. The container will automatically download and install the specified server software version.
-				</p>
+
+				<!-- Live Warnings -->
+				{#if onlinePlayersCount > 0}
+					<div class="alert-box alert-danger">
+						<Users size={18} />
+						<div>
+							<strong>{onlinePlayersCount} joueur(s) connecté(s) en ce moment !</strong>
+							<p>Le changement de moteur redémarrera le serveur et déconnectera immédiatement les joueurs.</p>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Step-by-Step Impact Checklist -->
+				<div class="impact-section">
+					<h4 class="impact-heading">Ce qui va être modifié et exécuté :</h4>
+
+					<div class="impact-list">
+						<!-- 1. World Safety Backup -->
+						<div class="impact-item {autoBackupWorld ? 'item-active' : ''}">
+							<div class="impact-checkbox-row">
+								<input
+									type="checkbox"
+									id="backup-world-cb"
+									class="custom-cb"
+									bind:checked={autoBackupWorld}
+								/>
+								<label for="backup-world-cb" class="impact-label">
+									<FolderArchive size={16} class="text-primary" />
+									<span>Créer une sauvegarde de sécurité du monde actif (<strong>{activeWorld}</strong>)</span>
+								</label>
+							</div>
+							<p class="impact-desc">Une archive complète du monde sera générée dans ChiPanel avant toute modification pour garantir zéro perte de données.</p>
+						</div>
+
+						<!-- 2. LuckPerms Migration -->
+						<div class="impact-item">
+							<div class="impact-header-row">
+								<ShieldCheck size={16} class="text-emerald" />
+								<span class="impact-title">Migration automatique des permissions LuckPerms</span>
+								<span class="badge badge-auto">Auto</span>
+							</div>
+							<p class="impact-desc">
+								Vos groupes et permissions LuckPerms existants sont automatiquement sauvegardés puis restaurés dans le répertoire adapté au nouveau moteur ({selectedEngine.supports_plugins ? 'plugins/LuckPerms' : 'mods/luckperms ou config/luckperms'}).
+							</p>
+						</div>
+
+						<!-- 3. Tools Re-sync (Spark & Chunky) -->
+						<div class="impact-item">
+							<div class="impact-header-row">
+								<Wrench size={16} class="text-emerald" />
+								<span class="impact-title">Synchronisation des outils d'administration (Spark, Chunky)</span>
+								<span class="badge badge-auto">Auto</span>
+							</div>
+							<p class="impact-desc">
+								ChiPanel télécharge et réinstalle automatiquement les binaires Spark et Chunky adaptés à {selectedEngine.name} pour que vos profils et pré-générations restent opérationnels.
+							</p>
+						</div>
+
+						<!-- 4. Addons Impact -->
+						{#if selectedEngine.supports_plugins && !selectedEngine.supports_mods && installedModsCount > 0}
+							<div class="impact-item item-warning">
+								<div class="impact-header-row">
+									<AlertCircle size={16} class="text-amber" />
+									<span class="impact-title">Impact sur les mods installés ({installedModsCount} mods)</span>
+								</div>
+								<p class="impact-desc">
+									Les mods Fabric/Forge dans le dossier <code>mods/</code> seront conservés sur le disque mais ne seront pas chargés par le moteur {selectedEngine.name} (qui n'exécute que des plugins Bukkit).
+								</p>
+							</div>
+						{:else if selectedEngine.supports_mods && !selectedEngine.supports_plugins && installedPluginsCount > 0}
+							<div class="impact-item item-warning">
+								<div class="impact-header-row">
+									<AlertCircle size={16} class="text-amber" />
+									<span class="impact-title">Impact sur les plugins installés ({installedPluginsCount} plugins)</span>
+								</div>
+								<p class="impact-desc">
+									Les plugins dans le dossier <code>plugins/</code> seront conservés mais ne seront pas exécutés par le chargeur de mods {selectedEngine.name}.
+								</p>
+							</div>
+						{/if}
+
+						<!-- 5. Configuration & Restart -->
+						<div class="impact-item">
+							<div class="impact-header-row">
+								<RotateCw size={16} class="text-primary" />
+								<span class="impact-title">Mise à jour Quadlet & Redémarrage du proxy</span>
+								<span class="badge badge-auto">Auto</span>
+							</div>
+							<p class="impact-desc">
+								Mise à jour de <code>Environment=TYPE={targetType}</code> et <code>Environment=VERSION={targetVersion}</code> dans le conteneur, synchronisation du proxy lazymc et redémarrage automatique.
+							</p>
+						</div>
+					</div>
+				</div>
 
 				{#if switchError}
 					<div class="switch-error" role="alert">
-						<AlertTriangle size={16} />
+						<AlertTriangle size={18} />
 						<div>
 							<div class="switch-error-detail">{switchError.detail}</div>
 							{#if switchError.serverMessage}
@@ -430,14 +696,16 @@
 			</div>
 
 			<div class="modal-footer">
-				<button class="btn btn-ghost" onclick={closeConfirmModal} disabled={isSubmitting}>Cancel</button>
+				<button class="btn btn-secondary" onclick={closeConfirmModal} disabled={isSubmitting}>
+					Annuler
+				</button>
 				<button class="btn btn-danger" onclick={confirmEngineSwitch} disabled={isSubmitting}>
 					{#if isSubmitting}
 						<RefreshCw size={16} class="spin" />
-						<span>Applying & Restarting...</span>
+						<span>Application & Redémarrage...</span>
 					{:else}
 						<RotateCw size={16} />
-						<span>Confirm Switch & Restart</span>
+						<span>Confirmer le Changement</span>
 					{/if}
 				</button>
 			</div>
@@ -450,9 +718,11 @@
 	{#each toasts as toast (toast.id)}
 		<div class="toast toast-{toast.type}">
 			{#if toast.type === 'success'}
-				<CheckCircle2 size={18} />
+				<CheckCircle2 size={18} class="text-green" />
+			{:else if toast.type === 'warning'}
+				<AlertTriangle size={18} class="text-amber" />
 			{:else}
-				<AlertTriangle size={18} />
+				<AlertCircle size={18} class="text-danger" />
 			{/if}
 			<div>
 				<div class="toast-title">{toast.title}</div>
@@ -466,10 +736,10 @@
 	.engine-page {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-		max-width: 1300px;
+		gap: var(--space-6);
+		max-width: 1350px;
 		margin: 0 auto;
-		padding-bottom: 3rem;
+		padding-bottom: var(--space-8);
 	}
 
 	.page-header {
@@ -488,50 +758,54 @@
 	.header-title-group {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-4);
 	}
 
 	.header-icon-box {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 48px;
-		height: 48px;
-		border-radius: 12px;
+		width: 50px;
+		height: 50px;
+		border-radius: var(--radius-lg);
 		background: rgba(99, 102, 241, 0.15);
-		color: #818cf8;
+		color: var(--accent-primary, #818cf8);
 		border: 1px solid rgba(99, 102, 241, 0.3);
 	}
 
 	h1 {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--color-heading, #f8fafc);
+		font-size: var(--font-size-2xl);
+		font-weight: var(--font-weight-bold);
+		color: var(--text-primary);
 		margin: 0;
 	}
 
 	.subtitle {
-		font-size: 0.875rem;
-		color: var(--color-text-muted, #94a3b8);
+		font-size: var(--font-size-sm);
+		color: var(--text-muted);
 		margin: 0.25rem 0 0 0;
 	}
 
+	/* Banner Bento Card */
 	.banner-card {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1.5rem 2rem;
-		border-radius: 16px;
-		background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
-		border: 1px solid rgba(99, 102, 241, 0.3);
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+		display: grid;
+		grid-template-columns: 1.2fr 1fr;
+		gap: var(--space-6);
+		padding: var(--space-6);
+		border-radius: var(--radius-xl);
+		background: var(--bg-card);
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--shadow-md);
 	}
 
 	.banner-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		font-size: 0.7rem;
 		font-weight: 800;
-		letter-spacing: 0.05em;
-		color: #818cf8;
+		letter-spacing: 0.06em;
+		color: var(--accent-primary, #818cf8);
 		margin-bottom: 0.5rem;
 	}
 
@@ -543,87 +817,200 @@
 	}
 
 	.active-engine-name {
-		font-size: 1.75rem;
+		font-size: 1.85rem;
 		font-weight: 800;
-		color: #ffffff;
+		color: var(--text-primary);
+		letter-spacing: -0.02em;
+	}
+
+	.badge-version {
+		background: rgba(99, 102, 241, 0.2);
+		color: #a5b4fc;
+		border: 1px solid rgba(99, 102, 241, 0.4);
+		font-family: var(--font-mono);
+		padding: 0.25rem 0.6rem;
+		font-size: 0.85rem;
+		border-radius: var(--radius-md);
 	}
 
 	.banner-desc {
 		font-size: 0.875rem;
-		color: #cbd5e1;
+		color: var(--text-secondary);
+		line-height: 1.5;
 		margin: 0;
-		max-width: 700px;
 	}
 
 	.banner-stats {
-		display: flex;
-		gap: 1.25rem;
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.75rem;
 	}
 
 	.stat-chip {
 		display: flex;
 		flex-direction: column;
-		padding: 0.75rem 1.25rem;
-		border-radius: 10px;
-		background: rgba(15, 23, 42, 0.6);
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		gap: 0.25rem;
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius-lg);
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
 	}
 
 	.stat-label {
 		font-size: 0.75rem;
-		color: #94a3b8;
+		color: var(--text-muted);
+		font-weight: 500;
 	}
 
 	.stat-value {
-		font-size: 1rem;
+		font-size: 0.95rem;
 		font-weight: 700;
-		color: #f1f5f9;
+		color: var(--text-primary);
 	}
 
-	.text-emerald {
-		color: #10b981 !important;
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex-shrink: 0;
 	}
 
-	.text-primary {
-		color: #818cf8 !important;
-	}
+	.dot-green { background: var(--accent-green, #10b981); box-shadow: 0 0 8px #10b981; }
+	.dot-amber { background: var(--accent-amber, #f59e0b); }
+	.dot-gray { background: var(--text-muted, #64748b); }
 
-	.filters-bar {
+	/* Banners */
+	.new-release-banner, .new-snapshot-banner {
 		display: flex;
-		gap: 0.5rem;
-		overflow-x: auto;
+		align-items: center;
+		gap: 1rem;
+		padding: 1rem 1.4rem;
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-sm);
+	}
+
+	.new-release-banner {
+		background: rgba(16, 185, 129, 0.12);
+		border: 1px solid rgba(16, 185, 129, 0.35);
+		color: #34d399;
+	}
+
+	.new-snapshot-banner {
+		background: rgba(99, 102, 241, 0.12);
+		border: 1px solid rgba(99, 102, 241, 0.35);
+		color: #a5b4fc;
+	}
+
+	.new-version-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		font-size: 0.875rem;
+	}
+
+	.new-version-text span {
+		color: var(--text-muted);
+		font-size: 0.8rem;
+	}
+
+	.config-alert {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.85rem 1.25rem;
+		border-radius: var(--radius-lg);
+		background: rgba(245, 158, 11, 0.12);
+		border: 1px solid rgba(245, 158, 11, 0.3);
+		color: #fbbf24;
+		font-size: 0.875rem;
+	}
+
+	/* Filters & Search Toolbar */
+	.filters-toolbar {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+
+	.search-box {
+		position: relative;
+		display: flex;
+		align-items: center;
+		width: 100%;
+	}
+
+	:global(.search-icon) {
+		position: absolute;
+		left: 1rem;
+		color: var(--text-muted);
+		pointer-events: none;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 0.7rem 2.5rem 0.7rem 2.75rem;
+		background: var(--bg-card);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-lg);
+		color: var(--text-primary);
+		font-size: 0.875rem;
+		outline: none;
+		transition: all 0.2s ease;
+	}
+
+	.search-input:focus {
+		border-color: var(--accent-primary, #6366f1);
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+	}
+
+	.clear-btn {
+		position: absolute;
+		right: 1rem;
+		background: transparent;
+		border: none;
+		color: var(--text-muted);
+		cursor: pointer;
+		font-size: 0.85rem;
 	}
 
 	.category-tabs {
 		display: flex;
 		gap: 0.5rem;
-		background: rgba(15, 23, 42, 0.6);
+		background: var(--bg-card);
 		padding: 0.35rem;
-		border-radius: 12px;
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-lg);
+		border: 1px solid var(--border-subtle);
+		overflow-x: auto;
 	}
 
 	.tab-btn {
 		padding: 0.5rem 1rem;
-		font-size: 0.85rem;
+		font-size: 0.825rem;
 		font-weight: 600;
-		border-radius: 8px;
+		border-radius: var(--radius-md);
 		border: none;
 		background: transparent;
-		color: #94a3b8;
+		color: var(--text-muted);
 		cursor: pointer;
 		transition: all 0.2s;
+		white-space: nowrap;
+	}
+
+	.tab-btn:hover {
+		color: var(--text-primary);
+		background: var(--bg-hover);
 	}
 
 	.tab-btn.active {
-		background: #6366f1;
+		background: var(--accent-primary, #6366f1);
 		color: #ffffff;
 	}
 
+	/* Engine Grid */
 	.engine-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-		gap: 1.25rem;
+		grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+		gap: var(--space-4);
 	}
 
 	.engine-card {
@@ -631,21 +1018,22 @@
 		flex-direction: column;
 		justify-content: space-between;
 		padding: 1.5rem;
-		border-radius: 14px;
-		background: rgba(30, 41, 59, 0.6);
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: var(--radius-xl);
+		background: var(--bg-card);
+		border: 1px solid var(--border-subtle);
 		transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+		gap: 1rem;
 	}
 
 	.engine-card:hover {
 		border-color: rgba(99, 102, 241, 0.4);
 		transform: translateY(-2px);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+		box-shadow: var(--shadow-md);
 	}
 
 	.active-card {
-		border-color: #10b981;
-		background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(30, 41, 59, 0.7));
+		border-color: var(--accent-green, #10b981);
+		background: linear-gradient(180deg, rgba(16, 185, 129, 0.06), var(--bg-card));
 	}
 
 	.card-header {
@@ -658,17 +1046,19 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 44px;
-		height: 44px;
-		border-radius: 10px;
-		background: rgba(255, 255, 255, 0.06);
-		color: #cbd5e1;
+		width: 48px;
+		height: 48px;
+		border-radius: var(--radius-lg);
+		background: var(--bg-base);
+		color: var(--text-secondary);
+		border: 1px solid var(--border-subtle);
 		flex-shrink: 0;
 	}
 
 	.active-icon {
-		background: rgba(16, 185, 129, 0.2);
+		background: rgba(16, 185, 129, 0.15);
 		color: #10b981;
+		border-color: rgba(16, 185, 129, 0.3);
 	}
 
 	.header-titles {
@@ -682,164 +1072,337 @@
 	}
 
 	h3 {
-		font-size: 1.15rem;
+		font-size: 1.2rem;
 		font-weight: 700;
-		color: #ffffff;
+		color: var(--text-primary);
 		margin: 0;
+	}
+
+	.tag-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.25rem;
+		flex-wrap: wrap;
 	}
 
 	.category-tag {
 		font-size: 0.75rem;
-		color: #94a3b8;
+		color: var(--text-muted);
+		font-weight: 500;
+	}
+
+	.stability-tag {
+		font-size: 0.7rem;
+		font-weight: 600;
+		padding: 0.1rem 0.45rem;
+		border-radius: 4px;
+		background: rgba(99, 102, 241, 0.12);
+		color: #a5b4fc;
+		border: 1px solid rgba(99, 102, 241, 0.25);
+	}
+
+	.badge-active {
+		background: rgba(16, 185, 129, 0.2);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.35);
+		padding: 0.2rem 0.5rem;
+		border-radius: var(--radius-sm);
+		font-size: 0.75rem;
+		font-weight: 700;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	/* Specs Bar */
+	.specs-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.5rem 0.75rem;
+		background: var(--bg-base);
+		border-radius: var(--radius-md);
+		border: 1px solid var(--border-subtle);
+		font-size: 0.75rem;
+	}
+
+	.spec-item {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.spec-label {
+		color: var(--text-muted);
+	}
+
+	.spec-val {
+		color: var(--text-primary);
+		font-weight: 600;
 	}
 
 	.engine-description {
 		font-size: 0.85rem;
-		color: #cbd5e1;
-		line-height: 1.5;
-		margin: 1rem 0;
+		color: var(--text-secondary);
+		line-height: 1.45;
+		margin: 0;
 		min-height: 2.5rem;
 	}
 
-	.features-row {
+	.features-list {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		margin-bottom: 1.25rem;
+		flex-direction: column;
+		gap: 0.35rem;
 	}
 
-	.feature-badge {
-		display: inline-flex;
+	.feature-item {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.4rem;
+		font-size: 0.78rem;
+		line-height: 1.35;
+	}
+
+	.pro-item span {
+		color: var(--text-secondary);
+	}
+
+	.con-item span {
+		color: #fbbf24;
+	}
+
+	.tools-sync-badge {
+		display: flex;
 		align-items: center;
-		gap: 0.35rem;
-		padding: 0.25rem 0.6rem;
-		border-radius: 6px;
+		gap: 0.4rem;
+		padding: 0.4rem 0.6rem;
+		border-radius: var(--radius-md);
+		background: rgba(16, 185, 129, 0.08);
+		border: 1px solid rgba(16, 185, 129, 0.2);
+		color: #34d399;
 		font-size: 0.75rem;
 		font-weight: 600;
-	}
-
-	.plugins-badge {
-		background: rgba(59, 130, 246, 0.15);
-		color: #60a5fa;
-		border: 1px solid rgba(59, 130, 246, 0.3);
-	}
-
-	.mods-badge {
-		background: rgba(168, 85, 247, 0.15);
-		color: #c084fc;
-		border: 1px solid rgba(168, 85, 247, 0.3);
-	}
-
-	.vanilla-badge {
-		background: rgba(148, 163, 184, 0.15);
-		color: #cbd5e1;
-		border: 1px solid rgba(148, 163, 184, 0.3);
 	}
 
 	.card-footer {
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
+		margin-top: auto;
+		padding-top: 0.5rem;
 	}
 
-	.version-select-box {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-
-	.select-label {
-		font-size: 0.8rem;
-		color: #94a3b8;
-	}
-
-	.select-input {
-		padding: 0.4rem 0.75rem;
-		border-radius: 8px;
-		background: rgba(15, 23, 42, 0.8);
-		border: 1px solid rgba(255, 255, 255, 0.15);
-		color: #ffffff;
-		font-size: 0.85rem;
-		font-weight: 600;
-	}
-
-	.w-full {
-		width: 100%;
-	}
-
+	/* Modal */
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
 		background: rgba(0, 0, 0, 0.75);
-		backdrop-filter: blur(4px);
+		backdrop-filter: blur(6px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		z-index: var(--z-modal);
+		padding: 1rem;
 	}
 
 	.modal-card {
 		width: 100%;
-		max-width: 480px;
-		background: #1e293b;
-		border: 1px solid rgba(255, 255, 255, 0.15);
-		border-radius: 16px;
+		max-width: 620px;
+		background: var(--bg-card);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-xl);
 		padding: 1.75rem;
-		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+		box-shadow: var(--shadow-lg);
+		max-height: 90vh;
+		overflow-y: auto;
 	}
 
 	.modal-header {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		margin-bottom: 1rem;
+		margin-bottom: 1.25rem;
 	}
 
-	.danger-icon {
-		background: rgba(239, 68, 68, 0.2);
-		color: #ef4444;
+	.modal-icon-box {
 		width: 44px;
 		height: 44px;
-		border-radius: 10px;
+		border-radius: var(--radius-lg);
+		background: rgba(99, 102, 241, 0.15);
+		color: #818cf8;
+		border: 1px solid rgba(99, 102, 241, 0.3);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 	}
 
-	.confirm-summary-box {
-		background: rgba(15, 23, 42, 0.7);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 10px;
+	h2 {
+		font-size: 1.25rem;
+		font-weight: 700;
+		color: var(--text-primary);
+		margin: 0;
+	}
+
+	.modal-subtitle {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		margin-top: 0.15rem;
+	}
+
+	.switch-diff-card {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: 1rem;
 		padding: 1rem;
-		margin: 1rem 0;
+		border-radius: var(--radius-lg);
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		margin-bottom: 1rem;
+	}
+
+	.diff-side {
 		display: flex;
 		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	.diff-label {
+		font-size: 0.7rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		color: var(--text-muted);
+	}
+
+	.diff-title {
+		font-size: 1.1rem;
+		font-weight: 800;
+		color: var(--text-primary);
+	}
+
+	.diff-sub {
+		font-size: 0.8rem;
+		font-family: var(--font-mono);
+		color: var(--text-muted);
+	}
+
+	.diff-arrow {
+		color: var(--text-muted);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.alert-box {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		padding: 0.85rem 1rem;
+		border-radius: var(--radius-md);
+		font-size: 0.825rem;
+		margin-bottom: 1rem;
+	}
+
+	.alert-danger {
+		background: rgba(239, 68, 68, 0.12);
+		border: 1px solid rgba(239, 68, 68, 0.35);
+		color: #fca5a5;
+	}
+
+	.alert-danger strong {
+		color: #ffffff;
+	}
+
+	.alert-danger p {
+		margin: 0.2rem 0 0 0;
+		color: #fca5a5;
+	}
+
+	.impact-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.impact-heading {
+		font-size: 0.85rem;
+		font-weight: 700;
+		color: var(--text-secondary);
+		margin: 0;
+	}
+
+	.impact-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+	}
+
+	.impact-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		padding: 0.75rem;
+		border-radius: var(--radius-md);
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+	}
+
+	.item-active {
+		border-color: rgba(99, 102, 241, 0.35);
+		background: rgba(99, 102, 241, 0.05);
+	}
+
+	.item-warning {
+		border-color: rgba(245, 158, 11, 0.35);
+		background: rgba(245, 158, 11, 0.05);
+	}
+
+	.impact-checkbox-row, .impact-header-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		gap: 0.5rem;
 	}
 
-	.summary-item {
-		display: flex;
-		justify-content: space-between;
-		font-size: 0.9rem;
+	.impact-checkbox-row {
+		justify-content: flex-start;
 	}
 
-	.summary-label {
-		color: #94a3b8;
-	}
-
-	.summary-val {
-		font-weight: 700;
-	}
-
-	.modal-warning {
+	.impact-label, .impact-title {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
 		font-size: 0.85rem;
-		color: #f1f5f9;
-		background: rgba(245, 158, 11, 0.15);
-		border: 1px solid rgba(245, 158, 11, 0.3);
-		padding: 0.75rem;
-		border-radius: 8px;
+		font-weight: 600;
+		color: var(--text-primary);
+		cursor: pointer;
+	}
+
+	.custom-cb {
+		width: 18px;
+		height: 18px;
+		accent-color: var(--accent-primary, #6366f1);
+		cursor: pointer;
+	}
+
+	.impact-desc {
+		font-size: 0.78rem;
+		color: var(--text-muted);
+		line-height: 1.4;
 		margin: 0;
+		padding-left: 1.5rem;
+	}
+
+	.badge-auto {
+		font-size: 0.65rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		background: rgba(16, 185, 129, 0.15);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.3);
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
 	}
 
 	.modal-footer {
@@ -849,6 +1412,111 @@
 		margin-top: 1.5rem;
 	}
 
+	.switch-error {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.65rem;
+		margin-top: 1rem;
+		padding: 0.75rem;
+		border-radius: var(--radius-md);
+		background: rgba(239, 68, 68, 0.15);
+		border: 1px solid rgba(239, 68, 68, 0.35);
+		color: #fca5a5;
+	}
+
+	.switch-error-detail {
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.switch-error-msg {
+		font-size: 0.75rem;
+		font-family: var(--font-mono);
+		color: #fecaca;
+		word-break: break-word;
+	}
+
+	/* Buttons */
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.6rem 1.1rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		border-radius: var(--radius-md);
+		border: none;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.btn-sm {
+		padding: 0.4rem 0.8rem;
+		font-size: 0.8rem;
+	}
+
+	.btn-secondary {
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		color: var(--text-secondary);
+	}
+
+	.btn-secondary:hover:not(:disabled) {
+		background: var(--bg-hover);
+		color: var(--text-primary);
+	}
+
+	.btn-primary {
+		background: var(--accent-primary, #6366f1);
+		color: #ffffff;
+	}
+
+	.btn-primary:hover:not(:disabled) {
+		opacity: 0.9;
+		transform: translateY(-1px);
+	}
+
+	.btn-danger {
+		background: var(--danger-bg, #ef4444);
+		color: #ffffff;
+	}
+
+	.btn-danger:hover:not(:disabled) {
+		opacity: 0.9;
+	}
+
+	.btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.w-full {
+		width: 100%;
+	}
+
+	.flex-align {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.text-green, .text-emerald { color: var(--accent-green, #10b981) !important; }
+	.text-primary { color: var(--accent-primary, #818cf8) !important; }
+	.text-amber { color: var(--accent-amber, #fbbf24) !important; }
+	.text-danger { color: var(--danger-text, #ef4444) !important; }
+	.text-muted { color: var(--text-muted) !important; }
+
+	.spin {
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+
+	/* Toasts */
 	.toast-area {
 		position: fixed;
 		bottom: 1.5rem;
@@ -864,25 +1532,18 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.85rem 1.25rem;
-		border-radius: 10px;
-		background: #1e293b;
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-		color: #ffffff;
-		min-width: 280px;
+		border-radius: var(--radius-lg);
+		background: var(--bg-card);
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--shadow-lg);
+		color: var(--text-primary);
+		min-width: 300px;
+		animation: slideIn 0.2s ease-out;
 	}
 
-	.toast-success {
-		border-left: 4px solid #10b981;
-	}
-
-	.toast-error {
-		border-left: 4px solid #ef4444;
-	}
-
-	.toast-warning {
-		border-left: 4px solid #f59e0b;
-	}
+	.toast-success { border-left: 4px solid var(--accent-green, #10b981); }
+	.toast-error { border-left: 4px solid var(--danger-bg, #ef4444); }
+	.toast-warning { border-left: 4px solid var(--accent-amber, #f59e0b); }
 
 	.toast-title {
 		font-weight: 700;
@@ -891,100 +1552,31 @@
 
 	.toast-message {
 		font-size: 0.75rem;
-		color: #cbd5e1;
+		color: var(--text-secondary);
 	}
 
-	.config-alert {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.85rem 1.25rem;
-		border-radius: 10px;
-		background: rgba(245, 158, 11, 0.15);
-		border: 1px solid rgba(245, 158, 11, 0.35);
-		color: #fbbf24;
-		font-size: 0.875rem;
-	}
-
-	.new-release-banner {
-		display: flex;
-		align-items: center;
-		gap: 0.9rem;
-		padding: 1rem 1.4rem;
-		border-radius: 12px;
-		background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.06));
-		border: 1px solid rgba(16, 185, 129, 0.45);
-		color: #34d399;
-		box-shadow: 0 4px 20px rgba(16, 185, 129, 0.12);
-	}
-
-	.new-snapshot-banner {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1.25rem;
-		border-radius: 10px;
-		background: rgba(99, 102, 241, 0.12);
-		border: 1px solid rgba(99, 102, 241, 0.35);
-		color: #a5b4fc;
-	}
-
-	.new-version-text {
+	.empty-state, .loading-state {
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
-		font-size: 0.875rem;
+		align-items: center;
+		justify-content: center;
+		padding: 4rem 1rem;
+		gap: 1rem;
+		color: var(--text-muted);
+		text-align: center;
 	}
 
-	.new-version-text strong {
-		font-size: 0.95rem;
+	@keyframes slideIn {
+		from { transform: translateX(100%); opacity: 0; }
+		to { transform: translateX(0); opacity: 1; }
 	}
 
-	.new-version-text span {
-		color: var(--color-text-muted, #94a3b8);
-		font-size: 0.8rem;
-	}
-
-	.unknown-val {
-		color: #94a3b8;
-	}
-
-	.badge-muted {
-		background: rgba(148, 163, 184, 0.15);
-		color: #cbd5e1;
-		border: 1px solid rgba(148, 163, 184, 0.3);
-	}
-
-	.switch-error {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.65rem;
-		margin-top: 1rem;
-		padding: 0.75rem;
-		border-radius: 8px;
-		background: rgba(239, 68, 68, 0.15);
-		border: 1px solid rgba(239, 68, 68, 0.35);
-		color: #fca5a5;
-	}
-
-	.switch-error-detail {
-		font-size: 0.85rem;
-		font-weight: 600;
-	}
-
-	.switch-error-msg {
-		font-size: 0.75rem;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		color: #fecaca;
-		word-break: break-word;
-	}
-
-	.spin {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
+	@media (max-width: 900px) {
+		.banner-card {
+			grid-template-columns: 1fr;
+		}
+		.banner-stats {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>
