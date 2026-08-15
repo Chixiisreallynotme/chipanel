@@ -29,10 +29,27 @@
 	// Image fallback state for broken item icons
 	let failedImages = $state({});
 
-	function handleImageError(itemId) {
-		if (itemId) {
-			failedImages = { ...failedImages, [itemId]: true };
+	function handleImageError(e, itemId) {
+		if (!itemId) return;
+		const clean = getCleanItemName(itemId);
+		const img = e.currentTarget;
+		if (!img) return;
+		const currentSrc = img.src || '';
+
+		if (currentSrc.includes('/textures/item/') && currentSrc.includes('mcasset.cloud')) {
+			img.src = `https://assets.mcasset.cloud/1.20.4/assets/minecraft/textures/block/${clean}.png`;
+			return;
 		}
+		if (currentSrc.includes('/textures/block/') && currentSrc.includes('mcasset.cloud')) {
+			img.src = `https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.20.4/assets/minecraft/textures/item/${clean}.png`;
+			return;
+		}
+		if (currentSrc.includes('/textures/item/') && currentSrc.includes('jsdelivr.net')) {
+			img.src = `https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.20.4/assets/minecraft/textures/block/${clean}.png`;
+			return;
+		}
+
+		failedImages = { ...failedImages, [itemId]: true };
 	}
 
 	// Tooltip state handlers
@@ -117,7 +134,7 @@
 		}
 		const clean = getCleanItemName(itemId);
 		const url = clean
-			? `https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.20.4/items/${clean}.png`
+			? `https://assets.mcasset.cloud/1.20.4/assets/minecraft/textures/item/${clean}.png`
 			: '';
 		imageUrlCache.set(itemId, url);
 		return url;
@@ -483,7 +500,7 @@
 				src={getItemImageUrl(item.item_id)}
 				alt={getFormattedItemName(item)}
 				class="item-icon"
-				onerror={() => handleImageError(item.item_id)}
+				onerror={(e) => handleImageError(e, item.item_id)}
 				loading="lazy"
 			/>
 		{:else}

@@ -360,7 +360,30 @@
 
 	function getItemIconUrl(itemId) {
 		const clean = (itemId || '').replace('minecraft:', '').toLowerCase();
-		return `https://raw.githubusercontent.com/PrismarineJS/minecraft-assets/master/data/1.20.4/items/${clean}.png`;
+		return clean
+			? `https://assets.mcasset.cloud/1.20.4/assets/minecraft/textures/item/${clean}.png`
+			: '';
+	}
+
+	function handleGiveImageError(e, itemId) {
+		const clean = (itemId || '').replace('minecraft:', '').toLowerCase();
+		const img = e.currentTarget;
+		if (!img) return;
+		const currentSrc = img.src || '';
+
+		if (currentSrc.includes('/textures/item/') && currentSrc.includes('mcasset.cloud')) {
+			img.src = `https://assets.mcasset.cloud/1.20.4/assets/minecraft/textures/block/${clean}.png`;
+			return;
+		}
+		if (currentSrc.includes('/textures/block/') && currentSrc.includes('mcasset.cloud')) {
+			img.src = `https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.20.4/assets/minecraft/textures/item/${clean}.png`;
+			return;
+		}
+		if (currentSrc.includes('/textures/item/') && currentSrc.includes('jsdelivr.net')) {
+			img.src = `https://cdn.jsdelivr.net/gh/InventivetalentDev/minecraft-assets@1.20.4/assets/minecraft/textures/block/${clean}.png`;
+			return;
+		}
+		img.style.opacity = '0.3';
 	}
 
 	// Action Handler: Execute moderation commands via /api/players/action
@@ -833,9 +856,7 @@
 												src={getItemIconUrl(giveCustomItemId || giveSelectedItemId)}
 												alt={giveSelectedItemId}
 												class="give-preview-img"
-												onerror={(e) => {
-													e.target.style.opacity = '0.3';
-												}}
+												onerror={(e) => handleGiveImageError(e, giveCustomItemId || giveSelectedItemId)}
 											/>
 										</div>
 										<div class="selected-item-info">
@@ -895,9 +916,7 @@
 												alt={item.name}
 												class="item-card-img"
 												loading="lazy"
-												onerror={(e) => {
-													e.target.style.opacity = '0.3';
-												}}
+												onerror={(e) => handleGiveImageError(e, item.id)}
 											/>
 										</div>
 										<div class="item-card-details">
