@@ -52,13 +52,7 @@
 	let selectedLoader = $state('all'); // 'all' | 'Fabric' | 'Forge' | 'NeoForge' | 'Quilt' | 'Purpur'
 	let selectedGameVersion = $state('all');
 
-	// Comprehensive Minecraft Game Versions up to latest 26.3 Snapshot 7 & 26.2 release
 	const gameVersionOptions = [
-		'26.3 (Snapshot 7)',
-		'26.3',
-		'26.2',
-		'26.1',
-		'26.0',
 		'1.21.4',
 		'1.21.3',
 		'1.21.1',
@@ -71,7 +65,6 @@
 		'1.19.4',
 		'1.19.3',
 		'1.19.2',
-		'1.19.1',
 		'1.19',
 		'1.18.2',
 		'1.18.1',

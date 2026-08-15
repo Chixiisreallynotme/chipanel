@@ -32,6 +32,9 @@ pub fn server_router() -> Router {
         .route("/power", post(power_handler))
         .route("/mode", get(mode_status_handler).post(mode_handler))
         .route("/engine", get(get_engine_handler).post(update_engine_handler))
+        .route("/resource-pack", get(get_resource_pack_handler))
+        .route("/resource-pack/activate", post(activate_resource_pack_handler))
+        .route("/resource-pack/disable", post(disable_resource_pack_handler))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -693,4 +696,174 @@ pub async fn update_engine_handler(
         warning: if warnings.is_empty() { None } else { Some(warnings.join("\n")) },
     }))
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServerResourcePackInfo {
+    pub active_filename: Option<String>,
+    pub url: Option<String>,
+    pub sha1: Option<String>,
+    pub required: bool,
+    pub prompt: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ActivateResourcePackRequest {
+    pub filename: String,
+    #[serde(default)]
+    pub prompt: Option<String>,
+    #[serde(default)]
+    pub custom_url: Option<String>,
+}
+
+pub async fn get_resource_pack_handler(
+    _auth: AuthUser,
+    Extension(config): Extension<Arc<AppConfig>>,
+) -> Result<Json<ServerResourcePackInfo>, AppError> {
+    let server_props = config.minecraft_data_dir.join("server.properties");
+    if !server_props.exists() {
+        return Ok(Json(ServerResourcePackInfo {
+            active_filename: None,
+            url: None,
+            sha1: None,
+            required: false,
+            prompt: None,
+        }));
+    }
+
+    let url = crate::minecraft::server_properties::get_property(&server_props, "resource-pack")
+        .await?
+        .filter(|s| !s.is_empty());
+    let sha1 = crate::minecraft::server_properties::get_property(&server_props, "resource-pack-sha1")
+        .await?
+        .filter(|s| !s.is_empty());
+    let req_str = crate::minecraft::server_properties::get_property(&server_props, "require-resource-pack")
+        .await?
+        .unwrap_or_default();
+    let required = req_str.eq_ignore_ascii_case("true");
+    let prompt = crate::minecraft::server_properties::get_property(&server_props, "resource-pack-prompt")
+        .await?
+        .filter(|s| !s.is_empty());
+
+    let active_filename = url.as_ref().and_then(|u| {
+        if let Some(pos) = u.rfind('/') {
+            Some(u[pos + 1..].to_string())
+        } else {
+            None
+        }
+    });
+
+    Ok(Json(ServerResourcePackInfo {
+        active_filename,
+        url,
+        sha1,
+        required,
+        prompt,
+    }))
+}
+
+pub async fn activate_resource_pack_handler(
+    _auth: RequireAdmin,
+    Extension(config): Extension<Arc<AppConfig>>,
+    AxumJson(payload): AxumJson<ActivateResourcePackRequest>,
+) -> Result<Json<ServerResourcePackInfo>, AppError> {
+    crate::minecraft::plugins::sanitize_target_dir_and_filename("resourcepacks", &payload.filename)?;
+    let pack_path = config.minecraft_data_dir.join("resourcepacks").join(&payload.filename);
+    if !pack_path.exists() {
+        return Err(AppError::NotFound(format!(
+            "Resource pack '{}' not found in resourcepacks/",
+            payload.filename
+        )));
+    }
+
+    let sha1_hex = crate::minecraft::plugins::compute_file_sha1(&pack_path).await?;
+
+    let download_url = if let Some(custom) = payload.custom_url.filter(|s| !s.trim().is_empty()) {
+        custom
+    } else {
+        let host_ip = if config.host == "0.0.0.0" || config.host == "127.0.0.1" {
+            "127.0.0.1".to_string()
+        } else {
+            config.host.clone()
+        };
+        format!("http://{}:{}/api/public/resourcepack/{}", host_ip, config.port, payload.filename)
+    };
+
+    let prompt_text = payload
+        .prompt
+        .unwrap_or_else(|| "Pack de textures obligatoire pour rejoindre ce serveur".to_string());
+    let prompt_json = format!("{{\"text\":\"{}\"}}", prompt_text.replace('"', "\\\""));
+
+    let server_props = config.minecraft_data_dir.join("server.properties");
+    let updates = vec![
+        ("resource-pack".to_string(), download_url.clone()),
+        ("resource-pack-sha1".to_string(), sha1_hex.clone()),
+        ("require-resource-pack".to_string(), "true".to_string()),
+        ("resource-pack-prompt".to_string(), prompt_json),
+    ];
+
+    crate::minecraft::server_properties::set_properties(&server_props, &updates).await?;
+
+    info!("Activated server resource pack '{}' ({})", payload.filename, sha1_hex);
+
+    Ok(Json(ServerResourcePackInfo {
+        active_filename: Some(payload.filename),
+        url: Some(download_url),
+        sha1: Some(sha1_hex),
+        required: true,
+        prompt: Some(prompt_text),
+    }))
+}
+
+pub async fn disable_resource_pack_handler(
+    _auth: RequireAdmin,
+    Extension(config): Extension<Arc<AppConfig>>,
+) -> Result<Json<crate::routes::plugins::ActionResponse>, AppError> {
+    let server_props = config.minecraft_data_dir.join("server.properties");
+    if server_props.exists() {
+        let updates = vec![
+            ("resource-pack".to_string(), String::new()),
+            ("resource-pack-sha1".to_string(), String::new()),
+            ("require-resource-pack".to_string(), "false".to_string()),
+            ("resource-pack-prompt".to_string(), String::new()),
+        ];
+        crate::minecraft::server_properties::set_properties(&server_props, &updates).await?;
+    }
+
+    info!("Disabled server resource pack in server.properties");
+
+    Ok(Json(crate::routes::plugins::ActionResponse {
+        success: true,
+        message: "Pack de textures serveur désactivé".to_string(),
+    }))
+}
+
+pub async fn public_resourcepack_handler(
+    Extension(config): Extension<Arc<AppConfig>>,
+    axum::extract::Path(filename): axum::extract::Path<String>,
+) -> Result<axum::response::Response, AppError> {
+    crate::minecraft::plugins::sanitize_target_dir_and_filename("resourcepacks", &filename)?;
+    let pack_path = config.minecraft_data_dir.join("resourcepacks").join(&filename);
+    if !pack_path.exists() {
+        return Err(AppError::NotFound(format!("Resource pack '{}' not found", filename)));
+    }
+
+    let file = tokio::fs::File::open(&pack_path)
+        .await
+        .map_err(|e| AppError::InternalError(format!("Failed to open resource pack: {}", e)))?;
+
+    let stream = tokio_util::io::ReaderStream::new(file);
+    let body = axum::body::Body::from_stream(stream);
+
+    let response = axum::response::Response::builder()
+        .header(axum::http::header::CONTENT_TYPE, "application/zip")
+        .header(
+            axum::http::header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", filename),
+        )
+        .body(body)
+        .map_err(|e| AppError::InternalError(format!("Failed to build response: {}", e)))?;
+
+    Ok(response)
+}
+
 

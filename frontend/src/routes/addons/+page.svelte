@@ -15,25 +15,51 @@
 		Sparkles,
 		CheckCircle2,
 		AlertCircle,
+		AlertTriangle,
 		Info,
 		X,
 		Layers,
 		Cpu,
 		Palette,
-		Scroll
+		Scroll,
+		RefreshCw,
+		DownloadCloud,
+		Check,
+		Wrench,
+		ExternalLink,
+		Loader2
 	} from 'lucide-svelte';
 
 	// Active tab state: 'plugins' | 'mods' | 'resourcepacks' | 'datapacks' | 'modpacks' | 'profiles'
 	let activeTab = $state('plugins');
+	// Sub-view segmented switcher: 'installed' | 'catalog'
+	let subView = $state('installed');
+
 	let installedPlugins = $state([]);
 	let isLoadingInstalled = $state(false);
 	let profileManagerRef = $state(null);
+
+	// Server engine and resource pack states
+	let serverEngine = $state('');
+	let serverVersion = $state('');
+	let serverResourcePack = $state(null);
+
+	// Addon Updates State
+	let isCheckingUpdates = $state(false);
+	let updatesModalOpen = $state(false);
+	let updatesReport = $state(null);
+	let isApplyingUpdates = $state(false);
+	let availableUpdatesCount = $state(0);
 
 	// Sync activeTab with URL search params on mount / state change
 	$effect(() => {
 		const tabParam = page.url.searchParams.get('tab');
 		if (tabParam && ['plugins', 'mods', 'resourcepacks', 'datapacks', 'modpacks', 'profiles'].includes(tabParam)) {
 			activeTab = tabParam;
+		}
+		const subParam = page.url.searchParams.get('sub');
+		if (subParam && ['installed', 'catalog'].includes(subParam)) {
+			subView = subParam;
 		}
 	});
 
@@ -61,6 +87,27 @@
 		toasts = toasts.filter((t) => t.id !== id);
 	}
 
+	// Fetch Server Context
+	async function loadServerContext() {
+		try {
+			const [engineRes, rpRes] = await Promise.allSettled([
+				apiGet('/api/server/engine'),
+				apiGet('/api/server/resource-pack')
+			]);
+
+			if (engineRes.status === 'fulfilled' && engineRes.value) {
+				serverEngine = engineRes.value.current_type || '';
+				serverVersion = engineRes.value.current_version || '';
+			}
+
+			if (rpRes.status === 'fulfilled' && rpRes.value) {
+				serverResourcePack = rpRes.value;
+			}
+		} catch (err) {
+			console.error('Erreur chargement contexte serveur:', err);
+		}
+	}
+
 	// Fetch Installed Addons (Plugins, Mods, ResourcePacks, DataPacks)
 	async function loadInstalledPlugins() {
 		isLoadingInstalled = true;
@@ -75,7 +122,82 @@
 		}
 	}
 
+	// Check for Addon Updates
+	async function handleCheckUpdates() {
+		isCheckingUpdates = true;
+		try {
+			const res = await apiGet('/api/plugins/updates/check');
+			updatesReport = res;
+			availableUpdatesCount = res.updates_available_count || 0;
+			updatesModalOpen = true;
+
+			if (availableUpdatesCount > 0) {
+				addToast(
+					'info',
+					'Mises à jour trouvées',
+					`${availableUpdatesCount} extension(s) peuvent être mise(s) à jour.`
+				);
+			} else {
+				addToast(
+					'success',
+					'Extensions à jour',
+					'Toutes vos extensions installées sont compatibles et à jour.'
+				);
+			}
+		} catch (err) {
+			console.error('Erreur vérification mises à jour:', err);
+			addToast('error', 'Erreur de vérification', err.message || 'Impossible de vérifier les mises à jour.');
+		} finally {
+			isCheckingUpdates = false;
+		}
+	}
+
+	// Apply Single or All Updates
+	async function handleApplyUpdates(itemsToUpdate) {
+		if (!itemsToUpdate || itemsToUpdate.length === 0 || isApplyingUpdates) return;
+		isApplyingUpdates = true;
+
+		const payload = {
+			updates: itemsToUpdate.map((item) => ({
+				target_dir: item.target_dir,
+				old_filename: item.filename,
+				new_filename: item.latest_filename || item.filename,
+				download_url: item.latest_download_url,
+				version_number: item.latest_version_number || 'latest'
+			}))
+		};
+
+		try {
+			const res = await apiPost('/api/plugins/updates/apply', payload);
+			if (res.success) {
+				addToast(
+					'success',
+					'Mise à jour réussie',
+					`${res.updated_count} extension(s) mise(s) à jour avec succès. Pensez à redémarrer le serveur.`
+				);
+			} else if (res.errors && res.errors.length > 0) {
+				addToast(
+					'error',
+					'Mise à jour partielle',
+					res.errors.join(' | ')
+				);
+			}
+
+			await loadInstalledPlugins();
+			// Recheck updates
+			const refreshed = await apiGet('/api/plugins/updates/check');
+			updatesReport = refreshed;
+			availableUpdatesCount = refreshed.updates_available_count || 0;
+		} catch (err) {
+			console.error('Erreur application mises à jour:', err);
+			addToast('error', 'Erreur de mise à jour', err.message || 'Échec de la mise à jour.');
+		} finally {
+			isApplyingUpdates = false;
+		}
+	}
+
 	onMount(() => {
+		loadServerContext();
 		loadInstalledPlugins();
 	});
 
@@ -95,7 +217,7 @@
 			addToast(
 				'success',
 				'Extension mise à jour',
-				`"${res.name}" a été ${statusText} avec succès.`
+				`"${res.name}" a été ${statusText}. Redémarrez le serveur pour appliquer.`
 			);
 		} catch (err) {
 			console.error('Failed to toggle extension:', err);
@@ -155,6 +277,7 @@
 			);
 
 			await loadInstalledPlugins();
+			subView = 'installed';
 			activeTab = targetDir;
 		} catch (err) {
 			console.error('Failed to install addon:', err);
@@ -187,6 +310,8 @@
 			'Profil actif mis à jour',
 			`Le profil du serveur a été basculé vers "${profile.name}".`
 		);
+		await loadServerContext();
+		await loadInstalledPlugins();
 	}
 
 	// Profile Delete Handler
@@ -200,11 +325,11 @@
 </script>
 
 <svelte:head>
-	<title>Centre des Addons & Modpacks - ChiPanel</title>
+	<title>Centre des Addons & Extensions - ChiPanel</title>
 </svelte:head>
 
 <div class="addons-page">
-	<!-- Hero Header -->
+	<!-- Hero Header & Engine Context Banner -->
 	<div class="page-header">
 		<div class="header-main font-ui">
 			<div class="title-with-icon">
@@ -212,21 +337,48 @@
 					<Package size={26} />
 				</div>
 				<div>
-					<h1 class="page-title">Centre des Addons & Contenus</h1>
+					<h1 class="page-title">Centre des Addons & Extensions</h1>
 					<p class="page-description">
-						Gérez vos plugins, mods, packs de textures, data packs et modpacks au même endroit via Modrinth.
+						Gérez vos plugins, mods, packs de textures et modpacks avec synchronisation automatique selon votre moteur.
 					</p>
 				</div>
 			</div>
+
+			<!-- Live Engine Status & Update Checker Bar -->
+			<div class="header-actions">
+				{#if serverEngine}
+					<div class="engine-badge-box">
+						<span class="engine-indicator-dot"></span>
+						<span class="engine-text">Moteur : <strong>{serverEngine}</strong> ({serverVersion || 'MC'})</span>
+					</div>
+				{/if}
+
+				<button
+					type="button"
+					class="btn btn-secondary check-updates-btn {isCheckingUpdates ? 'btn-loading' : ''}"
+					disabled={isCheckingUpdates}
+					onclick={handleCheckUpdates}
+				>
+					{#if isCheckingUpdates}
+						<Loader2 size={16} class="spin" />
+					{:else}
+						<RefreshCw size={16} />
+					{/if}
+					<span>Vérifier les mises à jour</span>
+					{#if availableUpdatesCount > 0}
+						<span class="badge badge-amber badge-pill">{availableUpdatesCount}</span>
+					{/if}
+				</button>
+			</div>
 		</div>
 
-		<!-- Unified Navigation Tabs Bar (Plugins, Mods, ResourcePacks, DataPacks, Modpacks, Profils) -->
+		<!-- Unified Navigation Tabs Bar -->
 		<div class="tabs-nav-container" role="tablist">
 			<button
 				class="tab-btn {activeTab === 'plugins' ? 'active' : ''}"
 				role="tab"
 				aria-selected={activeTab === 'plugins'}
-				onclick={() => (activeTab = 'plugins')}
+				onclick={() => { activeTab = 'plugins'; subView = 'installed'; }}
 			>
 				<Package size={16} />
 				<span>Plugins</span>
@@ -239,7 +391,7 @@
 				class="tab-btn {activeTab === 'mods' ? 'active' : ''}"
 				role="tab"
 				aria-selected={activeTab === 'mods'}
-				onclick={() => (activeTab = 'mods')}
+				onclick={() => { activeTab = 'mods'; subView = 'installed'; }}
 			>
 				<Cpu size={16} />
 				<span>Mods</span>
@@ -252,7 +404,7 @@
 				class="tab-btn {activeTab === 'resourcepacks' ? 'active' : ''}"
 				role="tab"
 				aria-selected={activeTab === 'resourcepacks'}
-				onclick={() => (activeTab = 'resourcepacks')}
+				onclick={() => { activeTab = 'resourcepacks'; subView = 'installed'; }}
 			>
 				<Palette size={16} />
 				<span>Packs de Textures</span>
@@ -265,7 +417,7 @@
 				class="tab-btn {activeTab === 'datapacks' ? 'active' : ''}"
 				role="tab"
 				aria-selected={activeTab === 'datapacks'}
-				onclick={() => (activeTab = 'datapacks')}
+				onclick={() => { activeTab = 'datapacks'; subView = 'installed'; }}
 			>
 				<Scroll size={16} />
 				<span>Data Packs</span>
@@ -298,128 +450,63 @@
 
 	<!-- Tab Body Content -->
 	<div class="tab-content">
-		<ToolsSyncPanel onToast={addToast} />
+		{#if activeTab === 'plugins' || activeTab === 'mods' || activeTab === 'resourcepacks' || activeTab === 'datapacks'}
+			<!-- Secondary Sub-View Segmented Switcher (Installed vs Catalogue) -->
+			<div class="subview-header">
+				<div class="subview-segmented">
+					<button
+						type="button"
+						class="subview-btn {subView === 'installed' ? 'active' : ''}"
+						onclick={() => (subView = 'installed')}
+					>
+						<HardDrive size={15} />
+						<span>
+							{#if activeTab === 'plugins'}Plugins installés ({installedPlugins.filter(p => p.target_dir === 'plugins').length})
+							{:else if activeTab === 'mods'}Mods installés ({installedPlugins.filter(p => p.target_dir === 'mods').length})
+							{:else if activeTab === 'resourcepacks'}Packs installés ({installedPlugins.filter(p => p.target_dir === 'resourcepacks').length})
+							{:else}Data Packs installés ({installedPlugins.filter(p => p.target_dir === 'datapacks').length})
+							{/if}
+						</span>
+					</button>
 
-		{#if activeTab === 'plugins'}
-			<div class="tab-section-container">
-				<div class="section-block">
-					<h2 class="section-title">
-						<Package size={18} />
-						<span>Plugins Installés (/plugins)</span>
-					</h2>
-					<InstalledPluginsList
-						plugins={installedPlugins.filter(p => p.target_dir === 'plugins')}
-						loading={isLoadingInstalled}
-						initialTargetDir="plugins"
-						lockFolderFilter={true}
-						onToggle={handleToggle}
-						onDelete={handleDelete}
-						onRefresh={loadInstalledPlugins}
-					/>
-				</div>
-
-				<div class="section-block">
-					<h2 class="section-title">
-						<Store size={18} />
-						<span>Catalogue Modrinth (Plugins Spigot / Paper / Purpur)</span>
-					</h2>
-					<ModrinthCatalogBrowser
-						initialProjectType="plugin"
-						lockProjectType={true}
-						onInstall={handleInstall}
-					/>
+					<button
+						type="button"
+						class="subview-btn {subView === 'catalog' ? 'active' : ''}"
+						onclick={() => (subView = 'catalog')}
+					>
+						<Store size={15} />
+						<span>Explorer le Catalogue Modrinth</span>
+					</button>
 				</div>
 			</div>
-		{:else if activeTab === 'mods'}
-			<div class="tab-section-container">
-				<div class="section-block">
-					<h2 class="section-title">
-						<Cpu size={18} />
-						<span>Mods Installés (/mods)</span>
-					</h2>
-					<InstalledPluginsList
-						plugins={installedPlugins.filter(p => p.target_dir === 'mods')}
-						loading={isLoadingInstalled}
-						initialTargetDir="mods"
-						lockFolderFilter={true}
-						onToggle={handleToggle}
-						onDelete={handleDelete}
-						onRefresh={loadInstalledPlugins}
-					/>
-				</div>
 
-				<div class="section-block">
-					<h2 class="section-title">
-						<Store size={18} />
-						<span>Catalogue Modrinth (Mods Fabric / Forge / NeoForge / Quilt)</span>
-					</h2>
-					<ModrinthCatalogBrowser
-						initialProjectType="mod"
-						lockProjectType={true}
-						onInstall={handleInstall}
-					/>
-				</div>
-			</div>
-		{:else if activeTab === 'resourcepacks'}
-			<div class="tab-section-container">
-				<div class="section-block">
-					<h2 class="section-title">
-						<Palette size={18} />
-						<span>Packs de Textures Installés (/resourcepacks)</span>
-					</h2>
-					<InstalledPluginsList
-						plugins={installedPlugins.filter(p => p.target_dir === 'resourcepacks')}
-						loading={isLoadingInstalled}
-						initialTargetDir="resourcepacks"
-						lockFolderFilter={true}
-						onToggle={handleToggle}
-						onDelete={handleDelete}
-						onRefresh={loadInstalledPlugins}
-					/>
-				</div>
+			{#if activeTab === 'plugins' || activeTab === 'mods'}
+				<ToolsSyncPanel onToast={addToast} />
+			{/if}
 
-				<div class="section-block">
-					<h2 class="section-title">
-						<Store size={18} />
-						<span>Catalogue Modrinth (Packs de Textures / Resource Packs)</span>
-					</h2>
-					<ModrinthCatalogBrowser
-						initialProjectType="resourcepack"
-						lockProjectType={true}
-						onInstall={handleInstall}
-					/>
-				</div>
-			</div>
-		{:else if activeTab === 'datapacks'}
-			<div class="tab-section-container">
-				<div class="section-block">
-					<h2 class="section-title">
-						<Scroll size={18} />
-						<span>Data Packs Installés (/datapacks)</span>
-					</h2>
-					<InstalledPluginsList
-						plugins={installedPlugins.filter(p => p.target_dir === 'datapacks')}
-						loading={isLoadingInstalled}
-						initialTargetDir="datapacks"
-						lockFolderFilter={true}
-						onToggle={handleToggle}
-						onDelete={handleDelete}
-						onRefresh={loadInstalledPlugins}
-					/>
-				</div>
+			{#if subView === 'installed'}
+				<InstalledPluginsList
+					plugins={installedPlugins.filter(p => p.target_dir === activeTab)}
+					loading={isLoadingInstalled}
+					initialTargetDir={activeTab}
+					lockFolderFilter={true}
+					onToggle={handleToggle}
+					onDelete={handleDelete}
+					onRefresh={loadInstalledPlugins}
+					onToast={addToast}
+					{serverResourcePack}
+					onResourcePackChanged={(newRp) => (serverResourcePack = newRp)}
+				/>
+			{:else}
+				<ModrinthCatalogBrowser
+					initialProjectType={activeTab === 'plugins' ? 'plugin' : activeTab === 'mods' ? 'mod' : activeTab === 'resourcepacks' ? 'resourcepack' : 'datapack'}
+					lockProjectType={true}
+					{serverEngine}
+					{serverVersion}
+					onInstall={handleInstall}
+				/>
+			{/if}
 
-				<div class="section-block">
-					<h2 class="section-title">
-						<Store size={18} />
-						<span>Catalogue Modrinth (Data Packs)</span>
-					</h2>
-					<ModrinthCatalogBrowser
-						initialProjectType="datapack"
-						lockProjectType={true}
-						onInstall={handleInstall}
-					/>
-				</div>
-			</div>
 		{:else if activeTab === 'modpacks'}
 			<ModpackCatalogBrowser onDeploy={handleDeployModpack} />
 		{:else if activeTab === 'profiles'}
@@ -430,6 +517,121 @@
 			/>
 		{/if}
 	</div>
+
+	<!-- Updates & Compatibility Modal -->
+	{#if updatesModalOpen && updatesReport}
+		<div class="modal-backdrop" onclick={() => (updatesModalOpen = false)} role="presentation">
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div class="modal-card card shadow-xl updates-modal-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+				<div class="modal-header">
+					<div class="title-with-icon">
+						<div class="modal-icon-box icon-blue">
+							<RefreshCw size={20} />
+						</div>
+						<div>
+							<h3>Rapport de Compatibilité & Mises à Jour</h3>
+							<span class="modal-sub">Moteur cible : {updatesReport.engine} ({updatesReport.game_version})</span>
+						</div>
+					</div>
+					<button class="btn btn-ghost btn-icon btn-sm" onclick={() => (updatesModalOpen = false)} disabled={isApplyingUpdates}>
+						<X size={18} />
+					</button>
+				</div>
+
+				<div class="modal-body updates-modal-body">
+					<!-- Overview Statistics -->
+					<div class="updates-stats-row">
+						<div class="update-stat-chip chip-green">
+							<CheckCircle2 size={16} />
+							<span>{updatesReport.up_to_date_count} à jour</span>
+						</div>
+						<div class="update-stat-chip chip-amber">
+							<DownloadCloud size={16} />
+							<span>{updatesReport.updates_available_count} mise(s) à jour</span>
+						</div>
+						{#if updatesReport.incompatible_count > 0}
+							<div class="update-stat-chip chip-red">
+								<AlertTriangle size={16} />
+								<span>{updatesReport.incompatible_count} incompatible(s)</span>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Incompatible Warning Notice -->
+					{#if updatesReport.incompatible_count > 0}
+						<div class="alert-banner alert-warning">
+							<AlertTriangle size={18} />
+							<div>
+								<strong>Attention :</strong> {updatesReport.incompatible_count} extension(s) n'ont pas de version compatible avec <strong>{updatesReport.game_version}</strong> sur Modrinth. Elles peuvent causer des erreurs au démarrage si vous changez de version.
+							</div>
+						</div>
+					{/if}
+
+					<!-- Addons List -->
+					<div class="updates-list-container">
+						{#each updatesReport.items as item (item.filename)}
+							<div class="update-list-item">
+								<div class="update-item-info">
+									<div class="item-header-row">
+										<span class="item-title">{item.name}</span>
+										<code class="item-file">{item.filename}</code>
+										{#if item.status === 'up_to_date'}
+											<span class="badge badge-success badge-sm">À jour</span>
+										{:else if item.status === 'update_available'}
+											<span class="badge badge-amber badge-sm">MAJ disponible</span>
+										{:else if item.status === 'incompatible'}
+											<span class="badge badge-danger badge-sm">Non disponible en {updatesReport.game_version}</span>
+										{:else}
+											<span class="badge badge-secondary badge-sm">Inconnu (Modrinth)</span>
+										{/if}
+									</div>
+
+									<div class="item-version-diff">
+										<span class="ver-curr">v{item.current_version}</span>
+										{#if item.status === 'update_available' && item.latest_version_number}
+											<span class="ver-arrow">→</span>
+											<span class="ver-next font-bold text-green">v{item.latest_version_number}</span>
+										{/if}
+									</div>
+								</div>
+
+								{#if item.status === 'update_available'}
+									<button
+										type="button"
+										class="btn btn-primary btn-sm"
+										disabled={isApplyingUpdates}
+										onclick={() => handleApplyUpdates([item])}
+									>
+										<DownloadCloud size={14} />
+										<span>Mettre à jour</span>
+									</button>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<div class="modal-footer">
+					<button class="btn btn-secondary" onclick={() => (updatesModalOpen = false)} disabled={isApplyingUpdates}>
+						Fermer
+					</button>
+					{#if updatesReport.updates_available_count > 0}
+						<button
+							type="button"
+							class="btn btn-primary {isApplyingUpdates ? 'btn-loading' : ''}"
+							disabled={isApplyingUpdates}
+							onclick={() => handleApplyUpdates(updatesReport.items.filter(i => i.status === 'update_available'))}
+						>
+							{#if !isApplyingUpdates}
+								<DownloadCloud size={16} />
+							{/if}
+							<span>Tout mettre à jour ({updatesReport.updates_available_count})</span>
+						</button>
+					{/if}
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Floating Toast Notifications System -->
 	{#if toasts.length > 0}
@@ -448,10 +650,10 @@
 
 					<div class="toast-body">
 						<div class="toast-title">{toast.title}</div>
-						<div class="toast-message">{toast.message}</div>
+						<div class="toast-msg">{toast.message}</div>
 					</div>
 
-					<button class="toast-close-btn" aria-label="Close notification" onclick={() => removeToast(toast.id)}>
+					<button class="toast-close" onclick={() => removeToast(toast.id)}>
 						<X size={14} />
 					</button>
 				</div>
@@ -464,247 +666,310 @@
 	.addons-page {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-		padding: 1.5rem;
-		max-width: 1600px;
-		margin: 0 auto;
-		width: 100%;
+		gap: var(--space-6);
 	}
 
+	/* Header */
 	.page-header {
 		display: flex;
 		flex-direction: column;
-		gap: 1.25rem;
-		background: var(--surface-card, #161922);
-		border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
-		border-radius: 12px;
-		padding: 1.5rem;
+		gap: var(--space-4);
 	}
-
 	.header-main {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
+		gap: var(--space-4);
 	}
-
 	.title-with-icon {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--space-3);
 	}
-
 	.page-icon-box {
+		width: 44px;
+		height: 44px;
+		border-radius: var(--radius-card);
+		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12));
+		border: 1px solid var(--accent-blue-border, rgba(59, 130, 246, 0.25));
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 48px;
-		height: 48px;
-		border-radius: 10px;
-		background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
-		border: 1px solid rgba(99, 102, 241, 0.3);
-		color: #a855f7;
+		color: var(--accent-blue-text, #60a5fa);
 	}
-
 	.page-title {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--text-heading, #ffffff);
-		letter-spacing: -0.02em;
+		font-size: var(--font-size-2xl);
+		font-weight: var(--font-weight-bold);
+		color: var(--text-primary);
+		margin: 0;
+	}
+	.page-description {
+		font-size: var(--font-size-sm);
+		color: var(--text-secondary);
 		margin: 0;
 	}
 
-	.page-description {
-		font-size: 0.875rem;
-		color: var(--text-muted, #94a3b8);
-		margin-top: 0.25rem;
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+	.engine-badge-box {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-input);
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		font-size: var(--font-size-xs);
+		color: var(--text-secondary);
+	}
+	.engine-indicator-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background-color: #22c55e;
+		box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+	}
+	.check-updates-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 
-	/* Tabs Bar Styling */
+	/* Tabs Bar */
 	.tabs-nav-container {
 		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
-		padding-top: 1.25rem;
 		overflow-x: auto;
+		gap: var(--space-2);
+		border-bottom: 1px solid var(--border);
+		padding-bottom: var(--space-1);
 	}
-
 	.tab-btn {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.625rem 1rem;
-		border-radius: 8px;
-		background: transparent;
-		border: 1px solid transparent;
-		color: var(--text-muted, #94a3b8);
-		font-weight: 500;
-		font-size: 0.875rem;
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-4);
+		border: none;
+		background: none;
+		color: var(--text-secondary);
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-medium);
 		cursor: pointer;
-		transition: all 0.2s ease;
+		border-bottom: 2px solid transparent;
+		transition: all var(--transition-fast);
 		white-space: nowrap;
 	}
-
 	.tab-btn:hover {
-		background: rgba(255, 255, 255, 0.05);
-		color: var(--text-heading, #ffffff);
+		color: var(--text-primary);
 	}
-
 	.tab-btn.active {
-		background: var(--surface-hover, rgba(255, 255, 255, 0.08));
-		border-color: rgba(99, 102, 241, 0.4);
-		color: #a855f7;
-		font-weight: 600;
+		color: var(--accent-blue);
+		border-bottom-color: var(--accent-blue);
 	}
-
 	.tab-badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.125rem 0.5rem;
-		font-size: 0.75rem;
-		font-weight: 600;
+		font-size: 11px;
+		font-family: var(--font-mono);
+		padding: 1px 6px;
+		border-radius: 10px;
+		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.08));
+	}
+	.badge-pill {
 		border-radius: 999px;
-		background: rgba(16, 185, 129, 0.2);
-		color: #34d399;
+		padding: 2px 7px;
 	}
 
-	.tab-badge.badge-purple {
-		background: rgba(168, 85, 247, 0.2);
-		color: #c084fc;
-	}
-
-	.tab-badge.badge-amber {
-		background: rgba(245, 158, 11, 0.2);
-		color: #fbbf24;
-	}
-
-	.tab-badge.badge-teal {
-		background: rgba(20, 184, 166, 0.2);
-		color: #2dd4bf;
-	}
-
-	.tab-sparkle-pill {
-		display: inline-flex;
+	/* SubView Segmented Switcher */
+	.subview-header {
+		display: flex;
 		align-items: center;
-		gap: 0.25rem;
-		padding: 0.125rem 0.5rem;
-		font-size: 0.75rem;
-		border-radius: 999px;
-		background: rgba(99, 102, 241, 0.15);
-		color: #818cf8;
-		border: 1px solid rgba(99, 102, 241, 0.3);
+		justify-content: space-between;
+		margin-bottom: var(--space-4);
+	}
+	.subview-segmented {
+		display: flex;
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-input);
+		padding: 3px;
+		gap: 2px;
+	}
+	.subview-btn {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-4);
+		border: none;
+		background: none;
+		border-radius: calc(var(--radius-input) - 2px);
+		color: var(--text-secondary);
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-medium);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+	.subview-btn:hover {
+		color: var(--text-primary);
+	}
+	.subview-btn.active {
+		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12));
+		color: var(--accent-blue-text, #60a5fa);
+		font-weight: var(--font-weight-semibold);
 	}
 
-	.tab-content {
-		width: 100%;
+	/* Updates Modal */
+	.updates-modal-card {
+		max-width: 680px;
 	}
-
-	.tab-section-container {
+	.updates-modal-body {
 		display: flex;
 		flex-direction: column;
-		gap: 2rem;
+		gap: var(--space-4);
+		max-height: 60vh;
+		overflow-y: auto;
 	}
-
-	.section-block {
+	.updates-stats-row {
 		display: flex;
-		flex-direction: column;
-		gap: 1rem;
+		flex-wrap: wrap;
+		gap: var(--space-2);
 	}
-
-	.section-title {
+	.update-stat-chip {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: var(--text-heading, #ffffff);
-		margin: 0;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-input);
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-medium);
+	}
+	.chip-green { background-color: rgba(34, 197, 94, 0.12); color: #4ade80; }
+	.chip-amber { background-color: rgba(245, 158, 11, 0.12); color: #fbbf24; }
+	.chip-red { background-color: rgba(239, 68, 68, 0.12); color: #f87171; }
+
+	.updates-list-container {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+	.update-list-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--space-3);
+		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		border: 1px solid var(--border);
+		border-radius: var(--radius-input);
+		gap: var(--space-3);
+	}
+	.update-item-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		flex: 1;
+		min-width: 0;
+	}
+	.item-header-row {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+	.item-title {
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-primary);
+		font-size: var(--font-size-sm);
+	}
+	.item-file {
+		font-size: 11px;
+		color: var(--text-muted);
+	}
+	.item-version-diff {
+		font-size: var(--font-size-xs);
+		color: var(--text-secondary);
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+	}
+	.ver-arrow {
+		color: var(--text-muted);
 	}
 
-	/* Toast Notification System Styles */
+	/* Toast Container */
 	.toast-container {
 		position: fixed;
-		bottom: 1.5rem;
-		right: 1.5rem;
-		z-index: 9999;
+		bottom: var(--space-6);
+		right: var(--space-6);
+		z-index: 1000;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		max-width: 400px;
+		gap: var(--space-2);
+		max-width: 380px;
 	}
-
 	.toast-item {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.75rem;
-		padding: 0.875rem 1rem;
-		border-radius: 10px;
-		background: #1e2330;
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-		color: #ffffff;
-		animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-card);
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		box-shadow: var(--shadow-lg);
+		color: var(--text-primary);
+		font-size: var(--font-size-sm);
 	}
-
-	.toast-success {
-		border-left: 4px solid #10b981;
-	}
-	.toast-success .toast-icon {
-		color: #10b981;
-	}
-
-	.toast-error {
-		border-left: 4px solid #ef4444;
-	}
-	.toast-error .toast-icon {
-		color: #ef4444;
-	}
-
-	.toast-info {
-		border-left: 4px solid #3b82f6;
-	}
-	.toast-info .toast-icon {
-		color: #3b82f6;
-	}
-
-	.toast-body {
-		flex: 1;
-	}
-
-	.toast-title {
-		font-weight: 600;
-		font-size: 0.875rem;
-		margin-bottom: 0.125rem;
-	}
-
-	.toast-message {
-		font-size: 0.8125rem;
-		color: #94a3b8;
-		line-height: 1.4;
-	}
-
-	.toast-close-btn {
-		background: transparent;
+	.toast-success { border-left: 4px solid #22c55e; }
+	.toast-error { border-left: 4px solid #ef4444; }
+	.toast-info { border-left: 4px solid #3b82f6; }
+	.toast-body { flex: 1; }
+	.toast-title { font-weight: var(--font-weight-semibold); margin-bottom: 2px; }
+	.toast-msg { font-size: var(--font-size-xs); color: var(--text-secondary); }
+	.toast-close {
+		background: none;
 		border: none;
-		color: #64748b;
+		color: var(--text-muted);
 		cursor: pointer;
-		padding: 0.125rem;
-		border-radius: 4px;
-
-		&:hover {
-			color: #ffffff;
-		}
+		padding: 0;
 	}
 
-	@keyframes slideIn {
-		from {
-			opacity: 0;
-			transform: translateY(12px) scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0) scale(1);
-		}
+	/* Modal generic backdrop */
+	.modal-backdrop {
+		position: fixed;
+		inset: 0;
+		background-color: rgba(0, 0, 0, 0.7);
+		backdrop-filter: blur(4px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+		padding: var(--space-4);
+	}
+	.modal-card {
+		width: 100%;
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-modal, 12px);
+		overflow: hidden;
+	}
+	.modal-header {
+		padding: var(--space-4);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		border-bottom: 1px solid var(--border);
+	}
+	.modal-sub {
+		font-size: var(--font-size-xs);
+		color: var(--text-secondary);
+	}
+	.modal-footer {
+		padding: var(--space-4);
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--space-3);
+		border-top: 1px solid var(--border);
+		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
 	}
 </style>

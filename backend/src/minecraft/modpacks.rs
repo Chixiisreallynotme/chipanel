@@ -378,24 +378,16 @@ pub async fn deploy_modpack(
                     .map_err(|e| AppError::InternalError(format!("Failed to read manifest.json: {}", e)))?;
                 manifest_data = Some(contents);
             } else if outpath_str.starts_with("overrides/") || outpath_str.starts_with("overrides\\") {
-                // `strip_prefix` fails for backslash-separated entries such as `overrides\mods\x.jar`:
-                // on Unix that whole string is ONE path component, so "overrides" is not a prefix.
-                // This used to be `.unwrap()`, and with `panic = "abort"` in the release profile a
-                // single malformed (Windows-authored) zip aborted the entire process, not just the
-                // request. Such entries violate the ZIP spec (APPNOTE 4.4.17.1 mandates `/`), so
-                // skip them and report the count to the caller instead of guessing at a split.
-                let Ok(relative) = outpath.strip_prefix("overrides") else {
-                    warn!(
-                        "Skipping modpack override entry with non-standard path separator: {}",
-                        outpath_str
-                    );
-                    skipped_entries += 1;
+                let normalized_str = outpath_str.replace('\\', "/");
+                let relative_str = if let Some(stripped) = normalized_str.strip_prefix("overrides/") {
+                    stripped
+                } else {
                     continue;
                 };
-                if relative.as_os_str().is_empty() {
+                if relative_str.is_empty() {
                     continue;
                 }
-                let dest_path = target_dir.join(relative);
+                let dest_path = target_dir.join(relative_str);
                 if file.name().ends_with('/') || file.name().ends_with('\\') {
                     std::fs::create_dir_all(&dest_path)
                         .map_err(|e| AppError::InternalError(format!("Failed to create override dir: {}", e)))?;

@@ -107,6 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest("/api/metrics", routes::metrics_router())
         .nest("/api/profiles", routes::profiles_router())
         .nest("/api/tools", routes::tools_router())
+        .route("/api/public/resourcepack/:filename", get(routes::server::public_resourcepack_handler))
         .route("/api/health", get(health_handler))
         .route("/ws", get(routes::websocket::websocket_handler))
         // Unknown /api/* paths must 404 as JSON; without this the SPA fallback below

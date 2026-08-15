@@ -52,40 +52,6 @@
 	let isDeleting = $state(false);
 	let deleteError = $state(null);
 
-	// Fallback sample profiles when API is initializing
-	const fallbackProfiles = [
-		{
-			id: 'prof-1',
-			name: 'Fabulously Optimized 5.8.0',
-			modpack_title: 'Fabulously Optimized',
-			created_at: '2026-08-01T14:32:00Z',
-			is_active: true,
-			loader: 'Fabric',
-			mod_count: 34,
-			game_version: '1.20.4'
-		},
-		{
-			id: 'prof-2',
-			name: 'All The Mods 9 (Endgame Prep)',
-			modpack_title: 'All the Mods 9 - ATM9',
-			created_at: '2026-07-25T09:15:00Z',
-			is_active: false,
-			loader: 'Forge',
-			mod_count: 248,
-			game_version: '1.20.1'
-		},
-		{
-			id: 'prof-3',
-			name: 'Purpur Survival Base Engine',
-			modpack_title: 'Purpur Essentials Suite',
-			created_at: '2026-07-10T18:45:00Z',
-			is_active: false,
-			loader: 'Purpur',
-			mod_count: 18,
-			game_version: '1.20.4'
-		}
-	];
-
 	onMount(() => {
 		loadProfiles();
 	});
@@ -96,14 +62,14 @@
 
 		try {
 			const res = await apiGet('/api/modpacks/profiles');
-			if (Array.isArray(res) && res.length > 0) {
+			if (Array.isArray(res)) {
 				profiles = res;
 			} else {
-				profiles = fallbackProfiles;
+				profiles = [];
 			}
 		} catch (err) {
-			console.log('Using default profiles state:', err.message);
-			profiles = fallbackProfiles;
+			console.log('Erreur chargement profils:', err.message);
+			profiles = [];
 		} finally {
 			isLoading = false;
 		}
@@ -112,7 +78,7 @@
 	function formatDate(dateStr) {
 		if (!dateStr) return 'N/A';
 		try {
-			return new Date(dateStr).toLocaleDateString('en-US', {
+			return new Date(dateStr).toLocaleDateString('fr-FR', {
 				year: 'numeric',
 				month: 'short',
 				day: 'numeric',
@@ -145,19 +111,18 @@
 		switchError = null;
 
 		try {
-			await apiPost('/api/modpacks/profiles/switch', { profile_id: targetSwitchProfile.id }).catch(() => {});
+			await apiPost('/api/modpacks/profiles/switch', { profile_name: targetSwitchProfile.name });
 			
-			// Update local active state
 			profiles = profiles.map((p) => ({
 				...p,
-				is_active: p.id === targetSwitchProfile.id
+				is_active: p.name === targetSwitchProfile.name
 			}));
 
 			await onSwitchProfile(targetSwitchProfile);
 			closeSwitchModal();
 		} catch (err) {
 			console.error('Failed to switch profile:', err);
-			switchError = err.message || 'Failed to switch server profile.';
+			switchError = err.message || 'Impossible de basculer vers ce profil.';
 		} finally {
 			isSwitching = false;
 		}
@@ -184,19 +149,14 @@
 		deleteError = null;
 
 		try {
-			await apiFetch('/api/modpacks/profiles', {
-				method: 'DELETE',
-				body: { profile_id: targetDeleteProfile.id }
-			}).catch(() => {});
+			await apiPost('/api/modpacks/profiles/delete', { profile_name: targetDeleteProfile.name });
 
-			const deletedProf = targetDeleteProfile;
-			profiles = profiles.filter((p) => p.id !== deletedProf.id);
-
-			await onDeleteProfile(deletedProf);
+			profiles = profiles.filter((p) => p.name !== targetDeleteProfile.name);
+			await onDeleteProfile(targetDeleteProfile);
 			closeDeleteModal();
 		} catch (err) {
 			console.error('Failed to delete profile:', err);
-			deleteError = err.message || 'Failed to delete server profile.';
+			deleteError = err.message || 'Échec de la suppression du profil.';
 		} finally {
 			isDeleting = false;
 		}
@@ -213,113 +173,125 @@
 <svelte:window onkeydown={handleWindowKeydown} />
 
 <div class="profile-manager-container">
-	<!-- Actions Bar -->
-	<div class="top-bar card">
-		<div class="top-bar-body">
-			<div class="top-info">
-				<HardDrive size={20} class="text-accent" />
+	<!-- Top Overview Card -->
+	<div class="profiles-header-card card">
+		<div class="header-body">
+			<div class="header-text">
+				<div class="header-icon-box">
+					<HardDrive size={22} />
+				</div>
 				<div>
-					<h3 class="top-title">Saved Server Profiles</h3>
-					<p class="top-sub">
-						Each profile stores server configuration, mod loader dependencies, and files. Switch active runtime instantly.
+					<h3 class="header-title">Profils & Instantanés Serveur</h3>
+					<p class="header-desc">
+						Basculez instantanément entre différentes configurations de mods, plugins et mondes sans perdre vos fichiers.
 					</p>
 				</div>
 			</div>
 
 			<button
-				class="btn btn-secondary {isLoading ? 'btn-loading' : ''}"
-				onclick={loadProfiles}
+				type="button"
+				class="btn btn-secondary btn-sm refresh-btn {isLoading ? 'btn-loading' : ''}"
 				disabled={isLoading}
+				onclick={loadProfiles}
+				title="Actualiser la liste des profils"
 			>
 				{#if !isLoading}
-					<RefreshCw size={16} />
+					<RefreshCw size={14} />
 				{/if}
-				<span>Refresh Profiles</span>
+				<span>Actualiser</span>
 			</button>
 		</div>
 	</div>
 
-	<!-- Profiles Card Grid -->
-	{#if isLoading}
-		<div class="loading-state">
+	<!-- Profiles Grid -->
+	{#if isLoading && profiles.length === 0}
+		<div class="loading-state card">
 			<Loader2 size={36} class="spinner" />
-			<p>Loading saved profiles...</p>
+			<p>Chargement des profils du serveur…</p>
 		</div>
 	{:else if profiles.length === 0}
 		<div class="empty-state card">
-			<div class="card-body empty-body">
-				<HardDrive size={48} class="empty-icon" />
-				<h3>No Saved Server Profiles</h3>
-				<p>Deploy a modpack from the Modpack Catalog tab to create your first server profile.</p>
-			</div>
+			<HardDrive size={44} class="empty-icon" />
+			<h3>Aucun profil sauvegardé</h3>
+			<p>Installez un modpack depuis l'onglet Modpacks pour créer automatiquement votre premier profil isolé.</p>
 		</div>
 	{:else}
 		<div class="profiles-grid">
-			{#each profiles as prof (prof.id)}
-				<div class="card profile-card {prof.is_active ? 'profile-active' : ''}">
-					<!-- Card Header -->
-					<div class="card-header profile-header">
-						<div class="header-left-col">
-							<span class="badge {prof.is_active ? 'badge-success' : 'badge-secondary'} active-badge">
-								{#if prof.is_active}
-									<span class="status-dot status-dot-success status-dot-pulse"></span>
-									ACTIVE
-								{:else}
-									INACTIVE
-								{/if}
-							</span>
-							<span class="badge badge-blue loader-badge">{prof.loader}</span>
+			{#each profiles as profile (profile.name)}
+				<div class="card profile-card {profile.is_active ? 'card-active' : ''}">
+					<!-- Card Header with status -->
+					<div class="profile-card-header">
+						<div class="profile-title-box">
+							<h3 class="profile-name" title={profile.name}>{profile.name}</h3>
+							{#if profile.modpack_title}
+								<span class="modpack-parent-badge">
+									<Boxes size={12} />
+									{profile.modpack_title}
+								</span>
+							{/if}
 						</div>
 
-						<span class="mc-ver-tag">MC {prof.game_version || '1.20.4'}</span>
+						{#if profile.is_active}
+							<span class="badge badge-success active-badge">
+								<span class="status-dot status-dot-success status-dot-pulse"></span>
+								Profil Actif
+							</span>
+						{:else}
+							<span class="badge badge-secondary inactive-badge">
+								Inactif
+							</span>
+						{/if}
 					</div>
 
-					<!-- Card Body -->
-					<div class="card-body profile-body">
-						<h3 class="profile-name" title={prof.name}>{prof.name}</h3>
-						
-						{#if prof.modpack_title}
-							<div class="modpack-source">
-								<Boxes size={13} />
-								<span>Source: {prof.modpack_title}</span>
+					<!-- Card Body Details -->
+					<div class="profile-card-body">
+						<div class="profile-details-grid">
+							<div class="detail-item">
+								<span class="detail-label">Chargeur :</span>
+								<span class="detail-value font-semibold text-primary">{profile.loader || 'Fabric'}</span>
 							</div>
-						{/if}
 
-						<div class="meta-list">
-							<div class="meta-item">
-								<Calendar size={14} class="meta-icon" />
-								<span>Created: {formatDate(prof.created_at)}</span>
+							<div class="detail-item">
+								<span class="detail-label">Version MC :</span>
+								<span class="detail-value font-mono">{profile.game_version || '1.20.4'}</span>
 							</div>
-							<div class="meta-item">
-								<Layers size={14} class="meta-icon" />
-								<span>{prof.mod_count} Included Mods / Plugins</span>
+
+							<div class="detail-item">
+								<span class="detail-label">Mods installés :</span>
+								<span class="detail-value">{profile.mod_count || 0} mods</span>
+							</div>
+
+							<div class="detail-item">
+								<span class="detail-label">Créé le :</span>
+								<span class="detail-value">{formatDate(profile.created_at)}</span>
 							</div>
 						</div>
 					</div>
 
 					<!-- Card Footer Actions -->
-					<div class="card-footer profile-footer">
-						{#if prof.is_active}
-							<div class="current-active-indicator">
-								<CheckCircle2 size={16} />
-								<span>Currently Running</span>
+					<div class="profile-card-footer">
+						{#if profile.is_active}
+							<div class="active-indicator">
+								<Check size={16} class="text-green" />
+								<span>Actuellement utilisé</span>
 							</div>
 						{:else}
 							<button
-								class="btn btn-secondary btn-sm switch-btn"
-								onclick={() => openSwitchModal(prof)}
+								type="button"
+								class="btn btn-primary btn-sm switch-btn"
+								onclick={() => openSwitchModal(profile)}
 							>
 								<ArrowRightLeft size={14} />
-								<span>Switch to Profile</span>
+								<span>Activer ce profil</span>
 							</button>
 
 							<button
-								class="btn btn-ghost btn-sm btn-icon danger-btn"
-								onclick={() => openDeleteModal(prof)}
-								title="Delete Profile"
-								aria-label="Delete Profile"
+								type="button"
+								class="btn btn-ghost btn-icon btn-sm delete-btn"
+								onclick={() => openDeleteModal(profile)}
+								title="Supprimer ce profil"
 							>
-								<Trash2 size={14} />
+								<Trash2 size={16} />
 							</button>
 						{/if}
 					</div>
@@ -331,67 +303,43 @@
 
 <!-- Switch Profile Confirmation Modal -->
 {#if switchModalOpen && targetSwitchProfile}
-	<div
-		class="modal-backdrop"
-		onclick={closeSwitchModal}
-		aria-hidden="true"
-	>
-		<div
-			class="modal prompt-modal"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="switch-modal-title"
-		>
+	<div class="modal-backdrop" onclick={closeSwitchModal} role="presentation">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
 			<div class="modal-header">
-				<div class="modal-title-row">
-					<ArrowRightLeft size={20} class="text-accent" />
-					<h3 id="switch-modal-title" class="modal-title">Switch Active Profile</h3>
+				<div class="modal-title-with-icon">
+					<div class="modal-icon-box icon-blue">
+						<ArrowRightLeft size={20} />
+					</div>
+					<h3>Activer le profil</h3>
 				</div>
-				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeSwitchModal} disabled={isSwitching} aria-label="Close modal">
+				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeSwitchModal} disabled={isSwitching}>
 					<X size={18} />
 				</button>
 			</div>
 
 			<div class="modal-body">
+				<p>
+					Voulez-vous basculer le serveur vers le profil <strong>{targetSwitchProfile.name}</strong> ?
+				</p>
+				<p class="modal-warning">
+					Les dossiers <code>/mods</code> et <code>/config</code> actuels seront archivés dans votre profil actuel avant d'appliquer ce profil.
+				</p>
+
 				{#if switchError}
-					<div class="alert-banner alert-danger mb-4">
-						<AlertCircle size={18} />
+					<div class="alert-banner alert-danger">
+						<AlertCircle size={16} />
 						<span>{switchError}</span>
 					</div>
 				{/if}
-
-				<p class="modal-prompt-text">
-					Are you sure you want to switch the active server profile to <strong>"{targetSwitchProfile.name}"</strong>?
-				</p>
-
-				<div class="profile-preview-box">
-					<div class="prev-row">
-						<span class="prev-label">Loader:</span>
-						<span class="prev-val">{targetSwitchProfile.loader}</span>
-					</div>
-					<div class="prev-row">
-						<span class="prev-label">Minecraft Version:</span>
-						<span class="prev-val">MC {targetSwitchProfile.game_version || '1.20.4'}</span>
-					</div>
-					<div class="prev-row">
-						<span class="prev-label">Mod Count:</span>
-						<span class="prev-val">{targetSwitchProfile.mod_count} mods</span>
-					</div>
-				</div>
-
-				<div class="info-note">
-					<CheckCircle2 size={16} />
-					<span>Switching profiles updates active server environment configuration and files.</span>
-				</div>
 			</div>
 
 			<div class="modal-footer">
 				<button class="btn btn-secondary" onclick={closeSwitchModal} disabled={isSwitching}>
-					Cancel
+					Annuler
 				</button>
 				<button
+					type="button"
 					class="btn btn-primary {isSwitching ? 'btn-loading' : ''}"
 					onclick={confirmSwitch}
 					disabled={isSwitching}
@@ -399,7 +347,7 @@
 					{#if !isSwitching}
 						<ArrowRightLeft size={16} />
 					{/if}
-					<span>Confirm Switch</span>
+					<span>Confirmer le basculement</span>
 				</button>
 			</div>
 		</div>
@@ -408,52 +356,43 @@
 
 <!-- Delete Profile Confirmation Modal -->
 {#if deleteModalOpen && targetDeleteProfile}
-	<div
-		class="modal-backdrop"
-		onclick={closeDeleteModal}
-		aria-hidden="true"
-	>
-		<div
-			class="modal prompt-modal"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="delete-modal-title"
-		>
+	<div class="modal-backdrop" onclick={closeDeleteModal} role="presentation">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
 			<div class="modal-header">
-				<div class="modal-title-row">
-					<ShieldAlert size={20} class="text-danger" />
-					<h3 id="delete-modal-title" class="modal-title">Delete Profile</h3>
+				<div class="modal-title-with-icon">
+					<div class="modal-icon-box icon-danger">
+						<Trash2 size={20} />
+					</div>
+					<h3>Supprimer le profil</h3>
 				</div>
-				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeDeleteModal} disabled={isDeleting} aria-label="Close modal">
+				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeDeleteModal} disabled={isDeleting}>
 					<X size={18} />
 				</button>
 			</div>
 
 			<div class="modal-body">
+				<p>
+					Êtes-vous sûr de vouloir supprimer définitivement le profil <strong>{targetDeleteProfile.name}</strong> ?
+				</p>
+				<p class="modal-warning">
+					Tous les mods et fichiers de configuration sauvegardés dans ce profil seront irréversiblement effacés.
+				</p>
+
 				{#if deleteError}
-					<div class="alert-banner alert-danger mb-4">
-						<AlertCircle size={18} />
+					<div class="alert-banner alert-danger">
+						<AlertCircle size={16} />
 						<span>{deleteError}</span>
 					</div>
 				{/if}
-
-				<p class="modal-prompt-text">
-					Are you sure you want to permanently delete profile <strong>"{targetDeleteProfile.name}"</strong>?
-				</p>
-
-				<div class="danger-warning-box">
-					<ShieldAlert size={16} />
-					<span>This will remove the profile record and its stored mod configuration from server storage. This action cannot be undone.</span>
-				</div>
 			</div>
 
 			<div class="modal-footer">
 				<button class="btn btn-secondary" onclick={closeDeleteModal} disabled={isDeleting}>
-					Cancel
+					Annuler
 				</button>
 				<button
+					type="button"
 					class="btn btn-danger {isDeleting ? 'btn-loading' : ''}"
 					onclick={confirmDelete}
 					disabled={isDeleting}
@@ -461,7 +400,7 @@
 					{#if !isDeleting}
 						<Trash2 size={16} />
 					{/if}
-					<span>Delete Profile</span>
+					<span>Supprimer</span>
 				</button>
 			</div>
 		</div>
@@ -472,74 +411,47 @@
 	.profile-manager-container {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-6);
+		gap: var(--space-4);
 	}
 
-	.top-bar-body {
-		padding: var(--space-5);
+	.profiles-header-card {
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+	}
+	.header-body {
+		padding: var(--space-4);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-4);
-		flex-wrap: wrap;
 	}
-
-	.top-info {
+	.header-text {
 		display: flex;
 		align-items: center;
-		gap: var(--space-4);
+		gap: var(--space-3);
 	}
-
-	.top-title {
-		font-size: var(--font-size-md);
-		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
-	}
-
-	.top-sub {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin-top: 2px;
-	}
-
-	.text-accent {
-		color: var(--accent-blue-text);
-	}
-
-	.text-danger {
-		color: var(--danger-text);
-	}
-
-	.loading-state {
+	.header-icon-box {
+		width: 40px;
+		height: 40px;
+		border-radius: var(--radius-input);
+		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12));
 		display: flex;
-		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding: var(--space-16) var(--space-6);
-		gap: var(--space-4);
-		color: var(--text-muted);
+		color: var(--accent-blue-text, #60a5fa);
+		flex-shrink: 0;
 	}
-
-	.spinner {
-		animation: spin 1s linear infinite;
+	.header-title {
+		font-size: var(--font-size-base);
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-primary);
+		margin: 0;
 	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
-
-	.empty-state {
-		text-align: center;
-	}
-
-	.empty-body {
-		padding: var(--space-12) var(--space-6);
-	}
-
-	.empty-icon {
-		color: var(--text-muted);
-		opacity: 0.4;
-		margin-bottom: var(--space-3);
+	.header-desc {
+		font-size: var(--font-size-xs);
+		color: var(--text-secondary);
+		margin: 0;
 	}
 
 	.profiles-grid {
@@ -547,210 +459,166 @@
 		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 		gap: var(--space-4);
 	}
-
 	.profile-card {
 		background-color: var(--bg-surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
 		display: flex;
 		flex-direction: column;
-		transition: border-color var(--transition-fast), transform var(--transition-fast);
+		justify-content: space-between;
+		transition: all var(--transition-fast);
+	}
+	.card-active {
+		border-color: var(--accent-blue);
+		box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+	}
+	.profile-card-header {
+		padding: var(--space-4);
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--space-3);
+		border-bottom: 1px solid var(--border);
+	}
+	.profile-title-box {
+		flex: 1;
+		min-width: 0;
+	}
+	.profile-name {
+		font-size: var(--font-size-base);
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-primary);
+		margin: 0 0 4px 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.modpack-parent-badge {
+		font-size: 11px;
+		color: var(--text-muted);
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.active-badge {
+		font-size: 11px;
 	}
 
-	.profile-card:hover {
-		border-color: var(--border-focus);
-		transform: translateY(-2px);
-		box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+	.profile-card-body {
+		padding: var(--space-4);
+		flex: 1;
+	}
+	.profile-details-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--space-3);
+	}
+	.detail-item {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.detail-label {
+		font-size: 11px;
+		color: var(--text-secondary);
+	}
+	.detail-value {
+		font-size: var(--font-size-xs);
+		color: var(--text-primary);
 	}
 
-	.profile-card.profile-active {
-		border-color: var(--accent-green-border);
-		background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(74, 222, 128, 0.03) 100%);
-	}
-
-	.profile-header {
+	.profile-card-footer {
 		padding: var(--space-3) var(--space-4);
-		border-bottom: 1px solid var(--border-subtle);
+		border-top: 1px solid var(--border);
+		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-	}
-
-	.header-left-col {
-		display: flex;
-		align-items: center;
 		gap: var(--space-2);
 	}
-
-	.active-badge {
-		gap: 6px;
-	}
-
-	.mc-ver-tag {
-		font-size: var(--font-size-xs);
-		font-family: var(--font-mono);
-		color: var(--text-muted);
-	}
-
-	.profile-body {
-		padding: var(--space-4);
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-	}
-
-	.profile-name {
-		font-size: var(--font-size-md);
-		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
-		line-height: 1.3;
-	}
-
-	.modpack-source {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: var(--font-size-xs);
-		color: var(--accent-blue-text);
-		background-color: var(--accent-blue-bg);
-		padding: 3px 8px;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--accent-blue-border);
-		width: fit-content;
-	}
-
-	.meta-list {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		margin-top: 4px;
-	}
-
-	.meta-item {
+	.active-indicator {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
 		font-size: var(--font-size-xs);
 		color: var(--text-secondary);
-	}
-
-	.meta-icon {
-		color: var(--text-muted);
-	}
-
-	.profile-footer {
-		padding: var(--space-3) var(--space-4);
-		background-color: rgba(0, 0, 0, 0.15);
-		border-top: 1px solid var(--border-subtle);
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.current-active-indicator {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: var(--font-size-xs);
-		font-weight: var(--font-weight-semibold);
-		color: var(--accent-green);
-		padding: 4px 8px;
-	}
-
-	.switch-btn {
-		gap: 6px;
-	}
-
-	.danger-btn:hover {
-		color: var(--danger-text);
-		background-color: var(--danger-bg);
-	}
-
-	/* Modals */
-	.prompt-modal {
-		max-width: 480px;
-	}
-
-	.modal-title-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.modal-prompt-text {
-		font-size: var(--font-size-sm);
-		color: var(--text-primary);
-		line-height: 1.5;
-		margin-bottom: var(--space-4);
-	}
-
-	.profile-preview-box {
-		background-color: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-input);
-		padding: var(--space-3) var(--space-4);
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		margin-bottom: var(--space-4);
-	}
-
-	.prev-row {
-		display: flex;
-		justify-content: space-between;
-		font-size: var(--font-size-xs);
-	}
-
-	.prev-label {
-		color: var(--text-muted);
-	}
-
-	.prev-val {
-		color: var(--text-primary);
 		font-weight: var(--font-weight-medium);
 	}
+	.switch-btn {
+		flex: 1;
+	}
 
-	.info-note {
+	.loading-state, .empty-state {
+		padding: var(--space-10);
+		text-align: center;
 		display: flex;
-		align-items: flex-start;
-		gap: var(--space-2);
-		font-size: var(--font-size-xs);
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		color: var(--text-secondary);
+	}
+	.empty-icon {
 		color: var(--text-muted);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		padding: var(--space-3);
-		border-radius: var(--radius-input);
+		margin-bottom: var(--space-3);
 	}
 
-	.danger-warning-box {
+	/* Modal Backdrop */
+	.modal-backdrop {
+		position: fixed;
+		inset: 0;
+		background-color: rgba(0, 0, 0, 0.7);
+		backdrop-filter: blur(4px);
 		display: flex;
-		align-items: flex-start;
-		gap: var(--space-2);
-		font-size: var(--font-size-xs);
-		color: var(--danger-text);
-		background-color: var(--danger-bg);
-		border: 1px solid var(--danger-border);
-		padding: var(--space-3);
-		border-radius: var(--radius-input);
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+		padding: var(--space-4);
 	}
-
-	.alert-banner {
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-btn);
+	.modal-card {
+		width: 100%;
+		max-width: 480px;
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-modal, 12px);
+		overflow: hidden;
+	}
+	.modal-header {
+		padding: var(--space-4);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		border-bottom: 1px solid var(--border);
+	}
+	.modal-title-with-icon {
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
+	}
+	.modal-icon-box {
+		width: 32px;
+		height: 32px;
+		border-radius: var(--radius-input);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.modal-body {
+		padding: var(--space-4);
+		color: var(--text-secondary);
 		font-size: var(--font-size-sm);
 	}
-
-	.alert-danger {
-		background-color: var(--danger-bg);
-		border: 1px solid var(--danger-border);
-		color: var(--danger-text);
+	.modal-warning {
+		font-size: var(--font-size-xs);
+		color: var(--text-muted);
+		margin-top: var(--space-2);
 	}
-
-	.mb-4 {
-		margin-bottom: var(--space-4);
+	.modal-footer {
+		padding: var(--space-4);
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: var(--space-3);
+		border-top: 1px solid var(--border);
+		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
 	}
 </style>

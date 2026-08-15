@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::Path;
 use futures_util::TryStreamExt;
@@ -72,6 +73,8 @@ pub struct ModrinthFile {
     pub primary: bool,
     #[serde(default)]
     pub size: u64,
+    #[serde(default)]
+    pub hashes: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,6 +85,20 @@ pub struct ModrinthDependency {
     pub version_id: Option<String>,
     #[serde(default)]
     pub dependency_type: String,
+}
+
+#[derive(Debug, Serialize)]
+struct VersionFilesUpdateRequest<'a> {
+    hashes: &'a [String],
+    algorithm: &'a str,
+    loaders: &'a [&'a str],
+    game_versions: &'a [&'a str],
+}
+
+#[derive(Debug, Serialize)]
+struct VersionFilesRequest<'a> {
+    hashes: &'a [String],
+    algorithm: &'a str,
 }
 
 #[derive(Debug, Clone)]
@@ -100,7 +117,7 @@ impl ModrinthClient {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
             .user_agent("ChiPanel/0.1.0 (https://github.com/chiserv/chipanel)")
-            .timeout(std::time::Duration::from_secs(30))
+            .timeout(std::time::Duration::from_secs(45))
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
 
@@ -118,7 +135,7 @@ impl ModrinthClient {
         loader: &str,
         sort: &str,
     ) -> Result<Vec<ModrinthProject>, AppError> {
-        let mut url = format!("{}/search?query={}&limit=24", self.base_url, urlencoding_simple(query));
+        let mut url = format!("{}/search?query={}&limit=30", self.base_url, urlencoding_simple(query));
 
         if !sort.is_empty() {
             let index_val = match sort {
@@ -173,14 +190,7 @@ impl ModrinthClient {
     }
 
     pub async fn get_project_versions(&self, project_id: &str) -> Result<Vec<ModrinthVersion>, AppError> {
-        if project_id.trim().is_empty()
-            || project_id.contains('/')
-            || project_id.contains('\\')
-            || project_id.contains(' ')
-            || project_id.contains("..")
-        {
-            return Err(AppError::BadRequest("Invalid project_id: path traversal or invalid characters forbidden".to_string()));
-        }
+        validate_project_ref(project_id)?;
 
         let url = format!("{}/project/{}/version", self.base_url, project_id);
 
@@ -225,12 +235,7 @@ impl ModrinthClient {
                 .ok_or_else(|| AppError::NotFound("No versions available for project".to_string()))?,
         };
 
-        let primary_file = target_version
-            .files
-            .iter()
-            .find(|f| f.primary && f.filename.ends_with(".jar"))
-            .or_else(|| target_version.files.iter().find(|f| f.filename.ends_with(".jar")))
-            .or_else(|| target_version.files.first())
+        let primary_file = pick_primary_file(&target_version)
             .ok_or_else(|| AppError::NotFound("No suitable download file found in version".to_string()))?;
 
         let filename = &primary_file.filename;
@@ -252,34 +257,11 @@ impl ModrinthClient {
 
         let dest_file_path = target_dir_path.join(filename);
 
-        info!("Downloading Modrinth plugin file from '{}' to {:?}", primary_file.url, dest_file_path);
+        info!("Downloading Modrinth file from '{}' to {:?}", primary_file.url, dest_file_path);
 
-        let response = self
-            .client
-            .get(&primary_file.url)
-            .send()
-            .await
-            .map_err(|e| AppError::InternalError(format!("Failed to download plugin file: {}", e)))?;
+        let bytes_len = self.download_to(&primary_file.url, &dest_file_path).await?;
 
-        if !response.status().is_success() {
-            return Err(AppError::InternalError(format!(
-                "Download HTTP status error: {}",
-                response.status()
-            )));
-        }
-
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|e| AppError::InternalError(format!("Failed to read plugin file bytes: {}", e)))?;
-
-        let bytes_len = bytes.len() as u64;
-
-        tokio::fs::write(&dest_file_path, &bytes)
-            .await
-            .map_err(|e| AppError::InternalError(format!("Failed to write plugin file to disk: {}", e)))?;
-
-        info!("Successfully installed plugin file '{}' ({} bytes)", filename, bytes_len);
+        info!("Successfully installed file '{}' ({} bytes)", filename, bytes_len);
 
         Ok((filename.clone(), bytes_len))
     }
@@ -332,6 +314,88 @@ impl ModrinthClient {
             .map_err(|e| AppError::InternalError(format!("Failed to parse Modrinth versions response: {}", e)))
     }
 
+    /// Batch checks updates for multiple file hashes via `POST /v2/version_files/update`.
+    /// Returns a map of `[original_hash -> latest_compatible_version]`.
+    pub async fn check_version_files_update(
+        &self,
+        hashes: &[String],
+        loaders: &[&str],
+        game_versions: &[&str],
+    ) -> Result<HashMap<String, ModrinthVersion>, AppError> {
+        if hashes.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let url = format!("{}/version_files/update", self.base_url);
+        let req_body = VersionFilesUpdateRequest {
+            hashes,
+            algorithm: "sha512",
+            loaders,
+            game_versions,
+        };
+
+        let resp = self
+            .client
+            .post(&url)
+            .json(&req_body)
+            .send()
+            .await
+            .map_err(|e| AppError::InternalError(format!("Modrinth update check request failed: {}", e)))?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::InternalError(format!(
+                "Modrinth update check returned status {}",
+                resp.status()
+            )));
+        }
+
+        let map: HashMap<String, ModrinthVersion> = resp
+            .json()
+            .await
+            .map_err(|e| AppError::InternalError(format!("Failed to parse Modrinth update response: {}", e)))?;
+
+        Ok(map)
+    }
+
+    /// Batch looks up version metadata for multiple file hashes via `POST /v2/version_files`.
+    /// Returns a map of `[hash -> version_info]`.
+    pub async fn get_version_files(
+        &self,
+        hashes: &[String],
+    ) -> Result<HashMap<String, ModrinthVersion>, AppError> {
+        if hashes.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let url = format!("{}/version_files", self.base_url);
+        let req_body = VersionFilesRequest {
+            hashes,
+            algorithm: "sha512",
+        };
+
+        let resp = self
+            .client
+            .post(&url)
+            .json(&req_body)
+            .send()
+            .await
+            .map_err(|e| AppError::InternalError(format!("Modrinth version files request failed: {}", e)))?;
+
+        if !resp.status().is_success() {
+            return Err(AppError::InternalError(format!(
+                "Modrinth version files returned status {}",
+                resp.status()
+            )));
+        }
+
+        let map: HashMap<String, ModrinthVersion> = resp
+            .json()
+            .await
+            .map_err(|e| AppError::InternalError(format!("Failed to parse Modrinth version files response: {}", e)))?;
+
+        Ok(map)
+    }
+
     /// Fetches an arbitrary JSON endpoint (used for non-Modrinth sources such as
     /// the spark Jenkins CI), returning the raw parsed value.
     pub async fn get_json(&self, url: &str) -> Result<serde_json::Value, AppError> {
@@ -352,32 +416,40 @@ impl ModrinthClient {
             .map_err(|e| AppError::InternalError(format!("Failed to parse JSON response: {}", e)))
     }
 
-    /// Downloads an arbitrary file URL to `dest_path`, returning the byte count.
-    /// Used for sources outside Modrinth (e.g. the spark Jenkins CI).
-    pub async fn download_to(&self, url: &str, dest_path: &Path) -> Result<u64, AppError> {        let response = self
+    /// Streams an arbitrary file URL to `dest_path` without buffering the entire
+    /// payload in RAM. Returns the total byte count written.
+    pub async fn download_to(&self, url: &str, dest_path: &Path) -> Result<u64, AppError> {
+        let response = self
             .client
             .get(url)
             .send()
             .await
-            .map_err(|e| AppError::InternalError(format!("Failed to download file: {}", e)))?;
+            .map_err(|e| AppError::InternalError(format!("Failed to download file from '{}': {}", url, e)))?;
+
         if !response.status().is_success() {
             return Err(AppError::InternalError(format!(
                 "Download HTTP status error: {}",
                 response.status()
             )));
         }
-        let bytes = response
-            .bytes()
+
+        let byte_stream = response
+            .bytes_stream()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+        let mut reader = StreamReader::new(byte_stream);
+
+        let mut file = tokio::fs::File::create(dest_path)
             .await
-            .map_err(|e| AppError::InternalError(format!("Failed to read file bytes: {}", e)))?;
-        let len = bytes.len() as u64;
-        tokio::fs::write(dest_path, &bytes)
+            .map_err(|e| AppError::InternalError(format!("Failed to create destination file {:?}: {}", dest_path, e)))?;
+
+        let bytes_written = tokio::io::copy(&mut reader, &mut file)
             .await
-            .map_err(|e| AppError::InternalError(format!("Failed to write file to disk: {}", e)))?;
-        Ok(len)
+            .map_err(|e| AppError::InternalError(format!("Failed to stream file to disk: {}", e)))?;
+
+        Ok(bytes_written)
     }
 
-    /// Installs the primary jar of a specific version into `target_dir`.
+    /// Installs the primary jar/zip of a specific version into `target_dir`.
     pub async fn install_version_file(
         &self,
         version: &ModrinthVersion,
@@ -432,8 +504,8 @@ fn pick_primary_file(version: &ModrinthVersion) -> Option<&ModrinthFile> {
     version
         .files
         .iter()
-        .find(|f| f.primary && f.filename.ends_with(".jar"))
-        .or_else(|| version.files.iter().find(|f| f.filename.ends_with(".jar")))
+        .find(|f| f.primary && (f.filename.ends_with(".jar") || f.filename.ends_with(".zip")))
+        .or_else(|| version.files.iter().find(|f| f.filename.ends_with(".jar") || f.filename.ends_with(".zip")))
         .or_else(|| version.files.first())
 }
 

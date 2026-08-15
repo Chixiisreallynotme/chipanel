@@ -15,9 +15,8 @@ use crate::{
     minecraft::modpacks::{
         self, DeployModpackRequest, DeployModpackResponse, ProfileInfo,
     },
+    modrinth::client::ModrinthClient,
 };
-
-use crate::modrinth::client::ModrinthClient;
 
 #[derive(Debug, Deserialize)]
 pub struct SearchModpacksQuery {
@@ -37,12 +36,22 @@ pub struct ModpackDetailsQuery {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ModpackVersionsQuery {
+    #[serde(alias = "id")]
+    pub project_id: String,
+    #[serde(default)]
+    pub provider: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct SwitchProfileRequest {
+    #[serde(alias = "profile_id", alias = "id", alias = "name")]
     pub profile_name: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteProfileRequest {
+    #[serde(alias = "profile_id", alias = "id", alias = "name")]
     pub profile_name: String,
 }
 
@@ -56,6 +65,7 @@ pub fn modpacks_router() -> Router {
     Router::new()
         .route("/search", get(search_modpacks_handler))
         .route("/details", get(modpack_details_handler))
+        .route("/versions", get(modpack_versions_handler))
         .route("/deploy", post(deploy_modpack_handler))
         .route("/profiles", get(list_profiles_handler))
         .route("/profiles/switch", post(switch_profile_handler))
@@ -130,6 +140,27 @@ pub async fn search_modpacks_handler(
         })
         .collect();
     Ok(Json(serde_json::json!(mapped)))
+}
+
+pub async fn modpack_versions_handler(
+    _auth: AuthUser,
+    Extension(mr_client): Extension<Arc<ModrinthClient>>,
+    Query(params): Query<ModpackVersionsQuery>,
+) -> Result<Json<Vec<serde_json::Value>>, AppError> {
+    let versions = mr_client.get_project_versions(&params.project_id).await?;
+    let mapped: Vec<serde_json::Value> = versions
+        .into_iter()
+        .map(|v| {
+            serde_json::json!({
+                "id": v.id,
+                "version_number": v.version_number,
+                "game_version": v.game_versions.first().cloned().unwrap_or_else(|| "1.20.4".to_string()),
+                "release_date": v.date_published,
+                "loaders": v.loaders,
+            })
+        })
+        .collect();
+    Ok(Json(mapped))
 }
 
 pub async fn modpack_details_handler(
