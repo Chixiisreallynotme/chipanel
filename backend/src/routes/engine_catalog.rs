@@ -531,6 +531,328 @@ pub fn is_engine_version_supported(
     false
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoaderVersionItem {
+    pub version: String,
+    pub label: String,
+    pub is_stable: bool,
+    pub is_recommended: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LoaderVersionsQuery {
+    pub engine_type: String,
+    #[serde(default)]
+    pub game_version: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LoaderVersionsResponse {
+    pub engine_type: String,
+    pub game_version: String,
+    pub env_variable: String,
+    pub default_version: String,
+    pub versions: Vec<LoaderVersionItem>,
+}
+
+pub async fn fetch_engine_loader_versions(engine_type: &str, game_version: Option<&str>) -> LoaderVersionsResponse {
+    let engine_upper = engine_type.trim().to_uppercase();
+    let gv = game_version.unwrap_or("").trim();
+
+    match engine_upper.as_str() {
+        "FABRIC" => fetch_fabric_loader_versions(gv).await,
+        "QUILT" => fetch_quilt_loader_versions(gv).await,
+        "PAPER" => fetch_paper_builds(gv).await,
+        "PURPUR" => fetch_purpur_builds(gv).await,
+        "FORGE" => fetch_forge_versions(gv).await,
+        "NEOFORGE" => fetch_neoforge_versions(gv).await,
+        _ => LoaderVersionsResponse {
+            engine_type: engine_upper,
+            game_version: gv.to_string(),
+            env_variable: "".to_string(),
+            default_version: "LATEST".to_string(),
+            versions: vec![
+                LoaderVersionItem {
+                    version: "LATEST".to_string(),
+                    label: "Dernière version recommandée (LATEST)".to_string(),
+                    is_stable: true,
+                    is_recommended: true,
+                }
+            ],
+        },
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct FabricLoaderEntry {
+    version: String,
+    #[serde(default)]
+    stable: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FabricLoaderWrapper {
+    loader: FabricLoaderEntry,
+}
+
+async fn fetch_fabric_loader_versions(game_version: &str) -> LoaderVersionsResponse {
+    let client = reqwest::Client::builder()
+        .user_agent("ChiPanel/0.1.0 (https://github.com/chiserv/chipanel)")
+        .timeout(Duration::from_secs(5))
+        .build();
+
+    let mut versions = Vec::new();
+
+    if let Ok(c) = client {
+        let url = if !game_version.is_empty() && !game_version.eq_ignore_ascii_case("LATEST") && !game_version.eq_ignore_ascii_case("SNAPSHOT") {
+            format!("https://meta.fabricmc.net/v2/versions/loader/{}", game_version)
+        } else {
+            "https://meta.fabricmc.net/v2/versions/loader".to_string()
+        };
+
+        if let Ok(resp) = c.get(&url).send().await {
+            if resp.status().is_success() {
+                if url.contains("/loader/") {
+                    if let Ok(entries) = resp.json::<Vec<FabricLoaderWrapper>>().await {
+                        for (idx, item) in entries.into_iter().enumerate() {
+                            let is_stable = item.loader.stable.unwrap_or(true);
+                            versions.push(LoaderVersionItem {
+                                label: format!("Fabric Loader {} ({})", item.loader.version, if is_stable { "Stable" } else { "Beta" }),
+                                version: item.loader.version,
+                                is_stable,
+                                is_recommended: idx == 0,
+                            });
+                        }
+                    }
+                } else if let Ok(entries) = resp.json::<Vec<FabricLoaderEntry>>().await {
+                    for (idx, item) in entries.into_iter().enumerate() {
+                        let is_stable = item.stable.unwrap_or(true);
+                        versions.push(LoaderVersionItem {
+                            label: format!("Fabric Loader {} ({})", item.version, if is_stable { "Stable" } else { "Beta" }),
+                            version: item.version,
+                            is_stable,
+                            is_recommended: idx == 0,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    if versions.is_empty() {
+        let fallback_list = ["0.16.10", "0.16.9", "0.16.8", "0.16.7", "0.15.11", "0.15.7", "0.14.25"];
+        for (idx, ver) in fallback_list.iter().enumerate() {
+            versions.push(LoaderVersionItem {
+                version: ver.to_string(),
+                label: format!("Fabric Loader {} (Stable)", ver),
+                is_stable: true,
+                is_recommended: idx == 0,
+            });
+        }
+    }
+
+    LoaderVersionsResponse {
+        engine_type: "FABRIC".to_string(),
+        game_version: game_version.to_string(),
+        env_variable: "FABRIC_LOADER_VERSION".to_string(),
+        default_version: "LATEST".to_string(),
+        versions,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct QuiltLoaderEntry {
+    version: String,
+}
+
+async fn fetch_quilt_loader_versions(game_version: &str) -> LoaderVersionsResponse {
+    let client = reqwest::Client::builder()
+        .user_agent("ChiPanel/0.1.0")
+        .timeout(Duration::from_secs(5))
+        .build();
+
+    let mut versions = Vec::new();
+
+    if let Ok(c) = client {
+        if let Ok(resp) = c.get("https://meta.quiltmc.org/v3/versions/loader").send().await {
+            if let Ok(entries) = resp.json::<Vec<QuiltLoaderEntry>>().await {
+                for (idx, item) in entries.into_iter().enumerate() {
+                    versions.push(LoaderVersionItem {
+                        label: format!("Quilt Loader {}", item.version),
+                        version: item.version,
+                        is_stable: true,
+                        is_recommended: idx == 0,
+                    });
+                }
+            }
+        }
+    }
+
+    if versions.is_empty() {
+        let fallback_list = ["0.26.3", "0.26.0", "0.25.0", "0.24.0", "0.23.1"];
+        for (idx, ver) in fallback_list.iter().enumerate() {
+            versions.push(LoaderVersionItem {
+                version: ver.to_string(),
+                label: format!("Quilt Loader {}", ver),
+                is_stable: true,
+                is_recommended: idx == 0,
+            });
+        }
+    }
+
+    LoaderVersionsResponse {
+        engine_type: "QUILT".to_string(),
+        game_version: game_version.to_string(),
+        env_variable: "QUILT_LOADER_VERSION".to_string(),
+        default_version: "LATEST".to_string(),
+        versions,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PaperBuildsResponse {
+    #[serde(default)]
+    builds: Vec<PaperBuildEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PaperBuildEntry {
+    build: u32,
+    #[serde(default)]
+    channel: String,
+}
+
+async fn fetch_paper_builds(game_version: &str) -> LoaderVersionsResponse {
+    let client = reqwest::Client::builder()
+        .user_agent("ChiPanel/0.1.0")
+        .timeout(Duration::from_secs(5))
+        .build();
+
+    let mut versions = Vec::new();
+
+    if !game_version.is_empty() && !game_version.eq_ignore_ascii_case("LATEST") {
+        if let Ok(c) = client {
+            let url = format!("https://api.papermc.io/v2/projects/paper/versions/{}/builds", game_version);
+            if let Ok(resp) = c.get(&url).send().await {
+                if let Ok(data) = resp.json::<PaperBuildsResponse>().await {
+                    for b in data.builds.into_iter().rev().take(20) {
+                        let is_default = b.channel == "default" || b.channel.is_empty();
+                        let is_first = versions.is_empty();
+                        versions.push(LoaderVersionItem {
+                            label: format!("Paper Build #{} ({})", b.build, if is_default { "Stable" } else { &b.channel }),
+                            version: b.build.to_string(),
+                            is_stable: is_default,
+                            is_recommended: is_first,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    LoaderVersionsResponse {
+        engine_type: "PAPER".to_string(),
+        game_version: game_version.to_string(),
+        env_variable: "PAPER_BUILD".to_string(),
+        default_version: "LATEST".to_string(),
+        versions,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PurpurBuildsResponse {
+    #[serde(default)]
+    builds: Option<PurpurBuildsMap>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PurpurBuildsMap {
+    #[serde(default)]
+    all: Vec<String>,
+}
+
+async fn fetch_purpur_builds(game_version: &str) -> LoaderVersionsResponse {
+    let client = reqwest::Client::builder()
+        .user_agent("ChiPanel/0.1.0")
+        .timeout(Duration::from_secs(5))
+        .build();
+
+    let mut versions = Vec::new();
+
+    if !game_version.is_empty() && !game_version.eq_ignore_ascii_case("LATEST") {
+        if let Ok(c) = client {
+            let url = format!("https://api.purpurmc.org/v2/purpur/{}", game_version);
+            if let Ok(resp) = c.get(&url).send().await {
+                if let Ok(data) = resp.json::<PurpurBuildsResponse>().await {
+                    if let Some(map) = data.builds {
+                        for b in map.all.into_iter().rev().take(20) {
+                            let is_first = versions.is_empty();
+                            versions.push(LoaderVersionItem {
+                                label: format!("Purpur Build #{}", b),
+                                version: b,
+                                is_stable: true,
+                                is_recommended: is_first,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    LoaderVersionsResponse {
+        engine_type: "PURPUR".to_string(),
+        game_version: game_version.to_string(),
+        env_variable: "PURPUR_BUILD".to_string(),
+        default_version: "LATEST".to_string(),
+        versions,
+    }
+}
+
+async fn fetch_forge_versions(game_version: &str) -> LoaderVersionsResponse {
+    let versions = vec![
+        LoaderVersionItem {
+            version: "RECOMMENDED".to_string(),
+            label: "Forge Recommandé (Stable)".to_string(),
+            is_stable: true,
+            is_recommended: true,
+        },
+        LoaderVersionItem {
+            version: "LATEST".to_string(),
+            label: "Dernière version Forge (LATEST)".to_string(),
+            is_stable: false,
+            is_recommended: false,
+        },
+    ];
+
+    LoaderVersionsResponse {
+        engine_type: "FORGE".to_string(),
+        game_version: game_version.to_string(),
+        env_variable: "FORGE_VERSION".to_string(),
+        default_version: "RECOMMENDED".to_string(),
+        versions,
+    }
+}
+
+async fn fetch_neoforge_versions(game_version: &str) -> LoaderVersionsResponse {
+    let versions = vec![
+        LoaderVersionItem {
+            version: "LATEST".to_string(),
+            label: "Dernière version NeoForge (LATEST)".to_string(),
+            is_stable: true,
+            is_recommended: true,
+        },
+    ];
+
+    LoaderVersionsResponse {
+        engine_type: "NEOFORGE".to_string(),
+        game_version: game_version.to_string(),
+        env_variable: "NEOFORGE_VERSION".to_string(),
+        default_version: "LATEST".to_string(),
+        versions,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -612,4 +934,22 @@ mod tests {
         assert!(is_engine_version_supported(purpur, "1.14.4", &catalog));
         assert!(!is_engine_version_supported(purpur, "1.12.2", &catalog));
     }
+
+    #[tokio::test]
+    async fn test_fetch_engine_loader_versions() {
+        let fabric = fetch_engine_loader_versions("FABRIC", Some("1.21.4")).await;
+        assert_eq!(fabric.engine_type, "FABRIC");
+        assert_eq!(fabric.env_variable, "FABRIC_LOADER_VERSION");
+        assert!(!fabric.versions.is_empty());
+
+        let forge = fetch_engine_loader_versions("FORGE", Some("1.20.1")).await;
+        assert_eq!(forge.engine_type, "FORGE");
+        assert_eq!(forge.env_variable, "FORGE_VERSION");
+        assert!(forge.versions.iter().any(|v| v.version == "RECOMMENDED"));
+
+        let paper = fetch_engine_loader_versions("PAPER", Some("1.21.4")).await;
+        assert_eq!(paper.engine_type, "PAPER");
+        assert_eq!(paper.env_variable, "PAPER_BUILD");
+    }
 }
+

@@ -30,14 +30,20 @@
 		Radio,
 		ArrowRight,
 		FolderArchive,
-		Wrench
+		Wrench,
+		Settings2,
+		ChevronDown
 	} from 'lucide-svelte';
 
 	const UNKNOWN = 'Inconnu';
 
+	// Engines that support distinct loader or build versions
+	const LOADER_SUPPORTED_ENGINES = ['FABRIC', 'QUILT', 'FORGE', 'NEOFORGE', 'PAPER', 'PURPUR', 'FOLIA'];
+
 	// Page State — `null` means "ChiPanel could not read the config"
 	let currentType = $state(null);
 	let currentVersion = $state(null);
+	let currentLoaderVersion = $state(null);
 	let configSource = $state('unavailable');
 	let configError = $state(null);
 	let availableTypes = $state([]);
@@ -62,9 +68,13 @@
 	let searchQuery = $state('');
 	let selectedCategory = $state('ALL');
 
+	// Version and Loader selection maps (engine_id -> version/loader)
+	let selectedVersionMap = $state({});
+	let selectedLoaderMap = $state({});
+	let loaderOptionsMap = $state({});
+
 	// Selection modal state
 	let selectedEngine = $state(null);
-	let selectedVersionMap = $state({}); // engine_id -> selected_version
 	let showConfirmModal = $state(false);
 	let autoBackupWorld = $state(true);
 	/** @type {{ detail: string, serverMessage: string } | null} */
@@ -86,6 +96,44 @@
 		toasts = toasts.filter((t) => t.id !== id);
 	}
 
+	async function fetchLoaderVersions(engineId, gameVersion) {
+		if (!LOADER_SUPPORTED_ENGINES.includes(engineId)) return;
+
+		loaderOptionsMap[engineId] = {
+			...(loaderOptionsMap[engineId] || {}),
+			loading: true
+		};
+
+		try {
+			const res = await apiGet(`/api/server/engine/loader-versions?engine_type=${engineId}&game_version=${gameVersion || ''}`);
+			if (res) {
+				loaderOptionsMap[engineId] = {
+					loading: false,
+					versions: res.versions || [],
+					default_version: res.default_version || 'LATEST',
+					env_variable: res.env_variable || ''
+				};
+
+				// Set default selection if not already selected
+				if (!selectedLoaderMap[engineId]) {
+					selectedLoaderMap[engineId] = (currentType === engineId && currentLoaderVersion)
+						? currentLoaderVersion
+						: (res.default_version || 'LATEST');
+				}
+			}
+		} catch (err) {
+			console.warn(`Échec de récupération des versions de loader pour ${engineId}:`, err);
+			loaderOptionsMap[engineId] = {
+				loading: false,
+				versions: [
+					{ version: 'LATEST', label: 'Dernière version recommandée (LATEST)', is_stable: true, is_recommended: true }
+				],
+				default_version: 'LATEST',
+				env_variable: ''
+			};
+		}
+	}
+
 	async function loadEngineData() {
 		isLoading = true;
 		try {
@@ -93,6 +141,7 @@
 			if (res) {
 				currentType = res.current_type ?? null;
 				currentVersion = res.current_version ?? null;
+				currentLoaderVersion = res.current_loader_version ?? null;
 				configSource = res.config_source ?? 'unavailable';
 				configError = res.config_error ?? null;
 				availableTypes = res.available_types || [];
@@ -108,11 +157,27 @@
 				serverState = res.server_state ?? 'stopped';
 
 				// Initialize default version map
-				const map = {};
+				const vMap = {};
+				const lMap = {};
 				availableTypes.forEach((engine) => {
-					map[engine.id] = engine.recommended_versions?.[0] ?? allVersions[0] ?? '';
+					if (currentType === engine.id && currentVersion) {
+						vMap[engine.id] = currentVersion;
+					} else {
+						vMap[engine.id] = engine.recommended_versions?.[0] ?? allVersions[0] ?? '';
+					}
+					if (currentType === engine.id && currentLoaderVersion) {
+						lMap[engine.id] = currentLoaderVersion;
+					} else {
+						lMap[engine.id] = 'LATEST';
+					}
+
+					// Pre-fetch loader versions for active or supported engines
+					if (LOADER_SUPPORTED_ENGINES.includes(engine.id)) {
+						fetchLoaderVersions(engine.id, vMap[engine.id]);
+					}
 				});
-				selectedVersionMap = map;
+				selectedVersionMap = vMap;
+				selectedLoaderMap = lMap;
 			}
 		} catch (err) {
 			console.error('Échec du chargement de la configuration des moteurs:', err);
@@ -126,10 +191,24 @@
 		loadEngineData();
 	});
 
+	function handleVersionChange(engineId, newVer) {
+		selectedVersionMap[engineId] = newVer;
+		if (LOADER_SUPPORTED_ENGINES.includes(engineId)) {
+			fetchLoaderVersions(engineId, newVer);
+		}
+	}
+
 	function openConfirmModal(engine) {
 		selectedEngine = engine;
 		autoBackupWorld = true;
 		switchError = null;
+
+		const targetType = engine.id;
+		const targetVersion = selectedVersionMap[targetType];
+		if (LOADER_SUPPORTED_ENGINES.includes(targetType)) {
+			fetchLoaderVersions(targetType, targetVersion);
+		}
+
 		showConfirmModal = true;
 	}
 
@@ -151,6 +230,8 @@
 		if (!selectedEngine) return;
 		const targetType = selectedEngine.id;
 		const targetVersion = selectedVersionMap[targetType];
+		const targetLoader = selectedLoaderMap[targetType] || null;
+
 		if (!targetVersion) {
 			switchError = { detail: 'Veuillez sélectionner une version avant de confirmer.', serverMessage: '' };
 			return;
@@ -164,6 +245,7 @@
 				body: /** @type {any} */ ({
 					engine_type: targetType,
 					version: targetVersion,
+					loader_version: targetLoader,
 					backup_world: autoBackupWorld
 				})
 			});
@@ -177,14 +259,18 @@
 				return;
 			}
 
-			let successMsg = `Moteur basculé vers ${selectedEngine.name} (${targetVersion}).`;
-			if (data?.backup_file) {
-				successMsg += ` Sauvegarde créée : ${data.backup_file}`;
+			let successMsg = `Moteur appliqué : ${selectedEngine.name} (${targetVersion})`;
+			if (data?.resolved_loader_version && data.resolved_loader_version !== 'LATEST') {
+				successMsg += ` · Loader ${data.resolved_loader_version}`;
 			}
-			addToast('success', 'Moteur mis à jour !', successMsg);
+			if (data?.backup_file) {
+				successMsg += ` · Sauvegarde : ${data.backup_file}`;
+			}
+			addToast('success', 'Configuration mise à jour !', successMsg);
 
 			currentType = targetType;
 			currentVersion = data?.resolved_version ?? targetVersion;
+			currentLoaderVersion = data?.resolved_loader_version ?? targetLoader;
 			if (data?.warning) {
 				addToast('warning', 'Avertissement', data.warning);
 			}
@@ -274,7 +360,7 @@
 				</div>
 				<div>
 					<h1>Moteurs & Versions du Serveur</h1>
-					<p class="subtitle">Basculez dynamiquement entre Purpur, Paper, Fabric, Forge, NeoForge, Spigot, Vanilla, Quilt, Folia, Mohist et Arclight.</p>
+					<p class="subtitle">Basculez dynamiquement entre Fabric, Purpur, Paper, Forge, NeoForge, Spigot, Vanilla, Quilt, Folia, Mohist et Arclight.</p>
 				</div>
 			</div>
 			<button class="btn btn-secondary btn-sm" onclick={loadEngineData} disabled={isLoading}>
@@ -329,11 +415,14 @@
 			<div class="banner-title-row">
 				<span class="active-engine-name {currentType ? '' : 'unknown-val'}">{currentType ?? UNKNOWN}</span>
 				<span class="badge {currentVersion ? 'badge-version' : 'badge-muted'}">{currentVersion ?? UNKNOWN}</span>
+				{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
+					<span class="badge badge-loader">Loader {currentLoaderVersion}</span>
+				{/if}
 			</div>
 			{#if currentType && currentVersion}
 				<p class="banner-desc">
-					Le serveur est configuré pour exécuter <strong>{currentType}</strong> sur la version <strong>{currentVersion}</strong>.
-					Le changement de moteur reconfigure automatiquement le conteneur et synchronise les outils.
+					Le serveur exécute actuellement <strong>{currentType}</strong> sur Minecraft <strong>{currentVersion}</strong>.
+					Vous pouvez changer de version de jeu ou ajuster le loader ci-dessous en toute sécurité.
 				</p>
 			{:else}
 				<p class="banner-desc">
@@ -392,7 +481,7 @@
 			<input
 				type="text"
 				class="search-input"
-				placeholder="Rechercher un moteur (ex: Purpur, Forge, Folia, SMP, moddé)..."
+				placeholder="Rechercher un moteur (ex: Fabric, Purpur, Forge, Folia, SMP, moddé)..."
 				bind:value={searchQuery}
 			/>
 			{#if searchQuery}
@@ -404,11 +493,11 @@
 			<button class="tab-btn {selectedCategory === 'ALL' ? 'active' : ''}" onclick={() => (selectedCategory = 'ALL')}>
 				Tous ({availableTypes.length})
 			</button>
+			<button class="tab-btn {selectedCategory === 'MODS' ? 'active' : ''}" onclick={() => (selectedCategory = 'MODS')}>
+				🧩 Moddé (Fabric, Forge, NeoForge...)
+			</button>
 			<button class="tab-btn {selectedCategory === 'PERFORMANCE' ? 'active' : ''}" onclick={() => (selectedCategory = 'PERFORMANCE')}>
 				⚡ Performance & SMP
-			</button>
-			<button class="tab-btn {selectedCategory === 'MODS' ? 'active' : ''}" onclick={() => (selectedCategory = 'MODS')}>
-				🧩 Moddé
 			</button>
 			<button class="tab-btn {selectedCategory === 'HYBRID' ? 'active' : ''}" onclick={() => (selectedCategory = 'HYBRID')}>
 				✨ Hybride (Mods + Plugins)
@@ -438,6 +527,12 @@
 			{#each filteredEngines as engine (engine.id)}
 				{@const IconComp = getEngineIcon(engine.icon)}
 				{@const isActive = currentType === engine.id}
+				{@const targetVer = selectedVersionMap[engine.id]}
+				{@const targetLoader = selectedLoaderMap[engine.id]}
+				{@const isVersionChanged = isActive && (targetVer !== currentVersion || (currentLoaderVersion && targetLoader !== currentLoaderVersion))}
+				{@const loaderData = loaderOptionsMap[engine.id]}
+				{@const hasLoaderSupport = LOADER_SUPPORTED_ENGINES.includes(engine.id)}
+
 				<div class="engine-card {isActive ? 'active-card' : ''}">
 					<!-- Card Header -->
 					<div class="card-header">
@@ -463,7 +558,7 @@
 					<!-- RAM and Specs Chip -->
 					<div class="specs-bar">
 						<div class="spec-item">
-							<span class="spec-label">RAM conseillée :</span>
+							<span class="spec-label">RAM :</span>
 							<span class="spec-val">{engine.recommended_ram || '2 à 4 Go'}</span>
 						</div>
 						{#if engine.min_version}
@@ -511,25 +606,71 @@
 						</div>
 					{/if}
 
-					<!-- Card Footer: Version Picker and Switch Button -->
+					<!-- Card Footer: Version Picker, Loader Picker and Action Button -->
 					<div class="card-footer">
-						<VersionPickerButton
-							selectedVersion={selectedVersionMap[engine.id]}
-							{releaseVersions}
-							{snapshotVersions}
-							recommendedVersions={engine.recommended_versions}
-							minVersion={engine.min_version}
-							maxVersion={engine.max_version}
-							allowAll={false}
-							label="Version Cible :"
-							disabled={isActive}
-							onSelect={(newVer) => (selectedVersionMap[engine.id] = newVer)}
-						/>
+						<div class="pickers-stack">
+							<!-- Minecraft Game Version Picker (Always unlocked!) -->
+							<VersionPickerButton
+								selectedVersion={targetVer}
+								{releaseVersions}
+								{snapshotVersions}
+								recommendedVersions={engine.recommended_versions}
+								minVersion={engine.min_version}
+								maxVersion={engine.max_version}
+								allowAll={false}
+								label="Version Minecraft :"
+								disabled={isSubmitting}
+								onSelect={(newVer) => handleVersionChange(engine.id, newVer)}
+							/>
 
+							<!-- Engine Loader / Build Version Dropdown (Fabric Loader, Forge, NeoForge, Paper build...) -->
+							{#if hasLoaderSupport}
+								<div class="loader-picker-box">
+									<div class="loader-picker-label-row">
+										<span class="picker-label">
+											{engine.id === 'FABRIC' ? 'Fabric Loader :' :
+											 engine.id === 'QUILT' ? 'Quilt Loader :' :
+											 engine.id === 'FORGE' ? 'Version Forge :' :
+											 engine.id === 'NEOFORGE' ? 'Version NeoForge :' :
+											 'Build du Serveur :'}
+										</span>
+										{#if loaderData?.loading}
+											<RefreshCw size={11} class="spin text-muted" />
+										{/if}
+									</div>
+
+									<div class="custom-select-wrapper">
+										<select
+											class="custom-select"
+											bind:value={selectedLoaderMap[engine.id]}
+											disabled={isSubmitting}
+										>
+											<option value="LATEST">Dernière version recommandée (LATEST)</option>
+											{#if loaderData?.versions}
+												{#each loaderData.versions as opt}
+													{#if opt.version !== 'LATEST'}
+														<option value={opt.version}>{opt.label || opt.version}</option>
+													{/if}
+												{/each}
+											{/if}
+										</select>
+										<ChevronDown size={14} class="select-chevron" />
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Action Buttons -->
 						{#if isActive}
-							<button class="btn btn-secondary w-full" disabled>
-								<Check size={16} /> Moteur Actif
-							</button>
+							{#if isVersionChanged}
+								<button class="btn btn-primary w-full" onclick={() => openConfirmModal(engine)}>
+									<RotateCw size={16} /> Changer la version vers {targetVer}
+								</button>
+							{:else}
+								<button class="btn btn-secondary w-full" onclick={() => openConfirmModal(engine)}>
+									<Check size={16} /> Version Actuelle (Reconfigurer)
+								</button>
+							{/if}
 						{:else}
 							<button class="btn btn-primary w-full" onclick={() => openConfirmModal(engine)}>
 								<RotateCw size={16} /> Passer à {engine.name}
@@ -546,6 +687,11 @@
 {#if showConfirmModal && selectedEngine}
 	{@const targetType = selectedEngine.id}
 	{@const targetVersion = selectedVersionMap[targetType] || UNKNOWN}
+	{@const targetLoader = selectedLoaderMap[targetType] || 'LATEST'}
+	{@const isSameEngine = currentType === targetType}
+	{@const hasLoader = LOADER_SUPPORTED_ENGINES.includes(targetType)}
+	{@const modalLoaderData = loaderOptionsMap[targetType]}
+
 	<div
 		class="modal-backdrop"
 		onclick={closeConfirmModal}
@@ -565,28 +711,61 @@
 					<RotateCw size={24} />
 				</div>
 				<div>
-					<h2>Changement de Moteur du Serveur</h2>
+					<h2>{isSameEngine ? `Mise à jour Minecraft (${selectedEngine.name})` : 'Changement de Moteur de Serveur'}</h2>
 					<p class="modal-subtitle">Bilan d'impact et reconfiguration sécurisée</p>
 				</div>
 			</div>
 
 			<div class="modal-body">
-				<!-- Engine Change Diff Header -->
+				<!-- Engine & Version Diff Card -->
 				<div class="switch-diff-card">
 					<div class="diff-side">
-						<span class="diff-label">Moteur Actuel</span>
+						<span class="diff-label">Actuel</span>
 						<span class="diff-title">{currentType ?? UNKNOWN}</span>
 						<span class="diff-sub">{currentVersion ?? UNKNOWN}</span>
+						{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
+							<span class="diff-loader">Loader: {currentLoaderVersion}</span>
+						{/if}
 					</div>
 					<div class="diff-arrow">
 						<ArrowRight size={22} />
 					</div>
 					<div class="diff-side diff-target">
-						<span class="diff-label">Nouveau Moteur</span>
+						<span class="diff-label">{isSameEngine ? 'Nouvelle Version' : 'Nouveau Moteur'}</span>
 						<span class="diff-title text-primary">{selectedEngine.name}</span>
 						<span class="diff-sub text-emerald">{targetVersion}</span>
+						{#if hasLoader && targetLoader && targetLoader !== 'LATEST'}
+							<span class="diff-loader text-primary">Loader: {targetLoader}</span>
+						{/if}
 					</div>
 				</div>
+
+				<!-- Loader Selector in Modal if applicable -->
+				{#if hasLoader}
+					<div class="modal-loader-row">
+						<span class="modal-loader-label">
+							<Settings2 size={14} class="text-primary" />
+							<span>Version du Loader / Moteur :</span>
+						</span>
+						<div class="custom-select-wrapper modal-select-wrapper">
+							<select
+								class="custom-select modal-select"
+								bind:value={selectedLoaderMap[targetType]}
+								disabled={isSubmitting}
+							>
+								<option value="LATEST">Dernière version recommandée (LATEST)</option>
+								{#if modalLoaderData?.versions}
+									{#each modalLoaderData.versions as opt}
+										{#if opt.version !== 'LATEST'}
+											<option value={opt.version}>{opt.label || opt.version}</option>
+										{/if}
+									{/each}
+								{/if}
+							</select>
+							<ChevronDown size={14} class="select-chevron" />
+						</div>
+					</div>
+				{/if}
 
 				<!-- Live Warnings -->
 				{#if onlinePlayersCount > 0}
@@ -594,7 +773,7 @@
 						<Users size={18} />
 						<div>
 							<strong>{onlinePlayersCount} joueur(s) connecté(s) en ce moment !</strong>
-							<p>Le changement de moteur redémarrera le serveur et déconnectera immédiatement les joueurs.</p>
+							<p>L'application de la nouvelle configuration redémarrera le serveur et déconnectera immédiatement les joueurs.</p>
 						</div>
 					</div>
 				{/if}
@@ -618,18 +797,18 @@
 									<span>Créer une sauvegarde de sécurité du monde actif (<strong>{activeWorld}</strong>)</span>
 								</label>
 							</div>
-							<p class="impact-desc">Une archive complète du monde sera générée dans ChiPanel avant toute modification pour garantir zéro perte de données.</p>
+							<p class="impact-desc">Une archive compressée du monde sera créée dans ChiPanel avant toute modification pour garantir zéro perte de données.</p>
 						</div>
 
 						<!-- 2. LuckPerms Migration -->
 						<div class="impact-item">
 							<div class="impact-header-row">
 								<ShieldCheck size={16} class="text-emerald" />
-								<span class="impact-title">Migration automatique des permissions LuckPerms</span>
+								<span class="impact-title">Sauvegarde et restauration LuckPerms</span>
 								<span class="badge badge-auto">Auto</span>
 							</div>
 							<p class="impact-desc">
-								Vos groupes et permissions LuckPerms existants sont automatiquement sauvegardés puis restaurés dans le répertoire adapté au nouveau moteur ({selectedEngine.supports_plugins ? 'plugins/LuckPerms' : 'mods/luckperms ou config/luckperms'}).
+								Vos groupes et permissions LuckPerms existants sont automatiquement préservés et réinjectés dans l'environnement {selectedEngine.name}.
 							</p>
 						</div>
 
@@ -637,46 +816,52 @@
 						<div class="impact-item">
 							<div class="impact-header-row">
 								<Wrench size={16} class="text-emerald" />
-								<span class="impact-title">Synchronisation des outils d'administration (Spark, Chunky)</span>
+								<span class="impact-title">Synchronisation des outils d'administration</span>
 								<span class="badge badge-auto">Auto</span>
 							</div>
 							<p class="impact-desc">
-								ChiPanel télécharge et réinstalle automatiquement les binaires Spark et Chunky adaptés à {selectedEngine.name} pour que vos profils et pré-générations restent opérationnels.
+								ChiPanel télécharge et réinstalle automatiquement Spark et Chunky adaptés à {selectedEngine.name} pour Minecraft {targetVersion}.
 							</p>
 						</div>
 
 						<!-- 4. Addons Impact -->
-						{#if selectedEngine.supports_plugins && !selectedEngine.supports_mods && installedModsCount > 0}
-							<div class="impact-item item-warning">
-								<div class="impact-header-row">
-									<AlertCircle size={16} class="text-amber" />
-									<span class="impact-title">Impact sur les mods installés ({installedModsCount} mods)</span>
+						{#if !isSameEngine}
+							{#if selectedEngine.supports_plugins && !selectedEngine.supports_mods && installedModsCount > 0}
+								<div class="impact-item item-warning">
+									<div class="impact-header-row">
+										<AlertCircle size={16} class="text-amber" />
+										<span class="impact-title">Impact sur les mods ({installedModsCount} mods)</span>
+									</div>
+									<p class="impact-desc">
+										Les mods dans <code>mods/</code> restent sur le disque mais ne seront pas exécutés par {selectedEngine.name} (moteur purement plugins).
+									</p>
 								</div>
-								<p class="impact-desc">
-									Les mods Fabric/Forge dans le dossier <code>mods/</code> seront conservés sur le disque mais ne seront pas chargés par le moteur {selectedEngine.name} (qui n'exécute que des plugins Bukkit).
-								</p>
-							</div>
-						{:else if selectedEngine.supports_mods && !selectedEngine.supports_plugins && installedPluginsCount > 0}
-							<div class="impact-item item-warning">
-								<div class="impact-header-row">
-									<AlertCircle size={16} class="text-amber" />
-									<span class="impact-title">Impact sur les plugins installés ({installedPluginsCount} plugins)</span>
+							{:else if selectedEngine.supports_mods && !selectedEngine.supports_plugins && installedPluginsCount > 0}
+								<div class="impact-item item-warning">
+									<div class="impact-header-row">
+										<AlertCircle size={16} class="text-amber" />
+										<span class="impact-title">Impact sur les plugins ({installedPluginsCount} plugins)</span>
+									</div>
+									<p class="impact-desc">
+										Les plugins dans <code>plugins/</code> restent sur le disque mais ne seront pas exécutés par {selectedEngine.name}.
+									</p>
 								</div>
-								<p class="impact-desc">
-									Les plugins dans le dossier <code>plugins/</code> seront conservés mais ne seront pas exécutés par le chargeur de mods {selectedEngine.name}.
-								</p>
-							</div>
+							{/if}
 						{/if}
 
 						<!-- 5. Configuration & Restart -->
 						<div class="impact-item">
 							<div class="impact-header-row">
 								<RotateCw size={16} class="text-primary" />
-								<span class="impact-title">Mise à jour Quadlet & Redémarrage du proxy</span>
+								<span class="impact-title">Mise à jour Quadlet, Proxy lazymc & Redémarrage</span>
 								<span class="badge badge-auto">Auto</span>
 							</div>
 							<p class="impact-desc">
-								Mise à jour de <code>Environment=TYPE={targetType}</code> et <code>Environment=VERSION={targetVersion}</code> dans le conteneur, synchronisation du proxy lazymc et redémarrage automatique.
+								Écriture de <code>TYPE={targetType}</code>, <code>VERSION={targetVersion}</code>
+								{#if hasLoader && targetLoader && targetLoader !== 'LATEST'}
+									et <code>{loaderOptionsMap[targetType]?.env_variable || 'LOADER'}={targetLoader}</code>
+								{/if}
+								dans le conteneur, mise à jour du proxy lazymc et relance immédiate.
 							</p>
 						</div>
 					</div>
@@ -705,7 +890,7 @@
 						<span>Application & Redémarrage...</span>
 					{:else}
 						<RotateCw size={16} />
-						<span>Confirmer le Changement</span>
+						<span>{isSameEngine ? 'Appliquer la Version' : 'Confirmer le Changement'}</span>
 					{/if}
 				</button>
 			</div>
@@ -814,6 +999,7 @@
 		align-items: center;
 		gap: 0.75rem;
 		margin-bottom: 0.5rem;
+		flex-wrap: wrap;
 	}
 
 	.active-engine-name {
@@ -830,6 +1016,16 @@
 		font-family: var(--font-mono);
 		padding: 0.25rem 0.6rem;
 		font-size: 0.85rem;
+		border-radius: var(--radius-md);
+	}
+
+	.badge-loader {
+		background: rgba(16, 185, 129, 0.15);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.35);
+		font-family: var(--font-mono);
+		padding: 0.25rem 0.55rem;
+		font-size: 0.8rem;
 		border-radius: var(--radius-md);
 	}
 
@@ -1193,6 +1389,63 @@
 		padding-top: 0.5rem;
 	}
 
+	.pickers-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	/* Loader Picker in Card */
+	.loader-picker-box {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.loader-picker-label-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.picker-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--text-muted);
+	}
+
+	.custom-select-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+		width: 100%;
+	}
+
+	.custom-select {
+		width: 100%;
+		padding: 0.55rem 2rem 0.55rem 0.75rem;
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+		color: var(--text-primary);
+		font-size: 0.8rem;
+		outline: none;
+		appearance: none;
+		cursor: pointer;
+		transition: border-color 0.2s;
+	}
+
+	.custom-select:focus {
+		border-color: var(--accent-primary, #6366f1);
+	}
+
+	.select-chevron {
+		position: absolute;
+		right: 0.75rem;
+		color: var(--text-muted);
+		pointer-events: none;
+	}
+
 	/* Modal */
 	.modal-backdrop {
 		position: fixed;
@@ -1287,11 +1540,44 @@
 		color: var(--text-muted);
 	}
 
+	.diff-loader {
+		font-size: 0.75rem;
+		font-family: var(--font-mono);
+		color: var(--text-muted);
+		margin-top: 0.1rem;
+	}
+
 	.diff-arrow {
 		color: var(--text-muted);
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	.modal-loader-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius-md);
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		margin-bottom: 1rem;
+	}
+
+	.modal-loader-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--text-primary);
+		white-space: nowrap;
+	}
+
+	.modal-select-wrapper {
+		max-width: 320px;
 	}
 
 	.alert-box {
@@ -1577,6 +1863,13 @@
 		}
 		.banner-stats {
 			grid-template-columns: 1fr;
+		}
+		.modal-loader-row {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+		.modal-select-wrapper {
+			max-width: 100%;
 		}
 	}
 </style>

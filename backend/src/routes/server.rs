@@ -1,4 +1,5 @@
 use axum::{
+    extract::Query,
     response::Json,
     routing::{get, post},
     Extension, Json as AxumJson, Router,
@@ -32,9 +33,22 @@ pub fn server_router() -> Router {
         .route("/power", post(power_handler))
         .route("/mode", get(mode_status_handler).post(mode_handler))
         .route("/engine", get(get_engine_handler).post(update_engine_handler))
+        .route("/engine/loader-versions", get(get_loader_versions_handler))
         .route("/resource-pack", get(get_resource_pack_handler))
         .route("/resource-pack/activate", post(activate_resource_pack_handler))
         .route("/resource-pack/disable", post(disable_resource_pack_handler))
+}
+
+pub async fn get_loader_versions_handler(
+    _auth: AuthUser,
+    Query(query): Query<crate::routes::engine_catalog::LoaderVersionsQuery>,
+) -> Json<crate::routes::engine_catalog::LoaderVersionsResponse> {
+    let res = crate::routes::engine_catalog::fetch_engine_loader_versions(
+        &query.engine_type,
+        query.game_version.as_deref(),
+    )
+    .await;
+    Json(res)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -398,6 +412,7 @@ pub(crate) async fn current_quadlet_version(systemd_config_dir: &Path) -> Option
 pub struct ServerEngineResponse {
     pub current_type: Option<String>,
     pub current_version: Option<String>,
+    pub current_loader_version: Option<String>,
     /// "quadlet" | "state_file" | "unavailable"
     pub config_source: String,
     pub config_error: Option<String>,
@@ -431,6 +446,8 @@ pub struct UpdateEngineRequest {
     pub engine_type: String,
     pub version: Option<String>,
     #[serde(default)]
+    pub loader_version: Option<String>,
+    #[serde(default)]
     pub backup_world: Option<bool>,
 }
 
@@ -440,6 +457,7 @@ pub struct EngineUpdateResponse {
     pub message: String,
     /// The concrete version actually written (LATEST/SNAPSHOT are resolved away).
     pub resolved_version: String,
+    pub resolved_loader_version: Option<String>,
     /// Non-blocking advisory (e.g. world data-version mismatch), surfaced by the UI.
     pub warning: Option<String>,
     /// Filename of the safety backup created before switching, if requested.
@@ -472,6 +490,7 @@ pub async fn get_engine_handler(
 
     let mut current_type = None;
     let mut current_version = None;
+    let mut current_loader_version = None;
     let mut config_source = "unavailable";
     let mut config_error = None;
 
@@ -489,6 +508,17 @@ pub async fn get_engine_handler(
                         let v = val.trim();
                         if !v.is_empty() {
                             current_version = Some(v.to_uppercase());
+                        }
+                    } else if let Some(val) = trimmed.strip_prefix("Environment=FABRIC_LOADER_VERSION=")
+                        .or_else(|| trimmed.strip_prefix("Environment=QUILT_LOADER_VERSION="))
+                        .or_else(|| trimmed.strip_prefix("Environment=FORGE_VERSION="))
+                        .or_else(|| trimmed.strip_prefix("Environment=NEOFORGE_VERSION="))
+                        .or_else(|| trimmed.strip_prefix("Environment=PAPER_BUILD="))
+                        .or_else(|| trimmed.strip_prefix("Environment=PURPUR_BUILD="))
+                        .or_else(|| trimmed.strip_prefix("Environment=BUILD_NUMBER=")) {
+                        let l = val.trim();
+                        if !l.is_empty() {
+                            current_loader_version = Some(l.to_string());
                         }
                     }
                 }
@@ -512,6 +542,7 @@ pub async fn get_engine_handler(
                     current_type = json.get("type").and_then(|v| v.as_str()).map(str::to_uppercase);
                     current_version =
                         json.get("version").and_then(|v| v.as_str()).map(str::to_uppercase);
+                    current_loader_version = json.get("loader_version").and_then(|v| v.as_str()).map(ToString::to_string);
                     if current_type.is_some() || current_version.is_some() {
                         config_source = "state_file";
                     } else {
@@ -579,6 +610,7 @@ pub async fn get_engine_handler(
     Ok(Json(ServerEngineResponse {
         current_type,
         current_version,
+        current_loader_version,
         config_source: config_source.to_string(),
         config_error,
         available_types: get_available_engines(),
@@ -609,6 +641,7 @@ pub async fn update_engine_handler(
 ) -> Result<Json<EngineUpdateResponse>, AppError> {
     let req_type = payload.engine_type.trim().to_uppercase();
     let req_version_raw = payload.version.as_deref().unwrap_or("LATEST").trim();
+    let req_loader_raw = payload.loader_version.as_deref().map(str::trim).filter(|s| !s.is_empty());
 
     // Capture the current engine BEFORE any writes, so LuckPerms data can be backed
     // up from the OLD engine's location and restored into the NEW one below.
@@ -709,7 +742,19 @@ pub async fn update_engine_handler(
         }
     }
 
-    // 1) minecraft.container — engine type + concrete version.
+    // Target loader variable for the selected engine type
+    let target_loader_var = match req_type.as_str() {
+        "FABRIC" => Some("FABRIC_LOADER_VERSION"),
+        "QUILT" => Some("QUILT_LOADER_VERSION"),
+        "FORGE" => Some("FORGE_VERSION"),
+        "NEOFORGE" => Some("NEOFORGE_VERSION"),
+        "PAPER" => Some("PAPER_BUILD"),
+        "PURPUR" => Some("PURPUR_BUILD"),
+        "FOLIA" => Some("BUILD_NUMBER"),
+        _ => None,
+    };
+
+    // 1) minecraft.container — engine type + concrete version + loader version.
     let container_file = config.systemd_config_dir.join("minecraft.container");
     if container_file.exists() {
         let content = tokio::fs::read_to_string(&container_file)
@@ -719,14 +764,30 @@ pub async fn update_engine_handler(
         let mut new_lines = Vec::new();
         let mut type_updated = false;
         let mut version_updated = false;
+        let mut loader_updated = false;
 
         for line in content.lines() {
-            if line.trim().starts_with("Environment=TYPE=") {
+            let trimmed = line.trim();
+            if trimmed.starts_with("Environment=TYPE=") {
                 new_lines.push(format!("Environment=TYPE={}", req_type));
                 type_updated = true;
-            } else if line.trim().starts_with("Environment=VERSION=") {
+            } else if trimmed.starts_with("Environment=VERSION=") {
                 new_lines.push(format!("Environment=VERSION={}", req_version));
                 version_updated = true;
+            } else if trimmed.starts_with("Environment=FABRIC_LOADER_VERSION=")
+                || trimmed.starts_with("Environment=QUILT_LOADER_VERSION=")
+                || trimmed.starts_with("Environment=FORGE_VERSION=")
+                || trimmed.starts_with("Environment=NEOFORGE_VERSION=")
+                || trimmed.starts_with("Environment=PAPER_BUILD=")
+                || trimmed.starts_with("Environment=PURPUR_BUILD=")
+                || trimmed.starts_with("Environment=BUILD_NUMBER=") {
+                // Obsolete loader line: replace with target loader line if matching and requested
+                if let (Some(var_name), Some(loader_ver)) = (target_loader_var, req_loader_raw) {
+                    if !loader_ver.eq_ignore_ascii_case("LATEST") && !loader_ver.eq_ignore_ascii_case("RECOMMENDED") && !loader_updated {
+                        new_lines.push(format!("Environment={}={}", var_name, loader_ver));
+                        loader_updated = true;
+                    }
+                }
             } else {
                 new_lines.push(line.to_string());
             }
@@ -737,6 +798,11 @@ pub async fn update_engine_handler(
         }
         if !version_updated {
             new_lines.push(format!("Environment=VERSION={}", req_version));
+        }
+        if let (Some(var_name), Some(loader_ver)) = (target_loader_var, req_loader_raw) {
+            if !loader_updated && !loader_ver.eq_ignore_ascii_case("LATEST") && !loader_ver.eq_ignore_ascii_case("RECOMMENDED") {
+                new_lines.push(format!("Environment={}={}", var_name, loader_ver));
+            }
         }
 
         let new_content = new_lines.join("\n") + "\n";
@@ -762,6 +828,7 @@ pub async fn update_engine_handler(
     let state_json = serde_json::json!({
         "type": req_type,
         "version": req_version,
+        "loader_version": req_loader_raw,
         "updated_at": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(),
     });
     let state_body = serde_json::to_string_pretty(&state_json)
@@ -815,6 +882,7 @@ pub async fn update_engine_handler(
         success: true,
         message: format!("Server engine changed to {} ({})", req_type, req_version),
         resolved_version: req_version,
+        resolved_loader_version: req_loader_raw.map(ToString::to_string),
         warning: if warnings.is_empty() { None } else { Some(warnings.join("\n")) },
         backup_file,
     }))
