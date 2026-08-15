@@ -34,6 +34,7 @@
 		},
 		border = null,
 		isActive = false,
+		serverDataVersion = null,
 		switchInFlight = false,
 		onEditBorder = () => {},
 		onStartPregen = () => {},
@@ -45,6 +46,17 @@
 	} = $props();
 
 	let copiedSeed = $state(false);
+
+	// Compatibility of this world vs the configured server version.
+	let compatInfo = $derived.by(() => {
+		if (world.data_version == null || serverDataVersion == null) {
+			return null; // unknown
+		}
+		if (world.data_version === serverDataVersion) {
+			return { label: 'Compatible', badgeClass: 'badge-success' };
+		}
+		return { label: 'Incompatible', badgeClass: 'badge-warning' };
+	});
 
 	// Dimension info classification
 	let dimensionInfo = $derived.by(() => {
@@ -131,6 +143,17 @@
 				</span>
 			{/if}
 
+			{#if compatInfo}
+				<span
+					class="badge {compatInfo.badgeClass} active-badge"
+					title={compatInfo.label === 'Compatible'
+						? `Data version ${world.data_version} matches the server`
+						: `Data version ${world.data_version} differs from the server (${serverDataVersion}) — downgrade risk`}
+				>
+					<span>{compatInfo.label}</span>
+				</span>
+			{/if}
+
 			<span class="badge {dimensionInfo.badgeClass} dimension-badge">
 				{#if dimensionInfo.name === 'Nether'}
 					<Flame size={12} />
@@ -189,6 +212,17 @@
 				<div class="metric-value storage-val">
 					<HardDrive size={13} class="icon-subtle" />
 					<span>{formatBytes(world.size_bytes)}</span>
+				</div>
+			</div>
+
+			<!-- Data version -->
+			<div class="metric-item">
+				<div class="metric-header">
+					<span class="metric-label">Data Version</span>
+				</div>
+				<div class="metric-value font-mono">
+					<Layers size={13} class="icon-subtle" />
+					<span>{world.data_version ?? '—'}</span>
 				</div>
 			</div>
 

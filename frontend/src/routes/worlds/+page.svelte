@@ -26,6 +26,7 @@
 	// Main Page Data States
 	let worlds = $state([]);
 	let activeWorld = $state(null);
+	let serverDataVersion = $state(null);
 	let borders = $state({}); // Keyed by world folder_name
 	let chunkyStatus = $state({
 		is_running: false,
@@ -91,6 +92,7 @@
 
 	// Chunky status polling timer reference
 	let chunkyPollTimer = null;
+	let worldsPollTimer = null;
 	let currentIntervalMs = null;
 
 	function resetChunkyPollTimer() {
@@ -134,6 +136,7 @@
 
 			worlds = Array.isArray(worldsRes?.worlds) ? worldsRes.worlds : [];
 			activeWorld = worldsRes?.active_world ?? null;
+			serverDataVersion = worldsRes?.server_data_version ?? null;
 			if (chunkyRes) {
 				chunkyStatus = chunkyRes;
 				resetChunkyPollTimer();
@@ -182,16 +185,25 @@
 	onMount(() => {
 		loadWorldsData();
 		resetChunkyPollTimer();
+		worldsPollTimer = setInterval(loadWorldsData, 10000);
 	});
 
 	onDestroy(() => {
 		if (chunkyPollTimer) {
 			clearInterval(chunkyPollTimer);
 		}
+		if (worldsPollTimer) {
+			clearInterval(worldsPollTimer);
+		}
 	});
 
 	// Derived Header Quick Indicators
 	let totalWorldsCount = $derived(worlds.length);
+	// The active world is "pending" when it has been selected but its folder
+	// hasn't been generated yet (the background restart is still working on it).
+	let pendingActive = $derived(
+		activeWorld !== null && !worlds.some((w) => w.folder_name === activeWorld)
+	);
 	let chunkyQuickStatus = $derived.by(() => {
 		if (chunkyStatus.is_running) {
 			return {
@@ -284,15 +296,17 @@
 		if (switchInFlight) return;
 		switchInFlight = true;
 		try {
+			// Optimistic: the active world updates immediately; the background
+			// restart generates/loads it asynchronously (polled into place).
+			activeWorld = world.folder_name;
 			const res = await apiPost('/api/worlds/switch', { name: world.folder_name });
 			addToast('success', 'World Switched', res.message || `Active world set to '${world.folder_name}'.`);
 			if (res.warning) addToast('info', 'Warning', res.warning);
-			if (!res.restarted) {
-				addToast('info', 'Applied on next start', 'The server is off — the change applies on next start.');
-			}
+			addToast('info', 'Generating in background', 'The world is loading in the background — it will appear as ready shortly.');
 			await loadWorldsData();
 		} catch (err) {
 			addToast('error', 'Switch Failed', err.message || `Could not switch to '${world.folder_name}'.`);
+			await loadWorldsData();
 		} finally {
 			switchInFlight = false;
 		}
@@ -445,24 +459,39 @@
 			<h2 class="section-title">Server Dimensions & Worlds ({worlds.length})</h2>
 		</div>
 
-		{#if loading && worlds.length === 0}
+		{#if loading && worlds.length === 0 && !pendingActive}
 			<div class="empty-state-card card">
 				<RefreshCw size={36} class="spin-slow empty-icon" />
 				<p class="empty-title">Loading server dimensions...</p>
 			</div>
-		{:else if worlds.length === 0}
+		{:else if worlds.length === 0 && !pendingActive}
 			<div class="empty-state-card card">
 				<Globe size={36} class="empty-icon" />
 				<p class="empty-title">No worlds detected on the server</p>
-				<p class="empty-desc">Ensure your Minecraft server has generated level.dat directories.</p>
+				<p class="empty-desc">Create a world to get started.</p>
 			</div>
 		{:else}
 			<div class="worlds-grid">
+				{#if pendingActive}
+					<div class="card world-card pending-card">
+						<div class="pending-card-body">
+							<RefreshCw size={24} class="spin-slow pending-icon" />
+							<div>
+								<h3 class="pending-title">« {activeWorld} » en génération…</h3>
+								<p class="pending-desc">
+									Le serveur génère ce monde en arrière-plan. Il apparaîtra ici dès qu'il sera prêt.
+								</p>
+							</div>
+						</div>
+					</div>
+				{/if}
+
 				{#each worlds as world (world.folder_name)}
 					<WorldCard
 						{world}
 						border={borders[world.folder_name]}
 						isActive={activeWorld === world.folder_name}
+						{serverDataVersion}
 						switchInFlight={switchInFlight}
 						onEditBorder={handleOpenEditBorder}
 						onStartPregen={handleStartPregenFromCard}
@@ -878,6 +907,36 @@
 	.empty-desc {
 		font-size: var(--font-size-sm);
 		color: var(--text-muted);
+	}
+
+	/* Pending (generating) world card */
+	.pending-card {
+		border-style: dashed;
+		border-color: var(--accent-blue-border);
+	}
+
+	.pending-card-body {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+		padding: var(--space-6);
+	}
+
+	.pending-icon {
+		color: var(--accent-blue-text);
+		flex-shrink: 0;
+	}
+
+	.pending-title {
+		font-size: var(--font-size-md);
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-primary);
+	}
+
+	.pending-desc {
+		font-size: var(--font-size-sm);
+		color: var(--text-muted);
+		margin-top: 2px;
 	}
 
 	/* Border Modal */

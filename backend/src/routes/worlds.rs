@@ -7,7 +7,7 @@ use axum::{
     Extension, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc, sync::LazyLock};
+use std::{collections::HashMap, sync::Arc, sync::LazyLock, time::Duration};
 use tokio::sync::Mutex;
 use tracing::info;
 
@@ -27,6 +27,8 @@ use crate::{
             validate_level_type, ChunkyStatus, WorldBackupInfo, WorldBorderInfo, WorldInfo,
         },
     },
+    models::podman::ServerStatus,
+    podman::PodmanClient,
     rcon::RconClient,
     routes::server::{current_quadlet_version, restart_lazymc_if_up},
 };
@@ -69,6 +71,9 @@ pub struct ActionResponse {
 pub struct WorldListResponse {
     pub worlds: Vec<WorldInfo>,
     pub active_world: Option<String>,
+    /// Data version of the currently-configured server version (from the quadlet),
+    /// used by the UI to badge each world as compatible/incompatible.
+    pub server_data_version: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -169,6 +174,26 @@ async fn world_version_warning(config: &AppConfig, name: &str) -> Option<String>
     }
 }
 
+/// Polls the Minecraft container until it has fully stopped (so a graceful world
+/// save finishes before the folder is removed), or the timeout elapses.
+async fn wait_for_server_stopped(config: &AppConfig, timeout: Duration) -> Result<(), AppError> {
+    let client = PodmanClient::default();
+    let start = std::time::Instant::now();
+    loop {
+        match client.inspect_container(&config.podman_container).await {
+            Ok(status) if status.status == ServerStatus::Stopped => return Ok(()),
+            Ok(_) => {}
+            Err(_) => return Ok(()), // container gone → stopped
+        }
+        if start.elapsed() > timeout {
+            return Err(AppError::InternalError(
+                "Timed out waiting for the server to stop".into(),
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+}
+
 pub fn worlds_router() -> Router {
     Router::new()
         .route("/", get(list_worlds_handler))
@@ -201,9 +226,14 @@ pub async fn list_worlds_handler(
 ) -> Result<Json<WorldListResponse>, AppError> {
     let worlds = scan_worlds(&config.minecraft_data_dir).await?;
     let active_world = get_active_world_name(&config.minecraft_data_dir).await;
+    let server_data_version = match current_quadlet_version(&config.systemd_config_dir).await {
+        Some(version) => version_meta(&version).await.map(|m| m.data_version),
+        None => None,
+    };
     Ok(Json(WorldListResponse {
         worlds,
         active_world,
+        server_data_version,
     }))
 }
 
@@ -448,7 +478,10 @@ pub async fn delete_backup_handler(
 }
 
 /// POST /api/worlds/switch
-/// Sets `level-name` in server.properties and restarts lazymc (when up).
+/// Instant pointer change: sets `level-name` and restarts the Minecraft container
+/// directly in the background (the systemd restart is queued, not awaited), so the
+/// new world loads/generates asynchronously. The target world does NOT need to
+/// exist yet — a pending world is generated when the server starts on it.
 pub async fn switch_world_handler(
     _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
@@ -460,9 +493,6 @@ pub async fn switch_world_handler(
         return Err(AppError::BadRequest("Invalid world name".into()));
     }
     sanitize_name(&name)?;
-
-    // Must exist before it can be switched to.
-    get_world_detail(&config.minecraft_data_dir, &name).await?;
 
     let active = get_active_world_name(&config.minecraft_data_dir).await;
     if active.as_deref() == Some(name.as_str()) {
@@ -478,13 +508,19 @@ pub async fn switch_world_handler(
     let props_path = config.minecraft_data_dir.join("server.properties");
     set_properties(&props_path, &[("level-name".to_string(), name.clone())]).await?;
 
-    let restarted = restart_lazymc_if_up(&config).await?;
+    // Restart the container directly (bypassing lazymc's wake wrapper, which blocks
+    // a player-triggered start when the world is missing). This queues the restart
+    // and returns immediately — the new world generates/loads in the background.
+    crate::podman::try_systemd_action("minecraft", "restart").await?;
+
+    // Only meaningful for an already-generated world; a pending world has no
+    // level.dat yet and simply generates against the current server version.
     let warning = world_version_warning(&config, &name).await;
 
     Ok(Json(WorldMutationResponse {
         success: true,
         message: format!("Active world switched to '{}'", name),
-        restarted,
+        restarted: true,
         warning,
         backup_filename: None,
     }))
@@ -591,10 +627,11 @@ pub async fn delete_world_handler(
     let active = get_active_world_name(&config.minecraft_data_dir).await;
     let is_active = active.as_deref() == Some(name.as_str());
 
-    // Stop the server before removing the active world's files. lazymc returns to
-    // its sleeping lobby and will not restart until a world exists again.
+    // Stop the server before removing the active world's files, and wait for it to
+    // finish its graceful save so it cannot re-create the folder mid-delete.
     if is_active {
         crate::podman::try_systemd_action("minecraft", "stop").await?;
+        wait_for_server_stopped(&config, Duration::from_secs(30)).await?;
     }
 
     let backups_dir = config.data_dir.join("backups");
