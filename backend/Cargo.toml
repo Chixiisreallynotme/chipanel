@@ -6,7 +6,7 @@ authors = ["ChiServ Maintainers <maintainers@chipanel.local>"]
 description = "ChiPanel - Lightweight Homelab & Podman Management Console"
 
 [dependencies]
-axum = { version = "0.7", features = ["ws", "macros"] }
+axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
 tokio = { version = "1.38", features = ["rt", "rt-multi-thread", "net", "macros", "time", "signal", "io-util", "fs"] }
 bytes = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -18,7 +18,7 @@ argon2 = "0.5"
 hyper = { version = "1.4", features = ["server", "client", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio", "server", "client", "http1"] }
 http-body-util = "0.1"
-tokio-util = "0.7"
+tokio-util = { version = "0.7", features = ["io"] }
 fastnbt = "2.5"
 flate2 = "1.0"
 reqwest = { version = "0.12", features = ["json", "stream"] }

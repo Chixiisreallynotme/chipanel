@@ -1,9 +1,12 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
-	import { apiGet, apiPost } from '$lib/api/client.js';
+	import { apiGet, apiPost, apiFetch, apiDownload } from '$lib/api/client.js';
 	import WorldCard from '$lib/components/worlds/WorldCard.svelte';
 	import ChunkyPanel from '$lib/components/worlds/ChunkyPanel.svelte';
 	import WorldBackupModal from '$lib/components/worlds/WorldBackupModal.svelte';
+	import CreateWorldModal from '$lib/components/worlds/CreateWorldModal.svelte';
+	import ImportWorldModal from '$lib/components/worlds/ImportWorldModal.svelte';
+	import ConfigureWorldModal from '$lib/components/worlds/ConfigureWorldModal.svelte';
 	import {
 		Globe,
 		Compass,
@@ -16,11 +19,13 @@
 		Maximize2,
 		Shield,
 		Sliders,
-		Plus
+		Plus,
+		Upload
 	} from 'lucide-svelte';
 
 	// Main Page Data States
 	let worlds = $state([]);
+	let activeWorld = $state(null);
 	let borders = $state({}); // Keyed by world folder_name
 	let chunkyStatus = $state({
 		is_running: false,
@@ -38,6 +43,17 @@
 	// Modals State
 	let backupModalOpen = $state(false);
 	let pregenTargetWorld = $state('');
+	let createModalOpen = $state(false);
+	let importModalOpen = $state(false);
+
+	// Configure modal state
+	let configureModalOpen = $state(false);
+	let configureTarget = $state(null);
+
+	// Delete confirmation state
+	let deleteTarget = $state(null);
+	let deleteInFlight = $state(false);
+	let switchInFlight = $state(false);
 
 	// Worldborder Edit Modal State
 	let borderModalOpen = $state(false);
@@ -116,7 +132,8 @@
 				})
 			]);
 
-			worlds = Array.isArray(worldsRes) ? worldsRes : [];
+			worlds = Array.isArray(worldsRes?.worlds) ? worldsRes.worlds : [];
+			activeWorld = worldsRes?.active_world ?? null;
 			if (chunkyRes) {
 				chunkyStatus = chunkyRes;
 				resetChunkyPollTimer();
@@ -261,6 +278,68 @@
 		backupModalOpen = true;
 	}
 
+	// --- World lifecycle actions ---
+
+	async function handleSwitch(world) {
+		if (switchInFlight) return;
+		switchInFlight = true;
+		try {
+			const res = await apiPost('/api/worlds/switch', { name: world.folder_name });
+			addToast('success', 'World Switched', res.message || `Active world set to '${world.folder_name}'.`);
+			if (res.warning) addToast('info', 'Warning', res.warning);
+			if (!res.restarted) {
+				addToast('info', 'Applied on next start', 'The server is off — the change applies on next start.');
+			}
+			await loadWorldsData();
+		} catch (err) {
+			addToast('error', 'Switch Failed', err.message || `Could not switch to '${world.folder_name}'.`);
+		} finally {
+			switchInFlight = false;
+		}
+	}
+
+	function handleDeleteRequest(world) {
+		deleteTarget = world;
+	}
+
+	async function confirmDelete() {
+		if (!deleteTarget || deleteInFlight) return;
+		deleteInFlight = true;
+		const world = deleteTarget;
+		try {
+			const res = await apiFetch('/api/worlds/' + encodeURIComponent(world.folder_name), {
+				method: 'DELETE'
+			});
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				throw new Error(data?.error || `Delete failed (HTTP ${res.status})`);
+			}
+			addToast('success', 'World Deleted', data?.message || `World '${world.folder_name}' deleted.`);
+			deleteTarget = null;
+			await loadWorldsData();
+		} catch (err) {
+			addToast('error', 'Delete Failed', err.message || `Could not delete '${world.folder_name}'.`);
+		} finally {
+			deleteInFlight = false;
+		}
+	}
+
+	async function handleDownload(world) {
+		try {
+			await apiDownload(
+				'/api/worlds/' + encodeURIComponent(world.folder_name) + '/download',
+				world.folder_name + '.zip'
+			);
+		} catch (err) {
+			addToast('error', 'Download Failed', err.message || `Could not download '${world.folder_name}'.`);
+		}
+	}
+
+	function handleOpenConfigure(world) {
+		configureTarget = world;
+		configureModalOpen = true;
+	}
+
 	function handleChunkyActionSuccess(action, message) {
 		pollChunkyStatus();
 	}
@@ -269,6 +348,14 @@
 		if (e.key === 'Escape') {
 			if (borderModalOpen) {
 				closeBorderModal();
+			} else if (createModalOpen) {
+				createModalOpen = false;
+			} else if (importModalOpen) {
+				importModalOpen = false;
+			} else if (configureModalOpen) {
+				configureModalOpen = false;
+			} else if (deleteTarget) {
+				deleteTarget = null;
 			} else if (backupModalOpen) {
 				backupModalOpen = false;
 			}
@@ -325,10 +412,28 @@
 				<button
 					type="button"
 					class="btn btn-primary"
+					onclick={() => (createModalOpen = true)}
+				>
+					<Plus size={16} />
+					<span>New World</span>
+				</button>
+
+				<button
+					type="button"
+					class="btn btn-secondary"
+					onclick={() => (importModalOpen = true)}
+				>
+					<Upload size={16} />
+					<span>Import</span>
+				</button>
+
+				<button
+					type="button"
+					class="btn btn-secondary"
 					onclick={() => (backupModalOpen = true)}
 				>
 					<Archive size={16} />
-					<span>Manage Backups ({backups.length})</span>
+					<span>Backups ({backups.length})</span>
 				</button>
 			</div>
 		</div>
@@ -357,9 +462,15 @@
 					<WorldCard
 						{world}
 						border={borders[world.folder_name]}
+						isActive={activeWorld === world.folder_name}
+						switchInFlight={switchInFlight}
 						onEditBorder={handleOpenEditBorder}
 						onStartPregen={handleStartPregenFromCard}
 						onCreateBackup={handleCreateBackupFromCard}
+						onSwitch={handleSwitch}
+						onDelete={handleDeleteRequest}
+						onDownload={handleDownload}
+						onConfigure={handleOpenConfigure}
 					/>
 				{/each}
 			</div>
@@ -503,6 +614,97 @@
 						</button>
 					</div>
 				</form>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Create / Import / Configure world modals -->
+	<CreateWorldModal
+		isOpen={createModalOpen}
+		onClose={() => (createModalOpen = false)}
+		onDone={async () => {
+			createModalOpen = false;
+			await loadWorldsData();
+		}}
+		onToast={addToast}
+	/>
+
+	<ImportWorldModal
+		isOpen={importModalOpen}
+		{backups}
+		onClose={() => (importModalOpen = false)}
+		onDone={async () => {
+			importModalOpen = false;
+			await loadWorldsData();
+		}}
+		onToast={addToast}
+	/>
+
+	<ConfigureWorldModal
+		isOpen={configureModalOpen}
+		world={configureTarget}
+		onClose={() => (configureModalOpen = false)}
+		onToast={addToast}
+	/>
+
+	<!-- Delete world confirmation -->
+	{#if deleteTarget}
+		<div
+			class="modal-backdrop"
+			onclick={() => (deleteInFlight ? null : (deleteTarget = null))}
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="delete-modal-title"
+			tabindex="-1"
+		>
+			<div class="modal border-modal" onclick={(e) => e.stopPropagation()}>
+				<div class="modal-header">
+					<div class="title-with-icon">
+						<AlertCircle size={20} class="text-danger" />
+						<h3 id="delete-modal-title" class="modal-title">
+							Delete World: <span class="font-mono text-blue">{deleteTarget.level_name}</span>
+						</h3>
+					</div>
+					<button
+						type="button"
+						class="btn btn-ghost btn-icon btn-sm"
+						onclick={() => (deleteTarget = null)}
+						disabled={deleteInFlight}
+						aria-label="Close Delete Modal"
+					>
+						<X size={18} />
+					</button>
+				</div>
+
+				<div class="modal-body border-modal-body">
+					<p class="delete-warning-text">
+						This will permanently delete the world folder
+						<span class="font-mono">{deleteTarget.folder_name}</span>. A safety ZIP backup is
+						created automatically first and kept in the backups list.
+					</p>
+				</div>
+
+				<div class="modal-footer">
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() => (deleteTarget = null)}
+						disabled={deleteInFlight}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						class="btn btn-danger {deleteInFlight ? 'btn-loading' : ''}"
+						onclick={confirmDelete}
+						disabled={deleteInFlight}
+					>
+						{#if !deleteInFlight}
+							<AlertCircle size={16} />
+						{/if}
+						<span>Delete World</span>
+					</button>
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -692,6 +894,16 @@
 
 	.text-blue {
 		color: var(--accent-blue-text);
+	}
+
+	.text-danger {
+		color: var(--danger-text);
+	}
+
+	.delete-warning-text {
+		font-size: var(--font-size-sm);
+		color: var(--text-secondary);
+		line-height: 1.6;
 	}
 
 	.border-modal-body {

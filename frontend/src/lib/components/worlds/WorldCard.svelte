@@ -11,7 +11,11 @@
 		HardDrive,
 		MapPin,
 		Maximize2,
-		Layers
+		Layers,
+		Play,
+		Download,
+		Trash2,
+		Settings
 	} from 'lucide-svelte';
 
 	let {
@@ -25,12 +29,19 @@
 			spawn_y: 64,
 			spawn_z: 0,
 			is_nether: false,
-			is_end: false
+			is_end: false,
+			data_version: null
 		},
 		border = null,
+		isActive = false,
+		switchInFlight = false,
 		onEditBorder = () => {},
 		onStartPregen = () => {},
-		onCreateBackup = () => {}
+		onCreateBackup = () => {},
+		onSwitch = () => {},
+		onDelete = () => {},
+		onDownload = () => {},
+		onConfigure = () => {}
 	} = $props();
 
 	let copiedSeed = $state(false);
@@ -112,16 +123,25 @@
 			</div>
 		</div>
 
-		<span class="badge {dimensionInfo.badgeClass} dimension-badge">
-			{#if dimensionInfo.name === 'Nether'}
-				<Flame size={12} />
-			{:else if dimensionInfo.name === 'The End'}
-				<Sparkles size={12} />
-			{:else}
-				<Globe size={12} />
+		<div class="badges-row">
+			{#if isActive}
+				<span class="badge badge-success active-badge" title="This is the world the server currently loads">
+					<Play size={12} />
+					<span>Active</span>
+				</span>
 			{/if}
-			<span>{dimensionInfo.name}</span>
-		</span>
+
+			<span class="badge {dimensionInfo.badgeClass} dimension-badge">
+				{#if dimensionInfo.name === 'Nether'}
+					<Flame size={12} />
+				{:else if dimensionInfo.name === 'The End'}
+					<Sparkles size={12} />
+				{:else}
+					<Globe size={12} />
+				{/if}
+				<span>{dimensionInfo.name}</span>
+			</span>
+		</div>
 	</div>
 
 	<!-- Card Body: Key World Metrics -->
@@ -187,6 +207,50 @@
 
 	<!-- Card Footer: Quick Action Buttons -->
 	<div class="card-footer world-card-footer">
+		{#if !isActive}
+			<button
+				type="button"
+				class="btn btn-primary btn-sm action-btn {switchInFlight ? 'btn-loading' : ''}"
+				onclick={() => onSwitch(world)}
+				disabled={switchInFlight}
+				title="Make this the active world (restarts the server)"
+			>
+				<Play size={14} />
+				<span>Switch to</span>
+			</button>
+		{:else}
+			<button
+				type="button"
+				class="btn btn-primary btn-sm action-btn"
+				onclick={() => onConfigure(world)}
+				title="Configure game rules, difficulty, and settings"
+			>
+				<Settings size={14} />
+				<span>Configure</span>
+			</button>
+		{/if}
+
+		<button
+			type="button"
+			class="btn btn-secondary btn-sm action-btn"
+			onclick={() => onDownload(world)}
+			title="Download this world as a ZIP file"
+		>
+			<Download size={14} />
+			<span>Download</span>
+		</button>
+
+		<button
+			type="button"
+			class="btn btn-danger btn-sm action-btn"
+			onclick={() => onDelete(world)}
+			disabled={isActive}
+			title={isActive ? 'Switch to another world before deleting this one' : 'Delete this world (a safety backup is created first)'}
+		>
+			<Trash2 size={14} />
+			<span>Delete</span>
+		</button>
+
 		<button
 			type="button"
 			class="btn btn-secondary btn-sm action-btn"
@@ -194,7 +258,7 @@
 			title="Edit Worldborder boundaries and options"
 		>
 			<Maximize2 size={14} />
-			<span>Edit Worldborder</span>
+			<span>Border</span>
 		</button>
 
 		<button
@@ -204,17 +268,17 @@
 			title="Pre-generate chunks with Chunky plugin"
 		>
 			<Compass size={14} />
-			<span>Pre-generate</span>
+			<span>Pre-gen</span>
 		</button>
 
 		<button
 			type="button"
-			class="btn btn-primary btn-sm action-btn"
+			class="btn btn-secondary btn-sm action-btn"
 			onclick={() => onCreateBackup(world)}
 			title="Create ZIP backup archive of world files"
 		>
 			<Save size={14} />
-			<span>Create Backup</span>
+			<span>Backup</span>
 		</button>
 	</div>
 </div>
@@ -296,6 +360,19 @@
 	}
 
 	.dimension-badge {
+		font-size: var(--font-size-xs);
+		padding: var(--space-1) var(--space-3);
+		gap: var(--space-1);
+	}
+
+	.badges-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-shrink: 0;
+	}
+
+	.active-badge {
 		font-size: var(--font-size-xs);
 		padding: var(--space-1) var(--space-3);
 		gap: var(--space-1);

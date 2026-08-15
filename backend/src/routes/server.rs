@@ -349,7 +349,7 @@ async fn set_lazymc_key(
 }
 
 /// Best-effort TCP reachability probe — returns whether a listener answered on `port`.
-async fn probe_tcp(host: &str, port: u16) -> bool {
+pub(crate) async fn probe_tcp(host: &str, port: u16) -> bool {
     tokio::time::timeout(
         std::time::Duration::from_millis(500),
         tokio::net::TcpStream::connect((host, port)),
@@ -357,6 +357,35 @@ async fn probe_tcp(host: &str, port: u16) -> bool {
     .await
     .map(|r| r.is_ok())
     .unwrap_or(false)
+}
+
+/// Restarts lazymc only when it is currently serving (i.e. not "off" mode). Returns
+/// `true` when a restart was issued, `false` when deferred (the change applies on the
+/// next start). Shared by the engine switcher and the world lifecycle mutations.
+pub(crate) async fn restart_lazymc_if_up(config: &AppConfig) -> Result<bool, AppError> {
+    if probe_tcp(&config.rcon_host, 25565).await {
+        crate::podman::try_systemd_action("lazymc", "restart").await?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+/// Reads `Environment=VERSION=` out of the minecraft.container quadlet (the engine
+/// switcher's source of truth) for data-version compatibility checks.
+pub(crate) async fn current_quadlet_version(systemd_config_dir: &Path) -> Option<String> {
+    let container_file = systemd_config_dir.join("minecraft.container");
+    let content = tokio::fs::read_to_string(&container_file).await.ok()?;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(val) = trimmed.strip_prefix("Environment=VERSION=") {
+            let v = val.trim();
+            if !v.is_empty() {
+                return Some(v.to_string());
+            }
+        }
+    }
+    None
 }
 
 
@@ -619,13 +648,13 @@ pub async fn update_engine_handler(
     // 4) Apply: restart lazymc so it re-reads its config (new hint) and wakes the
     //    server with the new version only if it is currently in "on" mode. If the
     //    server is fully off, the new version simply applies on the next start.
-    let lazymc_up = probe_tcp(&config.rcon_host, 25565).await;
-    if lazymc_up {
-        crate::podman::try_systemd_action("lazymc", "restart").await?;
-        info!("Server engine updated to TYPE={} VERSION={}; lazymc restarted to apply", req_type, req_version);
-    } else {
-        info!("Server engine updated to TYPE={} VERSION={}; lazymc is off, change applies on next start", req_type, req_version);
-    }
+    let restarted = restart_lazymc_if_up(&config).await?;
+    info!(
+        "Server engine updated to TYPE={} VERSION={}; {}",
+        req_type,
+        req_version,
+        if restarted { "lazymc restarted to apply" } else { "lazymc is off, change applies on next start" }
+    );
 
     Ok(Json(EngineUpdateResponse {
         success: true,

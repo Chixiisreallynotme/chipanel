@@ -24,6 +24,10 @@ pub struct WorldInfo {
     pub time: i64,
     pub is_nether: bool,
     pub is_end: bool,
+    /// Save-format version of the world (from `level.dat`), or `None` when
+    /// unreadable. Used to warn about version incompatibility.
+    #[serde(default)]
+    pub data_version: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -283,6 +287,12 @@ pub fn parse_level_dat(path: &Path, folder_name: &str) -> Result<(WorldInfo, Wor
         60000000.0
     };
 
+    let data_version = if let Some(version) = &data.version {
+        Some(version.id as i64)
+    } else {
+        data.data_version.map(|d| d as i64)
+    };
+
     let world_info = WorldInfo {
         folder_name: folder_name.to_string(),
         level_name,
@@ -295,6 +305,7 @@ pub fn parse_level_dat(path: &Path, folder_name: &str) -> Result<(WorldInfo, Wor
         time: data.time,
         is_nether,
         is_end,
+        data_version,
     };
 
     let border_info = WorldBorderInfo {
@@ -642,53 +653,9 @@ pub async fn create_backup(
     let world_dir_clone = world_dir.clone();
     let zip_path_clone = zip_path.clone();
 
-    tokio::task::spawn_blocking(move || -> Result<(), AppError> {
-        let zip_file = File::create(&zip_path_clone)
-            .map_err(|e| AppError::InternalError(format!("Failed to create backup file {:?}: {}", zip_path_clone, e)))?;
-        let mut zip = ZipWriter::new(zip_file);
-        let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-
-        fn collect_files(current: &Path, acc: &mut Vec<PathBuf>) -> Result<(), std::io::Error> {
-            for entry in fs::read_dir(current)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() {
-                    collect_files(&path, acc)?;
-                } else {
-                    acc.push(path);
-                }
-            }
-            Ok(())
-        }
-
-        let mut files = Vec::new();
-        collect_files(&world_dir_clone, &mut files)
-            .map_err(|e| AppError::InternalError(format!("Failed to collect world files: {}", e)))?;
-
-        for file_path in files {
-            let relative_path = match file_path.strip_prefix(&world_dir_clone) {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-            let name_str = relative_path.to_string_lossy();
-
-            zip.start_file(name_str, options)
-                .map_err(|e| AppError::InternalError(format!("Failed to start zip file entry: {}", e)))?;
-
-            let mut f = File::open(&file_path)
-                .map_err(|e| AppError::InternalError(format!("Failed to open file {:?}: {}", file_path, e)))?;
-
-            std::io::copy(&mut f, &mut zip)
-                .map_err(|e| AppError::InternalError(format!("Failed to write zip content for {:?}: {}", file_path, e)))?;
-        }
-
-        zip.finish()
-            .map_err(|e| AppError::InternalError(format!("Failed to finish zip archive: {}", e)))?;
-
-        Ok(())
-    })
-    .await
-    .map_err(|e| AppError::InternalError(format!("Join error during backup creation: {}", e)))??;
+    tokio::task::spawn_blocking(move || zip_dir_to_file(&world_dir_clone, &zip_path_clone))
+        .await
+        .map_err(|e| AppError::InternalError(format!("Join error during backup creation: {}", e)))??;
 
     let meta = tokio::fs::metadata(&zip_path)
         .await
@@ -797,5 +764,354 @@ pub async fn delete_backup(backups_dir: &Path, filename: &str) -> Result<(), App
     info!("Deleted backup file: {:?}", file_path);
 
     Ok(())
+}
+
+/// Recursively zips `world_dir` into `zip_path`. Synchronous — call inside
+/// `spawn_blocking`. Shared by backups and world export.
+fn zip_dir_to_file(world_dir: &Path, zip_path: &Path) -> Result<(), AppError> {
+    let zip_file = File::create(zip_path)
+        .map_err(|e| AppError::InternalError(format!("Failed to create zip file {:?}: {}", zip_path, e)))?;
+    let mut zip = ZipWriter::new(zip_file);
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
+    fn collect_files(current: &Path, acc: &mut Vec<PathBuf>) -> Result<(), std::io::Error> {
+        for entry in fs::read_dir(current)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                collect_files(&path, acc)?;
+            } else {
+                acc.push(path);
+            }
+        }
+        Ok(())
+    }
+
+    let mut files = Vec::new();
+    collect_files(world_dir, &mut files)
+        .map_err(|e| AppError::InternalError(format!("Failed to collect world files: {}", e)))?;
+
+    for file_path in files {
+        let relative_path = match file_path.strip_prefix(world_dir) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let name_str = relative_path.to_string_lossy();
+
+        zip.start_file(name_str, options)
+            .map_err(|e| AppError::InternalError(format!("Failed to start zip file entry: {}", e)))?;
+
+        let mut f = File::open(&file_path)
+            .map_err(|e| AppError::InternalError(format!("Failed to open file {:?}: {}", file_path, e)))?;
+
+        std::io::copy(&mut f, &mut zip)
+            .map_err(|e| AppError::InternalError(format!("Failed to write zip content for {:?}: {}", file_path, e)))?;
+    }
+
+    zip.finish()
+        .map_err(|e| AppError::InternalError(format!("Failed to finish zip archive: {}", e)))?;
+
+    Ok(())
+}
+
+/// Parses `level-name` out of `server.properties`; `None` when absent/unreadable.
+pub async fn get_active_world_name(data_dir: &Path) -> Option<String> {
+    let props_path = data_dir.join("server.properties");
+    crate::minecraft::server_properties::get_property(&props_path, "level-name")
+        .await
+        .ok()
+        .flatten()
+        .filter(|v| !v.is_empty())
+}
+
+/// Recursively deletes a world folder. The caller MUST have already verified it is
+/// not the active world.
+pub async fn delete_world_dir(data_dir: &Path, name: &str) -> Result<(), AppError> {
+    sanitize_name(name)?;
+
+    let world_dir = data_dir.join(name);
+    if !world_dir.exists() {
+        return Err(AppError::NotFound(format!("World '{}' not found", name)));
+    }
+
+    tokio::fs::remove_dir_all(&world_dir)
+        .await
+        .map_err(|e| AppError::InternalError(format!("Failed to delete world '{}': {}", name, e)))?;
+
+    info!("Deleted world folder: {:?}", world_dir);
+    Ok(())
+}
+
+/// Detects a single common top-level folder across all archive entry names (typical
+/// world zips are `MyWorld/level.dat`). Returns `None` when entries are flat or
+/// there is more than one top-level name.
+fn detect_single_root(names: &[PathBuf]) -> Option<PathBuf> {
+    let mut root: Option<PathBuf> = None;
+    for name in names {
+        let mut comps = name.components();
+        let first = match comps.next() {
+            Some(std::path::Component::Normal(c)) => c,
+            _ => return None,
+        };
+        // A single-component entry ("level.dat") is a top-level file, not a folder.
+        if comps.next().is_none() {
+            return None;
+        }
+        let comp = PathBuf::from(first);
+        match &root {
+            None => root = Some(comp),
+            Some(r) if *r == comp => {}
+            Some(_) => return None,
+        }
+    }
+    root
+}
+
+/// Extracts a world zip into `data_dir/<target_name>`, guarding against zip-slip
+/// (`../` / absolute paths), stripping a single common root folder when present,
+/// and requiring a `level.dat` in the extracted tree.
+pub async fn extract_zip_world(
+    zip_path: &Path,
+    data_dir: &Path,
+    target_name: &str,
+) -> Result<(), AppError> {
+    sanitize_name(target_name)?;
+
+    let target_dir = data_dir.join(target_name);
+    if target_dir.exists() {
+        return Err(AppError::Conflict(format!(
+            "World '{}' already exists",
+            target_name
+        )));
+    }
+
+    let zip_path_clone = zip_path.to_owned();
+    let target_dir_clone = target_dir.clone();
+
+    tokio::task::spawn_blocking(move || -> Result<(), AppError> {
+        let file = File::open(&zip_path_clone)
+            .map_err(|e| AppError::InternalError(format!("Failed to open zip file: {}", e)))?;
+        let mut archive = ZipArchive::new(file)
+            .map_err(|e| AppError::InternalError(format!("Failed to read zip archive: {}", e)))?;
+
+        let names: Vec<PathBuf> = (0..archive.len())
+            .filter_map(|i| {
+                archive
+                    .by_index(i)
+                    .ok()
+                    .and_then(|e| e.enclosed_name().map(|p| p.to_owned()))
+            })
+            .collect();
+        let strip_root = detect_single_root(&names);
+
+        for i in 0..archive.len() {
+            let mut entry_file = archive
+                .by_index(i)
+                .map_err(|e| AppError::InternalError(format!("Failed to read zip entry: {}", e)))?;
+
+            let enclosed = match entry_file.enclosed_name() {
+                Some(p) => p.to_owned(),
+                None => {
+                    return Err(AppError::BadRequest(
+                        "Path traversal detected in archive".into(),
+                    ))
+                }
+            };
+
+            let rel = match &strip_root {
+                Some(root) => match enclosed.strip_prefix(root) {
+                    Ok(p) => p.to_owned(),
+                    Err(_) => continue, // entry outside the single root folder — skip
+                },
+                None => enclosed,
+            };
+
+            if rel.as_os_str().is_empty() {
+                continue; // the root folder entry itself
+            }
+
+            let dest_path = target_dir_clone.join(&rel);
+
+            if entry_file.name().ends_with('/') || entry_file.name().ends_with('\\') {
+                fs::create_dir_all(&dest_path).map_err(|e| {
+                    AppError::InternalError(format!("Failed to create directory {:?}: {}", dest_path, e))
+                })?;
+            } else {
+                if let Some(parent) = dest_path.parent() {
+                    if !parent.exists() {
+                        fs::create_dir_all(parent).map_err(|e| {
+                            AppError::InternalError(format!(
+                                "Failed to create parent directory {:?}: {}",
+                                parent, e
+                            ))
+                        })?;
+                    }
+                }
+                let mut out_file = File::create(&dest_path).map_err(|e| {
+                    AppError::InternalError(format!("Failed to create output file {:?}: {}", dest_path, e))
+                })?;
+                std::io::copy(&mut entry_file, &mut out_file).map_err(|e| {
+                    AppError::InternalError(format!("Failed to extract file {:?}: {}", dest_path, e))
+                })?;
+            }
+        }
+
+        if !target_dir_clone.join("level.dat").exists() {
+            return Err(AppError::BadRequest(
+                "Archive does not contain a level.dat world".into(),
+            ));
+        }
+
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::InternalError(format!("Join error during world import: {}", e)))??;
+
+    Ok(())
+}
+
+/// Zips a world folder into `tmp_dir` and returns the temp zip path (for download).
+/// The caller is responsible for removing the temp file after streaming.
+pub async fn export_world_to_temp(
+    data_dir: &Path,
+    name: &str,
+    tmp_dir: &Path,
+) -> Result<PathBuf, AppError> {
+    sanitize_name(name)?;
+
+    let world_dir = data_dir.join(name);
+    if !world_dir.exists() || !world_dir.join("level.dat").exists() {
+        return Err(AppError::NotFound(format!("World '{}' not found", name)));
+    }
+
+    if !tmp_dir.exists() {
+        tokio::fs::create_dir_all(tmp_dir)
+            .await
+            .map_err(|e| AppError::InternalError(format!("Failed to create tmp dir: {}", e)))?;
+    }
+
+    let timestamp_secs = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let zip_path = tmp_dir.join(format!("{}_export_{}.zip", name, timestamp_secs));
+
+    let world_dir_clone = world_dir.clone();
+    let zip_path_clone = zip_path.clone();
+    tokio::task::spawn_blocking(move || zip_dir_to_file(&world_dir_clone, &zip_path_clone))
+        .await
+        .map_err(|e| AppError::InternalError(format!("Join error during world export: {}", e)))??;
+
+    Ok(zip_path)
+}
+
+/// Validates a `level-type` generator id.
+pub fn validate_level_type(s: &str) -> bool {
+    matches!(
+        s,
+        "default"
+            | "flat"
+            | "largebiomes"
+            | "amplified"
+            | "buffet"
+            | "caves"
+            | "island"
+            | "customized"
+            | "custom"
+    )
+}
+
+/// Validates a Minecraft gamemode name.
+pub fn validate_gamemode(s: &str) -> bool {
+    matches!(s, "survival" | "creative" | "adventure" | "spectator")
+}
+
+/// Validates a Minecraft difficulty name.
+pub fn validate_difficulty(s: &str) -> bool {
+    matches!(s, "peaceful" | "easy" | "normal" | "hard")
+}
+
+/// Validates a gamerule name (no whitespace/control chars, no shell metacharacters).
+pub fn validate_gamerule_rule(s: &str) -> bool {
+    !s.is_empty()
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':')
+}
+
+/// Validates a gamerule value (bool, integer, or whitespace-free string).
+pub fn validate_gamerule_value(v: &serde_json::Value) -> bool {
+    match v {
+        serde_json::Value::Bool(_) => true,
+        serde_json::Value::Number(n) => n.is_i64(),
+        serde_json::Value::String(s) => !s.is_empty() && !s.chars().any(|c| c.is_whitespace()),
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validators_accept_known_and_reject_unknown() {
+        assert!(validate_level_type("flat"));
+        assert!(validate_level_type("largebiomes"));
+        assert!(!validate_level_type("void"));
+        assert!(validate_gamemode("creative"));
+        assert!(!validate_gamemode("hardcore"));
+        assert!(validate_difficulty("hard"));
+        assert!(!validate_difficulty("extreme"));
+        assert!(validate_gamerule_rule("keepInventory"));
+        assert!(validate_gamerule_rule("maxEntityCramming"));
+        assert!(!validate_gamerule_rule("bad rule"));
+        assert!(!validate_gamerule_rule("stop; rm -rf"));
+        assert!(validate_gamerule_value(&serde_json::json!(true)));
+        assert!(validate_gamerule_value(&serde_json::json!(3)));
+        assert!(validate_gamerule_value(&serde_json::json!("minecraft:stone")));
+        assert!(!validate_gamerule_value(&serde_json::json!(1.5)));
+        assert!(!validate_gamerule_value(&serde_json::json!("bad value")));
+        assert!(!validate_gamerule_value(&serde_json::json!({})));
+    }
+
+    #[test]
+    fn detects_single_root_folder() {
+        let names = vec![
+            PathBuf::from("MyWorld/level.dat"),
+            PathBuf::from("MyWorld/region/r.0.0.mca"),
+        ];
+        assert_eq!(detect_single_root(&names), Some(PathBuf::from("MyWorld")));
+
+        let flat = vec![PathBuf::from("level.dat")];
+        assert_eq!(detect_single_root(&flat), None);
+
+        let multi = vec![
+            PathBuf::from("A/level.dat"),
+            PathBuf::from("B/other"),
+        ];
+        assert_eq!(detect_single_root(&multi), None);
+    }
+
+    #[test]
+    fn reject_path_traversal_archive() {
+        // A zip entry with `../evil` must never be extracted outside the target.
+        use std::io::Write as _;
+        let tmp = std::env::temp_dir().join(format!("chipanel_zipslip_test_{}.zip", std::process::id()));
+        {
+            let f = File::create(&tmp).unwrap();
+            let mut zw = ZipWriter::new(f);
+            let opts = SimpleFileOptions::default();
+            zw.start_file("../evil.txt", opts).unwrap();
+            zw.write_all(b"pwn").unwrap();
+            zw.finish().unwrap();
+        }
+        // `enclosed_name()` for `../evil.txt` is None → detect via a name scan.
+        let file = File::open(&tmp).unwrap();
+        let mut archive = ZipArchive::new(file).unwrap();
+        let names: Vec<PathBuf> = (0..archive.len())
+            .filter_map(|i| archive.by_index(i).ok().and_then(|e| e.enclosed_name().map(|p| p.to_owned())))
+            .collect();
+        assert!(names.is_empty(), "zip-slip entry must be rejected by enclosed_name()");
+        let _ = std::fs::remove_file(&tmp);
+    }
 }
 

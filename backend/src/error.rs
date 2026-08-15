@@ -34,6 +34,11 @@ pub enum AppError {
     /// raw transport error (RCON host:port, socket paths, IO details).
     #[error("{0}")]
     PartialFailure(String),
+
+    /// A valid request that conflicts with the current resource state (e.g. deleting the
+    /// active world, importing onto an existing world, a second concurrent mutation).
+    #[error("{0}")]
+    Conflict(String),
 }
 
 impl AppError {
@@ -61,6 +66,9 @@ impl AppError {
             // state that conflicts with what was asked for. The operator needs to know which
             // step did not apply, so this message is passed through verbatim.
             AppError::PartialFailure(msg) => (StatusCode::CONFLICT, msg.clone()),
+            // 409: valid request, conflicting state (delete active world, name collision,
+            // concurrent mutation). Message passed through verbatim for the same reason.
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
         }
     }
 }

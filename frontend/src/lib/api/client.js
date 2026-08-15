@@ -111,3 +111,26 @@ export async function apiPost(path, body) {
 	}
 	return res.json();
 }
+
+/**
+ * GET a binary file (e.g. a world export zip) with the auth header attached and
+ * trigger a browser download.
+ * @param {string} path
+ * @param {string} [filename]
+ */
+export async function apiDownload(path, filename) {
+	const res = await apiFetch(path, { method: 'GET' });
+	if (!res.ok) {
+		const errorData = await res.json().catch(() => ({ message: 'Download failed' }));
+		throw new Error(errorData.error || errorData.message || `GET ${path} failed (${res.status})`);
+	}
+	const blob = await res.blob();
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename || 'world.zip';
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(url);
+}
