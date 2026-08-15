@@ -72,6 +72,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     crate::minecraft::version_watch::start_version_watch(config.data_dir.clone());
 
+    crate::minecraft::tools::start_tools_sync_loop(config.clone());
+
     let cors = if config.allowed_origins.iter().any(|o| o == "*") {
         CorsLayer::new()
             .allow_origin(Any)
@@ -104,6 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest("/api/files", routes::files_router())
         .nest("/api/metrics", routes::metrics_router())
         .nest("/api/profiles", routes::profiles_router())
+        .nest("/api/tools", routes::tools_router())
         .route("/api/health", get(health_handler))
         .route("/ws", get(routes::websocket::websocket_handler))
         // Unknown /api/* paths must 404 as JSON; without this the SPA fallback below

@@ -656,6 +656,19 @@ pub async fn update_engine_handler(
         if restarted { "lazymc restarted to apply" } else { "lazymc is off, change applies on next start" }
     );
 
+    // 5) Best-effort: re-sync spark/chunky to match the new engine/version. A
+    //    failure here must not fail the engine switch (the tools are optional),
+    //    so it is logged and swallowed.
+    match crate::minecraft::tools::ensure_tools(&config).await {
+        Ok(report) => {
+            info!(
+                "tools re-synced after engine change: supported={} dir={} managed={:?}",
+                report.supported, report.target_dir, report.managed
+            );
+        }
+        Err(e) => warn!("tools re-sync after engine change failed: {}", e),
+    }
+
     Ok(Json(EngineUpdateResponse {
         success: true,
         message: format!("Server engine changed to {} ({})", req_type, req_version),

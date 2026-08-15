@@ -4,6 +4,7 @@
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
 	import InstalledPluginsList from '$lib/components/plugins/InstalledPluginsList.svelte';
 	import ModrinthCatalogBrowser from '$lib/components/plugins/ModrinthCatalogBrowser.svelte';
+	import ToolsSyncPanel from '$lib/components/plugins/ToolsSyncPanel.svelte';
 	import ModpackCatalogBrowser from '$lib/components/modpacks/ModpackCatalogBrowser.svelte';
 	import ProfileManager from '$lib/components/modpacks/ProfileManager.svelte';
 	import {
@@ -297,6 +298,8 @@
 
 	<!-- Tab Body Content -->
 	<div class="tab-content">
+		<ToolsSyncPanel onToast={addToast} />
+
 		{#if activeTab === 'plugins'}
 			<div class="tab-section-container">
 				<div class="section-block">

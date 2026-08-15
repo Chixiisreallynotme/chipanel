@@ -8,6 +8,7 @@ pub mod players;
 pub mod plugins;
 pub mod profiles;
 pub mod server;
+pub mod tools;
 pub mod websocket;
 pub mod worlds;
 
@@ -21,6 +22,7 @@ pub use permissions::permissions_router;
 pub use plugins::plugins_router;
 pub use profiles::profiles_router;
 pub use server::server_router;
+pub use tools::tools_router;
 pub use worlds::worlds_router;
 
 use axum::{
