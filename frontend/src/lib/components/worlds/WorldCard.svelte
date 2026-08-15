@@ -278,8 +278,7 @@
 			type="button"
 			class="btn btn-danger btn-sm action-btn"
 			onclick={() => onDelete(world)}
-			disabled={isActive}
-			title={isActive ? 'Switch to another world before deleting this one' : 'Delete this world (a safety backup is created first)'}
+			title={isActive ? 'Deleting the active world will stop the server — a safety backup is created first' : 'Delete this world (a safety backup is created first)'}
 		>
 			<Trash2 size={14} />
 			<span>Delete</span>

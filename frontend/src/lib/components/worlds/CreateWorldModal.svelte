@@ -31,9 +31,6 @@
 			const res = await apiPost('/api/worlds/create', payload);
 			onToast('success', 'World Created', res.message || `World '${name.trim()}' created.`);
 			if (res.warning) onToast('info', 'Warning', res.warning);
-			if (!res.restarted) {
-				onToast('info', 'Applied on next start', 'The server is off — the world will generate on next start.');
-			}
 			onDone();
 		} catch (err) {
 			onToast('error', 'Create Failed', err.message || 'Could not create the world.');

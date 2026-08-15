@@ -332,6 +332,7 @@
 				throw new Error(data?.error || `Delete failed (HTTP ${res.status})`);
 			}
 			addToast('success', 'World Deleted', data?.message || `World '${world.folder_name}' deleted.`);
+			if (data?.warning) addToast('info', 'Warning', data.warning);
 			deleteTarget = null;
 			await loadWorldsData();
 		} catch (err) {
@@ -489,7 +490,7 @@
 									{/if}
 								</h3>
 								<p class="pending-desc">
-									Pas encore généré — sera créé quand tu le choisiras.
+									0 Mo · Pas encore généré — sera créé quand tu le choisiras.
 									{#if pending.level_type !== 'default'}
 										· générateur <span class="font-mono">{pending.level_type}</span>
 									{/if}
@@ -748,6 +749,12 @@
 						<span class="font-mono">{deleteTarget.folder_name}</span>. A safety ZIP backup is
 						created automatically first and kept in the backups list.
 					</p>
+					{#if activeWorld === deleteTarget.folder_name}
+						<p class="delete-warning-text delete-warning-strong">
+							⚠️ This is the <strong>active world</strong>. The server will be stopped, and it
+							will have no world to load until you create or switch to another one.
+						</p>
+					{/if}
 				</div>
 
 				<div class="modal-footer">
@@ -1015,6 +1022,12 @@
 		font-size: var(--font-size-sm);
 		color: var(--text-secondary);
 		line-height: 1.6;
+	}
+
+	.delete-warning-strong {
+		color: var(--warning);
+		border-left: 3px solid var(--warning-border);
+		padding-left: var(--space-3);
 	}
 
 	.border-modal-body {
