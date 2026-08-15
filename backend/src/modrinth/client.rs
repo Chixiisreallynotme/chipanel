@@ -377,32 +377,6 @@ impl ModrinthClient {
         Ok(len)
     }
 
-    /// Installs the latest version of `project` matching `loaders` + `game_version`
-    /// into `target_dir`, returning `(version_number, filename)`.
-    pub async fn install_latest_filtered(
-        &self,
-        project: &str,
-        loaders: &[&str],
-        game_version: &str,
-        target_dir: &Path,
-    ) -> Result<(String, String), AppError> {
-        let versions = self
-            .get_project_versions_filtered(project, loaders, game_version)
-            .await?;
-
-        let version = versions
-            .into_iter()
-            .find(|v| !v.files.is_empty())
-            .ok_or_else(|| {
-                AppError::NotFound(format!(
-                    "No compatible version found for project '{}' (loaders {:?}, MC {})",
-                    project, loaders, game_version
-                ))
-            })?;
-
-        self.install_version_file(&version, target_dir).await
-    }
-
     /// Installs the primary jar of a specific version into `target_dir`.
     pub async fn install_version_file(
         &self,

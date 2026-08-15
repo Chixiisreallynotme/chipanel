@@ -15,6 +15,7 @@ use crate::{
 const SPARK_PROJECT: &str = "spark";
 const CHUNKY_PROJECT: &str = "chunky";
 const FABRIC_API_PROJECT: &str = "fabric-api";
+const LUCKPERMS_PROJECT: &str = "luckperms";
 
 const JENKINS_SPARK_JSON: &str =
     "https://ci.lucko.me/job/spark/lastSuccessfulBuild/api/json?tree=artifacts[fileName,relativePath]";
@@ -34,6 +35,7 @@ struct ToolTarget {
     target_dir: &'static str,
     chunky_loader: Option<&'static str>,
     spark: Option<SparkSource>,
+    luckperms_loader: Option<&'static str>,
 }
 
 /// Maps an itzg `TYPE` value to where the tools live and how to fetch them.
@@ -44,46 +46,55 @@ fn tool_target(engine: &str) -> Option<ToolTarget> {
             target_dir: "mods",
             chunky_loader: Some("fabric"),
             spark: Some(SparkSource::Modrinth("fabric")),
+            luckperms_loader: Some("fabric"),
         }),
         "FORGE" => Some(ToolTarget {
             target_dir: "mods",
             chunky_loader: Some("forge"),
             spark: Some(SparkSource::Modrinth("forge")),
+            luckperms_loader: Some("forge"),
         }),
         "NEOFORGE" => Some(ToolTarget {
             target_dir: "mods",
             chunky_loader: Some("neoforge"),
             spark: Some(SparkSource::Modrinth("neoforge")),
+            luckperms_loader: Some("neoforge"),
         }),
         "QUILT" => Some(ToolTarget {
             target_dir: "mods",
             chunky_loader: None,
             spark: Some(SparkSource::Modrinth("quilt")),
+            luckperms_loader: None,
         }),
         "PAPER" => Some(ToolTarget {
             target_dir: "plugins",
             chunky_loader: Some("paper"),
             spark: Some(SparkSource::Jenkins("paper")),
+            luckperms_loader: Some("paper"),
         }),
         "PURPUR" => Some(ToolTarget {
             target_dir: "plugins",
             chunky_loader: Some("paper"),
             spark: Some(SparkSource::Jenkins("paper")),
+            luckperms_loader: Some("paper"),
         }),
         "SPIGOT" => Some(ToolTarget {
             target_dir: "plugins",
             chunky_loader: Some("spigot"),
             spark: Some(SparkSource::Jenkins("bukkit")),
+            luckperms_loader: Some("spigot"),
         }),
         "BUKKIT" => Some(ToolTarget {
             target_dir: "plugins",
             chunky_loader: Some("bukkit"),
             spark: Some(SparkSource::Jenkins("bukkit")),
+            luckperms_loader: Some("bukkit"),
         }),
         "FOLIA" => Some(ToolTarget {
             target_dir: "plugins",
             chunky_loader: Some("folia"),
             spark: None,
+            luckperms_loader: Some("folia"),
         }),
         _ => None,
     }
@@ -176,6 +187,9 @@ pub async fn tools_status(config: &AppConfig) -> ToolSyncReport {
         if t.spark.is_some() {
             managed.push("spark".to_string());
         }
+        if t.luckperms_loader.is_some() {
+            managed.push("luckperms".to_string());
+        }
         if t.target_dir == "mods" && detected.engine == "FABRIC" {
             managed.push("fabric-api".to_string());
         }
@@ -250,6 +264,21 @@ pub async fn ensure_tools(config: &AppConfig) -> Result<ToolSyncReport, AppError
                 filename: None,
             });
         }
+    }
+
+    if let Some(loader) = target.luckperms_loader {
+        managed.push("luckperms".to_string());
+        outcomes.push(
+            sync_modrinth_tool(client, &target_path, "luckperms", LUCKPERMS_PROJECT, loader, &version, "LuckPerms-")
+                .await,
+        );
+    } else {
+        outcomes.push(ToolSyncOutcome {
+            tool: "luckperms".to_string(),
+            status: "unsupported".to_string(),
+            version: None,
+            filename: None,
+        });
     }
 
     // Fabric mods (chunky-fabric, spark-fabric) require Fabric API.

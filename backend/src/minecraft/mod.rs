@@ -3,6 +3,7 @@
 pub mod effects;
 pub mod files;
 pub mod inventory;
+pub mod luckperms;
 pub mod metrics;
 pub mod modpacks;
 pub mod permissions;
@@ -17,6 +18,7 @@ pub mod worlds;
 pub use effects::*;
 pub use files::*;
 pub use inventory::*;
+pub use luckperms::*;
 pub use metrics::*;
 pub use modpacks::*;
 pub use permissions::*;

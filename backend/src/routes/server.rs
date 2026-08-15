@@ -526,6 +526,10 @@ pub async fn update_engine_handler(
     let req_type = payload.engine_type.trim().to_uppercase();
     let req_version_raw = payload.version.as_deref().unwrap_or("LATEST").trim();
 
+    // Capture the current engine BEFORE any writes, so LuckPerms data can be backed
+    // up from the OLD engine's location and restored into the NEW one below.
+    let old_engine = crate::minecraft::tools::detect_engine(&config).await.engine;
+
     let valid_engines = get_available_engines();
     if !valid_engines.iter().any(|e| e.id == req_type) {
         return Err(AppError::BadRequest(format!("Unsupported engine type '{}'", req_type)));
@@ -645,7 +649,33 @@ pub async fn update_engine_handler(
         )
     })?;
 
-    // 4) Apply: restart lazymc so it re-reads its config (new hint) and wakes the
+    // 4) Back up LuckPerms data from the old engine's location (best-effort: the
+    //    engine switch must proceed even if the snapshot fails).
+    match crate::minecraft::luckperms::backup_luckperms(&config, &old_engine).await {
+        Ok(Some(dest)) => info!("LuckPerms data backed up to {:?}", dest),
+        Ok(None) => info!("No LuckPerms data to back up before engine switch"),
+        Err(e) => warn!("LuckPerms backup failed (continuing): {}", e),
+    }
+
+    // 5) Restore LuckPerms data into the new engine's location BEFORE the server
+    //    starts, so permissions survive a platform change.
+    match crate::minecraft::luckperms::restore_luckperms(&config, &req_type, None).await {
+        Ok(true) => info!("LuckPerms data restored for engine {}", req_type),
+        Ok(false) => info!("LuckPerms restore skipped (no backup or target already populated)"),
+        Err(e) => warn!("LuckPerms restore failed (continuing): {}", e),
+    }
+
+    // 6) Re-sync the tool jars (spark/chunky/luckperms) for the NEW engine before
+    //    the server starts, so they are loaded on the first boot after the switch.
+    match crate::minecraft::tools::ensure_tools(&config).await {
+        Ok(report) => info!(
+            "tools re-synced after engine change: supported={} dir={} managed={:?}",
+            report.supported, report.target_dir, report.managed
+        ),
+        Err(e) => warn!("tools re-sync after engine change failed: {}", e),
+    }
+
+    // 7) Apply: restart lazymc so it re-reads its config (new hint) and wakes the
     //    server with the new version only if it is currently in "on" mode. If the
     //    server is fully off, the new version simply applies on the next start.
     let restarted = restart_lazymc_if_up(&config).await?;

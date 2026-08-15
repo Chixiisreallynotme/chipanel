@@ -72,6 +72,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     crate::minecraft::version_watch::start_version_watch(config.data_dir.clone());
 
+    crate::minecraft::tools::start_tools_sync_loop(config.clone());
+
     let cors = if config.allowed_origins.iter().any(|o| o == "*") {
         CorsLayer::new()
             .allow_origin(Any)

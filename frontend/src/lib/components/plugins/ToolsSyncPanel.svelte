@@ -29,7 +29,7 @@
 			onToast?.(
 				'success',
 				'Outils synchronisés',
-				installed?.length ? `${installed.length} outil(s) installé(s)/mis à jour.` : 'Spark & Chunky sont déjà à jour.'
+				installed?.length ? `${installed.length} outil(s) installé(s)/mis à jour.` : 'Les outils sont déjà à jour.'
 			);
 		} catch (err) {
 			onToast?.('error', 'Synchronisation échouée', err?.message || 'Échec de la synchronisation des outils.');
@@ -50,7 +50,7 @@
 			<Wrench size={18} />
 		</div>
 		<div>
-			<h3 class="tools-title">Outils de performance — spark & chunky</h3>
+			<h3 class="tools-title">Outils de performance — spark, chunky & LuckPerms</h3>
 			<p class="tools-subtitle">
 				Installation et mise à jour automatiques selon le moteur et la version du serveur.
 			</p>

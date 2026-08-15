@@ -79,18 +79,19 @@ Then open **http://localhost:3001** (login `admin` / `preview`). Port `3001` on 
 | `DATA_DIR` / `MINECRAFT_DATA_DIR` / `SYSTEMD_CONFIG_DIR` | chiserv-specific host paths | ChiPanel's own data, the Minecraft world/plugin data, and the single-file quadlet mount described above |
 | `TOOLS_SYNC_INTERVAL_SECS` | `86400` (24h) | background re-sync interval for the spark/chunky auto-installer (see below) |
 
-## Tools auto-sync (spark + chunky)
+## Tools auto-sync (spark + chunky + LuckPerms)
 
-`minecraft/tools.rs` keeps the two operational tools installed and up to date for
-whatever engine/version the server runs, so profiling (`spark`) and world
-pre-generation (`chunky`) never break after an engine switch:
+`minecraft/tools.rs` keeps the three operational tools installed and up to date for
+whatever engine/version the server runs, so profiling (`spark`), world
+pre-generation (`chunky`) and permissions (`luckperms`) never break after an
+engine switch:
 
 - **Engine detection** (`detect_engine`): reads `TYPE`/`VERSION` from the
   `minecraft.container` quadlet, then the `engine_config.json` state file, then
   the itzg `.install-*.env` markers in the data dir — in that order.
-- **Fetch strategy**: chunky and spark-the-mod come from Modrinth (filtered by
-  loader + game version). spark-the-*plugin* (Paper/Purpur/Spigot) is NOT on
-  Modrinth — it is fetched from spark's official Jenkins CI
+- **Fetch strategy**: chunky, luckperms and spark-the-mod come from Modrinth
+  (filtered by loader + game version). spark-the-*plugin* (Paper/Purpur/Spigot)
+  is NOT on Modrinth — it is fetched from spark's official Jenkins CI
   (`ci.lucko.me/job/spark/lastSuccessfulBuild`). Fabric additionally gets
   `fabric-api` (a required dependency of chunky-fabric).
 - **Triggers**: `POST /api/tools/sync` (admin, on demand), automatically after
@@ -98,7 +99,23 @@ pre-generation (`chunky`) never break after an engine switch:
   (`start_tools_sync_loop`, interval `TOOLS_SYNC_INTERVAL_SECS`). `GET
   /api/tools/status` is the read-only snapshot.
 - Idempotent: already-current files are skipped; stale versions of the same tool
-  (`spark-*`, `Chunky-*`, `fabric-api-*`) are removed before a fresh install.
+  (`spark-*`, `Chunky-*`, `LuckPerms-*`, `fabric-api-*`) are removed before a
+  fresh install.
+
+## LuckPerms data migration across engine switches
+
+LuckPerms stores its data in a *platform-specific* directory
+(`mods/luckperms` on Fabric, `config/luckperms` on Forge/NeoForge,
+`plugins/LuckPerms` on Paper/Purpur/Spigot/Folia), so switching engine would
+silently orphan the permissions. `minecraft/luckperms.rs` handles this:
+
+- On every engine change (`update_engine_handler`), the current data dir is
+  **backed up** to `<DATA_DIR>/luckperms-backups/<timestamp>/` *before* the config
+  is rewritten, then **restored** into the new engine's location *before* the
+  server restarts (never clobbers a non-empty target).
+- Manual control: `GET /api/tools/luckperms/backups` (list),
+  `POST /api/tools/luckperms/backup`, `POST /api/tools/luckperms/restore`
+  (body `{ "name": "<backup>" }`, latest when omitted).
 
 ## Notes from prior work in this repo
 
