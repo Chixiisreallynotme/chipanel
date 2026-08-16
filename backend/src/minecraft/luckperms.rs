@@ -152,7 +152,7 @@ pub async fn list_luckperms_backups(config: &AppConfig) -> Result<Vec<LuckPermsB
         backups.push(LuckPermsBackup { name, created_secs });
     }
 
-    backups.sort_by(|a, b| b.created_secs.cmp(&a.created_secs));
+    backups.sort_by_key(|b| std::cmp::Reverse(b.created_secs));
     Ok(backups)
 }
 

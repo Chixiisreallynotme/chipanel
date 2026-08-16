@@ -211,18 +211,20 @@ fn apply_one(
             published_at,
             detected_at: now,
         });
-        update.raised.push(match &alert.as_ref().unwrap().previous {
-            Some(prev) => format!("{} {} (was {})", kind, new_id, prev),
-            None => format!("{} {}", kind, new_id),
-        });
+        if let Some(ref a) = *alert {
+            update.raised.push(match &a.previous {
+                Some(prev) => format!("{} {} (was {})", kind, new_id, prev),
+                None => format!("{} {}", kind, new_id),
+            });
+        }
     }
 
     update.changed = true;
 }
 
 async fn load_persisted(path: &Path) {
-    match tokio::fs::read_to_string(path).await {
-        Ok(body) => match serde_json::from_str::<PersistedWatch>(&body) {
+    if let Ok(body) = tokio::fs::read_to_string(path).await {
+        match serde_json::from_str::<PersistedWatch>(&body) {
             Ok(p) => {
                 let mut state = WATCH_STATE.write().await;
                 state.info.latest_release = p.latest_release;
@@ -234,9 +236,7 @@ async fn load_persisted(path: &Path) {
                 info!("Version watcher resumed from {:?}", path);
             }
             Err(e) => warn!("Could not parse {:?}: {}", path, e),
-        },
-        // First run ever: baseline will be recorded silently on the first check.
-        Err(_) => {}
+        }
     }
 }
 

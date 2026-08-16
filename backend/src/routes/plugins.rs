@@ -117,6 +117,7 @@ pub struct ApplySingleUpdate {
     pub old_filename: String,
     pub new_filename: String,
     pub download_url: String,
+    #[allow(dead_code)]
     pub version_number: String,
 }
 

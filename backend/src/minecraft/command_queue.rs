@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{OnceLock, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
@@ -29,6 +30,13 @@ pub struct CommandQueueStore {
     pub history: Vec<PendingCommand>,
 }
 
+/// In-memory cache of the command queue to avoid repeated disk reads on every telemetry tick (every 2s).
+static QUEUE_CACHE: OnceLock<RwLock<Option<(PathBuf, CommandQueueStore)>>> = OnceLock::new();
+
+fn get_queue_cache() -> &'static RwLock<Option<(PathBuf, CommandQueueStore)>> {
+    QUEUE_CACHE.get_or_init(|| RwLock::new(None))
+}
+
 fn get_queue_file_path(data_dir: &Path) -> PathBuf {
     data_dir.join("pending_commands.json")
 }
@@ -47,29 +55,53 @@ fn generate_command_id() -> String {
     hex::encode(bytes)
 }
 
-/// Loads the persistent command queue from disk. If the file does not exist or is corrupt, returns a default empty store.
+/// Loads the persistent command queue from memory cache or disk.
+/// If cached for the given `data_dir`, returns immediately without disk I/O.
 pub fn load_queue(data_dir: &Path) -> CommandQueueStore {
-    let path = get_queue_file_path(data_dir);
-    if !path.exists() {
-        return CommandQueueStore::default();
-    }
-
-    match fs::read_to_string(&path) {
-        Ok(content) => match serde_json::from_str::<CommandQueueStore>(&content) {
-            Ok(store) => store,
-            Err(e) => {
-                warn!("Failed to parse pending_commands.json: {}. Returning empty queue.", e);
-                CommandQueueStore::default()
+    // Fast path: read from in-memory cache
+    if let Ok(guard) = get_queue_cache().read() {
+        if let Some((ref cached_path, ref store)) = *guard {
+            if cached_path == data_dir {
+                return store.clone();
             }
-        },
-        Err(e) => {
-            warn!("Failed to read pending_commands.json: {}. Returning empty queue.", e);
-            CommandQueueStore::default()
         }
     }
+
+    // Slow path: load from disk on first startup or cache miss
+    let path = get_queue_file_path(data_dir);
+    let store = if !path.exists() {
+        CommandQueueStore::default()
+    } else {
+        match fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str::<CommandQueueStore>(&content) {
+                Ok(s) => s,
+                Err(e) => {
+                    warn!("Failed to parse pending_commands.json: {}. Returning empty queue.", e);
+                    CommandQueueStore::default()
+                }
+            },
+            Err(e) => {
+                warn!("Failed to read pending_commands.json: {}. Returning empty queue.", e);
+                CommandQueueStore::default()
+            }
+        }
+    };
+
+    // Update cache
+    if let Ok(mut guard) = get_queue_cache().write() {
+        *guard = Some((data_dir.to_path_buf(), store.clone()));
+    }
+
+    store
 }
 
-/// Atomically saves the command queue to disk using a temporary file and rename.
+/// Checks if there are any pending commands in memory with zero disk I/O.
+pub fn has_pending_commands(data_dir: &Path) -> bool {
+    let store = load_queue(data_dir);
+    !store.pending.is_empty()
+}
+
+/// Atomically saves the command queue to disk and updates the in-memory cache.
 pub fn save_queue(data_dir: &Path, store: &CommandQueueStore) -> Result<(), AppError> {
     if !data_dir.exists() {
         let _ = fs::create_dir_all(data_dir);
@@ -86,6 +118,11 @@ pub fn save_queue(data_dir: &Path, store: &CommandQueueStore) -> Result<(), AppE
 
     fs::rename(&temp_path, &target_path)
         .map_err(|e| AppError::InternalError(format!("Failed to commit command queue file atomically: {}", e)))?;
+
+    // Update in-memory cache
+    if let Ok(mut guard) = get_queue_cache().write() {
+        *guard = Some((data_dir.to_path_buf(), store.clone()));
+    }
 
     Ok(())
 }

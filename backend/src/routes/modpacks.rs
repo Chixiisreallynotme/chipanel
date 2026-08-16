@@ -40,6 +40,7 @@ pub struct ModpackVersionsQuery {
     #[serde(alias = "id")]
     pub project_id: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub provider: String,
 }
 

@@ -577,14 +577,10 @@ fn parse_env_marker(content: &str) -> Option<(String, String)> {
         };
         let key = k.trim();
         let val = v.trim().trim_matches('"').trim_matches('\'').trim();
-        if key == "TYPE" || key == "FAMILY" {
-            if !val.is_empty() {
-                ty = Some(val.to_uppercase());
-            }
-        } else if key == "VERSION" {
-            if !val.is_empty() {
-                ver = Some(val.to_uppercase());
-            }
+        if (key == "TYPE" || key == "FAMILY") && !val.is_empty() {
+            ty = Some(val.to_uppercase());
+        } else if key == "VERSION" && !val.is_empty() {
+            ver = Some(val.to_uppercase());
         }
     }
     ty.map(|t| (t, ver.unwrap_or_default()))

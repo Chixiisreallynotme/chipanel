@@ -69,6 +69,7 @@ pub struct RawItemTag {
 
 /// Reads `/app/minecraft-data/world/playerdata/{uuid}.dat` file (or from default MINECRAFT_DATA_DIR)
 /// and parses the player's inventory and ender chest contents.
+#[allow(dead_code)]
 pub fn parse_player_inventory(uuid: &str) -> Result<PlayerInventory, AppError> {
     let base_dir_str = std::env::var("MINECRAFT_DATA_DIR")
         .unwrap_or_else(|_| "/app/minecraft-data".to_string());
@@ -92,7 +93,7 @@ pub fn parse_player_inventory_with_dir(base_dir: &Path, uuid: &str) -> Result<Pl
     })?;
 
     let mut decompressed = Vec::new();
-    let mut decoder = GzDecoder::new(&bytes[..]);
+    let decoder = GzDecoder::new(&bytes[..]);
     let raw_bytes = if decoder.take(5 * 1024 * 1024).read_to_end(&mut decompressed).is_ok() && !decompressed.is_empty() {
         &decompressed[..]
     } else {
@@ -301,11 +302,7 @@ pub fn parse_custom_name_json(raw: &str) -> Option<String> {
                     return Some(result);
                 }
             }
-            serde_json::Value::String(s) => {
-                if !s.is_empty() {
-                    return Some(s);
-                }
-            }
+            serde_json::Value::String(s) if !s.is_empty() => return Some(s),
             _ => {}
         }
     }

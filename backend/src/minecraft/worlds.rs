@@ -263,7 +263,7 @@ pub fn is_valid_backup_filename(filename: &str) -> bool {
 /// `None` when the file is missing or unparsable — callers should treat that as
 /// "unknown", not "new world".
 pub fn read_world_data_version(level_dat_path: &Path) -> Option<i64> {
-    let mut file = match File::open(level_dat_path) {
+    let file = match File::open(level_dat_path) {
         Ok(f) => f,
         Err(e) => {
             warn!("read_world_data_version: open {:?} failed: {}", level_dat_path, e);
@@ -303,7 +303,8 @@ pub fn read_world_data_version(level_dat_path: &Path) -> Option<i64> {
 }
 
 /// Parses level.dat at specified path
-pub fn parse_level_dat(path: &Path, folder_name: &str) -> Result<(WorldInfo, WorldBorderInfo), AppError> {    let mut file = File::open(path)
+pub fn parse_level_dat(path: &Path, folder_name: &str) -> Result<(WorldInfo, WorldBorderInfo), AppError> {
+    let file = File::open(path)
         .map_err(|e| AppError::InternalError(format!("Failed to open level.dat at {:?}: {}", path, e)))?;
 
     let mut buffer = Vec::new();
@@ -924,9 +925,7 @@ fn detect_single_root(names: &[PathBuf]) -> Option<PathBuf> {
             _ => return None,
         };
         // A single-component entry ("level.dat") is a top-level file, not a folder.
-        if comps.next().is_none() {
-            return None;
-        }
+        comps.next()?;
         let comp = PathBuf::from(first);
         match &root {
             None => root = Some(comp),

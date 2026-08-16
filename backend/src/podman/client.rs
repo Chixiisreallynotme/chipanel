@@ -136,11 +136,11 @@ impl PodmanClient {
             AppError::InternalError(format!("Failed to parse Podman inspect response: {}", e))
         })?;
 
-        let container_id = inspect_res.Id.unwrap_or_else(|| name.to_string());
+        let container_id = inspect_res.id.unwrap_or_else(|| name.to_string());
         let raw_status = inspect_res
-            .State
+            .state
             .as_ref()
-            .and_then(|s| s.Status.clone())
+            .and_then(|s| s.status.clone())
             .unwrap_or_else(|| "unknown".to_string());
 
         let server_status = match raw_status.to_lowercase().as_str() {
@@ -152,8 +152,8 @@ impl PodmanClient {
         };
 
         let uptime_seconds = if server_status == ServerStatus::Running {
-            if let Some(state) = &inspect_res.State {
-                if let Some(started_at) = &state.StartedAt {
+            if let Some(state) = &inspect_res.state {
+                if let Some(started_at) = &state.started_at {
                     calculate_uptime_from_rfc3339(started_at)
                 } else {
                     0
@@ -423,24 +423,24 @@ fn get_current_uid() -> u32 {
 
 #[derive(Debug, Deserialize)]
 struct PodmanInspectRaw {
-    #[serde(default, alias = "id")]
-    pub Id: Option<String>,
-    #[serde(default, alias = "state")]
-    pub State: Option<PodmanInspectStateRaw>,
+    #[serde(default, alias = "Id", alias = "id")]
+    pub id: Option<String>,
+    #[serde(default, alias = "State", alias = "state")]
+    pub state: Option<PodmanInspectStateRaw>,
 }
 
 #[derive(Debug, Deserialize)]
 struct PodmanInspectStateRaw {
-    #[serde(default, alias = "status")]
-    pub Status: Option<String>,
-    #[serde(default, alias = "startedAt")]
-    pub StartedAt: Option<String>,
+    #[serde(default, alias = "Status", alias = "status")]
+    pub status: Option<String>,
+    #[serde(default, alias = "StartedAt", alias = "startedAt")]
+    pub started_at: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Default)]
 struct PodmanStatsWrapper {
-    #[serde(default, alias = "stats")]
-    pub Stats: Option<Vec<PodmanStatsItem>>,
+    #[serde(default, alias = "Stats", alias = "stats")]
+    pub stats: Option<Vec<PodmanStatsItem>>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -555,7 +555,7 @@ fn parse_podman_stats(body: &str) -> Result<PodmanStatsItem, AppError> {
 
     let item = match payload {
         PodmanStatsPayload::Wrapper(wrapper) => {
-            if let Some(mut list) = wrapper.Stats {
+            if let Some(mut list) = wrapper.stats {
                 if !list.is_empty() {
                     list.remove(0)
                 } else {
@@ -589,7 +589,7 @@ fn split_utc_offset(time_str: &str) -> Option<(&str, i64)> {
     }
 
     // The time-of-day itself never contains '+' or '-', so the last one starts the offset.
-    let Some(idx) = time_str.rfind(|c| c == '+' || c == '-') else {
+    let Some(idx) = time_str.rfind(['+', '-']) else {
         return Some((time_str, 0));
     };
 

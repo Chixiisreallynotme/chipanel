@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::{
     error::AppError,
@@ -151,17 +151,16 @@ impl ProfileStore {
     }
 
     pub async fn delete_profile(&self, id: &str) -> Result<bool, AppError> {
-        let is_preset = {
+        {
             let map = self.profiles.read().await;
             if let Some(p) = map.get(id) {
                 if p.is_preset {
                     return Err(AppError::BadRequest("Built-in preset profiles cannot be deleted".to_string()));
                 }
-                false
             } else {
                 return Ok(false);
             }
-        };
+        }
 
         let existed = {
             let mut map = self.profiles.write().await;

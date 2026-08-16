@@ -100,31 +100,10 @@ pub struct RawNbtPlayerData {
     #[serde(rename = "XpP", default)]
     pub xp_p: Option<f32>,
     #[serde(rename = "Score", default)]
+    #[allow(dead_code)]
     pub score: Option<i32>,
     #[serde(rename = "Attributes", default)]
     pub attributes: Option<Vec<NbtAttribute>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct UserCacheEntry {
-    pub name: String,
-    pub uuid: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpEntry {
-    pub uuid: String,
-    #[serde(default)]
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct BannedPlayerEntry {
-    pub uuid: String,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub reason: Option<String>,
 }
 
 pub fn is_valid_uuid(s: &str) -> bool {
@@ -623,16 +602,8 @@ pub async fn get_all_players(
                         continue;
                     }
                 }
-                "banned" => {
-                    if !is_banned {
-                        continue;
-                    }
-                }
-                "op" => {
-                    if !is_op {
-                        continue;
-                    }
-                }
+                "banned" if !is_banned => continue,
+                "op" if !is_op => continue,
                 _ => {}
             }
 
@@ -731,7 +702,7 @@ pub async fn get_player_detail(config: &AppConfig, uuid_str: &str) -> Result<Pla
         let playtime_seconds = get_playtime_seconds(&base_dir, &norm_uuid);
 
         let pos = nbt_data.pos.unwrap_or_default();
-        let pos_x = pos.get(0).copied().unwrap_or(0.0);
+        let pos_x = pos.first().copied().unwrap_or(0.0);
         let pos_y = pos.get(1).copied().unwrap_or(64.0);
         let pos_z = pos.get(2).copied().unwrap_or(0.0);
 

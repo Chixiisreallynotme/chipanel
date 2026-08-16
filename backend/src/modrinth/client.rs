@@ -437,7 +437,7 @@ impl ModrinthClient {
 
         let byte_stream = response
             .bytes_stream()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+            .map_err(std::io::Error::other);
         let mut reader = StreamReader::new(byte_stream);
 
         let mut file = match tokio::fs::File::create(&temp_dest).await {

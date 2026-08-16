@@ -195,27 +195,24 @@ async fn fetch_telemetry(
                 // Check pending command queue for online players
                 if let Some(ref list_output) = list_raw {
                     let online_names = crate::minecraft::player::parse_online_players_from_rcon(list_output);
-                    if !online_names.is_empty() {
-                        let pending_store = crate::minecraft::command_queue::load_queue(&config.data_dir);
-                        if !pending_store.pending.is_empty() {
-                            let online_set: std::collections::HashSet<String> =
-                                online_names.into_iter().map(|n| n.to_lowercase()).collect();
-                            if let Ok(executed) =
-                                crate::minecraft::command_queue::process_pending_commands(config, &online_set).await
-                            {
-                                if !executed.is_empty() {
-                                    let mut per_player: std::collections::HashMap<String, Vec<String>> =
-                                        std::collections::HashMap::new();
-                                    for cmd in executed {
-                                        per_player.entry(cmd.player_name).or_default().push(cmd.action);
-                                    }
-                                    for (pname, actions) in per_player {
-                                        let _ = tx.send(WsServerMessage::PendingCommandsExecuted {
-                                            player_name: pname,
-                                            commands_count: actions.len(),
-                                            actions,
-                                        });
-                                    }
+                    if !online_names.is_empty() && crate::minecraft::command_queue::has_pending_commands(&config.data_dir) {
+                        let online_set: std::collections::HashSet<String> =
+                            online_names.into_iter().map(|n| n.to_lowercase()).collect();
+                        if let Ok(executed) =
+                            crate::minecraft::command_queue::process_pending_commands(config, &online_set).await
+                        {
+                            if !executed.is_empty() {
+                                let mut per_player: std::collections::HashMap<String, Vec<String>> =
+                                    std::collections::HashMap::new();
+                                for cmd in executed {
+                                    per_player.entry(cmd.player_name).or_default().push(cmd.action);
+                                }
+                                for (pname, actions) in per_player {
+                                    let _ = tx.send(WsServerMessage::PendingCommandsExecuted {
+                                        player_name: pname,
+                                        commands_count: actions.len(),
+                                        actions,
+                                    });
                                 }
                             }
                         }

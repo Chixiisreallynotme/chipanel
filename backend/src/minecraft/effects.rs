@@ -39,15 +39,19 @@ pub struct RawStatusEffectTag {
     #[serde(default, rename = "duration", alias = "Duration")]
     pub duration: Option<i32>,
     #[serde(default, rename = "ambient", alias = "Ambient")]
+    #[allow(dead_code)]
     pub ambient: Option<u8>,
     #[serde(default, rename = "show_particles", alias = "ShowParticles")]
+    #[allow(dead_code)]
     pub show_particles: Option<u8>,
     #[serde(default, rename = "show_icon", alias = "ShowIcon")]
+    #[allow(dead_code)]
     pub show_icon: Option<u8>,
 }
 
 /// Reads `/app/minecraft-data/world/playerdata/{uuid}.dat` file
 /// (or from default MINECRAFT_DATA_DIR) and extracts active status effects.
+#[allow(dead_code)]
 pub fn parse_player_effects(uuid: &str) -> Result<Vec<StatusEffectInfo>, AppError> {
     let base_dir_str = std::env::var("MINECRAFT_DATA_DIR")
         .unwrap_or_else(|_| "/app/minecraft-data".to_string());
@@ -71,7 +75,7 @@ pub fn parse_player_effects_with_dir(base_dir: &Path, uuid: &str) -> Result<Vec<
     })?;
 
     let mut decompressed = Vec::with_capacity(8192);
-    let mut decoder = GzDecoder::new(&bytes[..]);
+    let decoder = GzDecoder::new(&bytes[..]);
     let raw_bytes = if decoder.take(5 * 1024 * 1024).read_to_end(&mut decompressed).is_ok() && !decompressed.is_empty() {
         &decompressed[..]
     } else {
@@ -85,6 +89,7 @@ pub fn parse_player_effects_with_dir(base_dir: &Path, uuid: &str) -> Result<Vec<
     Ok(parse_player_effects_from_nbt(&raw_data))
 }
 
+#[allow(dead_code)]
 fn matches_uuid_in_place(stem: &str, target_norm_uuid: &str) -> bool {
     let mut target_bytes = target_norm_uuid.bytes();
     let mut count = 0;
@@ -119,7 +124,7 @@ pub fn parse_player_effects_from_nbt(raw_data: &RawPlayerEffectsData) -> Vec<Sta
         let amplifier = raw_amp as u8;
 
         let raw_dur = tag.duration.unwrap_or(0);
-        let (duration_ticks, duration_formatted) = if raw_dur < 0 || raw_dur >= 1_000_000_000 {
+        let (duration_ticks, duration_formatted) = if !(0..1_000_000_000).contains(&raw_dur) {
             (u32::MAX, "Infinite".to_string())
         } else {
             let ticks = raw_dur as u32;
@@ -154,10 +159,8 @@ fn extract_effect_id(tag: &RawStatusEffectTag) -> Option<String> {
         } else {
             Some(s.clone())
         }
-    } else if let Some(b) = tag.id_byte {
-        Some(map_numeric_effect_id(b as u8 as u32))
     } else {
-        None
+        tag.id_byte.map(|b| map_numeric_effect_id(b as u8 as u32))
     }
 }
 
@@ -248,6 +251,7 @@ pub fn get_effect_metadata(effect_id: &str) -> (&'static str, &'static str, &'st
     }
 }
 
+#[allow(dead_code)]
 pub fn format_effect_name(clean_id: &str) -> String {
     let mut res = String::with_capacity(clean_id.len());
     for (i, word) in clean_id.split('_').enumerate() {

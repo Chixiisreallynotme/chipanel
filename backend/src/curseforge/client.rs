@@ -107,6 +107,7 @@ impl CurseForgeClient {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_api_key(api_key: String) -> Self {
         let mut client = Self::new();
         client.api_key = api_key;
@@ -354,7 +355,7 @@ impl CurseForgeClient {
 
         let stream = resp
             .bytes_stream()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+            .map_err(std::io::Error::other);
 
         let mut stream_reader = StreamReader::new(stream);
 

@@ -12,6 +12,7 @@ const SERVERDATA_RESPONSE_VALUE: i32 = 0;
 #[derive(Debug)]
 pub struct RconPacket {
     pub id: i32,
+    #[allow(dead_code)]
     pub packet_type: i32,
     pub payload: String,
 }
@@ -216,7 +217,7 @@ async fn read_packet<R: AsyncReadExt + Unpin>(
         AppError::InternalError(format!("Failed to read RCON packet length: {}", e))
     })?;
 
-    if length < 10 || length > 65536 {
+    if !(10..=65536).contains(&length) {
         return Err(AppError::InternalError(format!(
             "Invalid RCON packet length header: {}",
             length

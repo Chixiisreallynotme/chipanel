@@ -360,7 +360,7 @@ pub async fn deploy_modpack(
             .map_err(|e| AppError::InternalError(format!("Failed to read zip archive: {}", e)))?;
 
         let mut manifest_data = None;
-        let mut skipped_entries = 0usize;
+        let skipped_entries = 0usize;
 
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)

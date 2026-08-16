@@ -162,7 +162,7 @@ pub fn parse_luckperms_group_names(output: &str) -> Vec<String> {
                     for item in rest.split(',') {
                         let item_clean = item
                             .trim()
-                            .trim_start_matches(|c| c == '>' || c == '-' || c == '*' || c == '•' || c == ' ')
+                            .trim_start_matches(['>', '-', '*', '•', ' '])
                             .trim();
                         let name_part = item_clean
                             .split(&['(', ' ', '['][..])
@@ -182,9 +182,9 @@ pub fn parse_luckperms_group_names(output: &str) -> Vec<String> {
             continue;
         }
 
-        if clean.starts_with('-') || clean.starts_with('>') || clean.starts_with('*') || clean.starts_with('•') {
+        if clean.starts_with(['-', '>', '*', '•']) {
             let item_clean = clean
-                .trim_start_matches(|c| c == '>' || c == '-' || c == '*' || c == '•' || c == ' ')
+                .trim_start_matches(['>', '-', '*', '•', ' '])
                 .trim();
             let name_part = item_clean
                 .split(&['(', ' ', '['][..])
@@ -217,7 +217,7 @@ pub fn parse_luckperms_listgroups(output: &str) -> Vec<LuckPermsGroup> {
         }
 
         let item_clean = clean
-            .trim_start_matches(|c| c == '>' || c == '-' || c == '*' || c == '•' || c == ' ')
+            .trim_start_matches(['>', '-', '*', '•', ' '])
             .trim();
 
         let name_part = item_clean
@@ -275,20 +275,16 @@ pub fn parse_group_permission_info(output: &str) -> Vec<LuckPermsPermissionNode>
             continue;
         }
 
-        if contains_ignore_ascii_case(clean, "permissions:")
+        if (contains_ignore_ascii_case(clean, "permissions:")
             || contains_ignore_ascii_case(clean, "page ")
-            || contains_ignore_ascii_case(clean, "group info:")
+            || contains_ignore_ascii_case(clean, "group info:"))
+            && !contains_ignore_ascii_case(clean, "(true)")
+            && !contains_ignore_ascii_case(clean, "(false)")
         {
-            if !contains_ignore_ascii_case(clean, "(true)") && !contains_ignore_ascii_case(clean, "(false)") {
-                continue;
-            }
+            continue;
         }
 
-        let is_node_line = clean.starts_with('-')
-            || clean.starts_with('>')
-            || clean.starts_with('+')
-            || clean.starts_with('*')
-            || clean.starts_with('•')
+        let is_node_line = clean.starts_with(['-', '>', '+', '*', '•'])
             || contains_ignore_ascii_case(clean, "(true)")
             || contains_ignore_ascii_case(clean, "(false)")
             || clean.contains('.');
@@ -298,7 +294,7 @@ pub fn parse_group_permission_info(output: &str) -> Vec<LuckPermsPermissionNode>
         }
 
         let node_str = clean
-            .trim_start_matches(|c| c == '-' || c == '>' || c == '+' || c == '*' || c == '•' || c == ' ')
+            .trim_start_matches(['-', '>', '+', '*', '•', ' '])
             .trim();
 
         if node_str.is_empty()

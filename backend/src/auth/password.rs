@@ -20,6 +20,7 @@ pub fn hash_password(password: &str) -> Result<String, AppError> {
 }
 
 /// Offload password hashing to a blocking thread pool using `spawn_blocking`.
+#[allow(dead_code)]
 pub async fn hash_password_async(password: String) -> Result<String, AppError> {
     tokio::task::spawn_blocking(move || hash_password(&password))
         .await
@@ -39,6 +40,7 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
 }
 
 /// Offload password verification to a blocking thread pool using `spawn_blocking`.
+#[allow(dead_code)]
 pub async fn verify_password_async(password: String, hash: String) -> Result<bool, AppError> {
     tokio::task::spawn_blocking(move || verify_password(&password, &hash))
         .await

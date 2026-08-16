@@ -69,17 +69,14 @@ impl UserStore {
 
         // Ensure default admin account exists
         let admin_key = admin_username.to_lowercase();
-        if !users_map.contains_key(&admin_key) {
-            let default_admin = UserAccount {
-                id: "usr_admin_1".to_string(),
-                username: admin_username.to_string(),
-                password_hash: admin_hash.to_string(),
-                role: "admin".to_string(),
-                permissions: vec!["*".to_string()],
-                created_at: "System Default".to_string(),
-            };
-            users_map.insert(admin_key, default_admin);
-        }
+        users_map.entry(admin_key).or_insert_with(|| UserAccount {
+            id: "usr_admin_1".to_string(),
+            username: admin_username.to_string(),
+            password_hash: admin_hash.to_string(),
+            role: "admin".to_string(),
+            permissions: vec!["*".to_string()],
+            created_at: "System Default".to_string(),
+        });
 
         let store = Self {
             storage_path,
@@ -209,7 +206,7 @@ impl UserStore {
             })
             .collect();
 
-        list.sort_by(|a, b| a.username.to_lowercase().cmp(&b.username.to_lowercase()));
+        list.sort_by_key(|a| a.username.to_lowercase());
         list
     }
 

@@ -338,13 +338,12 @@ async fn set_lazymc_key(
     if !replaced {
         let mut inserted = Vec::new();
         let mut done = false;
-        let mut current_section = String::new();
         for line in content.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with('[') && trimmed.ends_with(']') {
-                current_section = trimmed[1..trimmed.len() - 1].to_string();
+                let sec_name = &trimmed[1..trimmed.len() - 1];
                 inserted.push(line.to_string());
-                if current_section == section {
+                if sec_name == section {
                     inserted.push(new_line.clone());
                     done = true;
                 }
@@ -935,13 +934,7 @@ pub async fn get_resource_pack_handler(
         .await?
         .filter(|s| !s.is_empty());
 
-    let active_filename = url.as_ref().and_then(|u| {
-        if let Some(pos) = u.rfind('/') {
-            Some(u[pos + 1..].to_string())
-        } else {
-            None
-        }
-    });
+    let active_filename = url.as_ref().and_then(|u| u.rfind('/').map(|pos| u[pos + 1..].to_string()));
 
     Ok(Json(ServerResourcePackInfo {
         active_filename,

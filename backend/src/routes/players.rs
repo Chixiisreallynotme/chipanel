@@ -171,12 +171,18 @@ pub async fn player_action_handler(
     }
 
     if let Some(ref reason) = payload.reason {
+        if reason.len() > 200 {
+            return Err(AppError::BadRequest("Reason exceeds maximum length of 200 characters".into()));
+        }
         if reason.contains('\n') || reason.contains('\r') || reason.contains('\0') {
             return Err(AppError::BadRequest("Control characters in reason forbidden".into()));
         }
     }
 
     if let Some(ref coords) = payload.target_coords {
+        if coords.len() > 64 {
+            return Err(AppError::BadRequest("Target coordinates exceed maximum length of 64 characters".into()));
+        }
         if coords.contains('\n') || coords.contains('\r') || coords.contains('\0') {
             return Err(AppError::BadRequest("Control characters in target_coords forbidden".into()));
         }
@@ -776,29 +782,22 @@ pub fn parse_luckperms_user_info(output: &str) -> (Option<String>, Vec<Permissio
         }
 
         if in_permissions_section
-            && !trimmed.starts_with('-')
-            && !trimmed.starts_with('>')
-            && !trimmed.starts_with('+')
-            && !trimmed.starts_with('*')
-            && !trimmed.starts_with('•')
+            && !trimmed.starts_with(['-', '>', '+', '*', '•'])
+            && trimmed.contains(':')
+            && !trimmed.contains("(true)")
+            && !trimmed.contains("(false)")
         {
-            if trimmed.contains(':') && !trimmed.contains("(true)") && !trimmed.contains("(false)") {
-                in_permissions_section = false;
-            }
+            in_permissions_section = false;
         }
 
-        let is_node_line = trimmed.starts_with('-')
-            || trimmed.starts_with('>')
-            || trimmed.starts_with('+')
-            || trimmed.starts_with('*')
-            || trimmed.starts_with('•')
+        let is_node_line = trimmed.starts_with(['-', '>', '+', '*', '•'])
             || lower.contains("(true)")
             || lower.contains("(false)")
             || (in_permissions_section && trimmed.contains('.'));
 
         if is_node_line {
             let node_str = trimmed
-                .trim_start_matches(|c| c == '-' || c == '>' || c == '+' || c == '*' || c == '•' || c == ' ')
+                .trim_start_matches(['-', '>', '+', '*', '•', ' '])
                 .trim();
 
             if node_str.is_empty()
@@ -809,11 +808,7 @@ pub fn parse_luckperms_user_info(output: &str) -> (Option<String>, Vec<Permissio
                 continue;
             }
 
-            let value = if node_str.contains("(false)") || node_str.contains("= false") || node_str.ends_with("false") {
-                false
-            } else {
-                true
-            };
+            let value = !(node_str.contains("(false)") || node_str.contains("= false") || node_str.ends_with("false"));
 
             let mut expiry: Option<String> = None;
             let mut context: Option<String> = None;

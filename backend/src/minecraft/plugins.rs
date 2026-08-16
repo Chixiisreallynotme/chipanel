@@ -312,12 +312,14 @@ pub async fn compute_file_sha512(file_path: &Path) -> Result<String, AppError> {
     Ok(hex::encode(result))
 }
 
+type JarMetadataTuple = (String, String, String, Option<String>, Option<u32>);
+
 /// Inspects archive files (JARs or ZIPs) to extract metadata
 fn inspect_file_metadata(
     file_path: &Path,
     target_dir: &str,
     filename: &str,
-) -> Option<(String, String, String, Option<String>, Option<u32>)> {
+) -> Option<JarMetadataTuple> {
     if target_dir == "resourcepacks" || target_dir == "datapacks" {
         return inspect_pack_metadata(file_path, target_dir, filename);
     }
@@ -330,7 +332,7 @@ fn inspect_pack_metadata(
     file_path: &Path,
     target_dir: &str,
     filename: &str,
-) -> Option<(String, String, String, Option<String>, Option<u32>)> {
+) -> Option<JarMetadataTuple> {
     let (name, ver) = parse_name_version_from_filename(filename);
     let default_loader = if target_dir == "resourcepacks" {
         "resourcepack".to_string()
@@ -341,7 +343,7 @@ fn inspect_pack_metadata(
     let file = File::open(file_path).ok()?;
     let mut archive = ZipArchive::new(file).ok()?;
 
-    if let Ok(mut entry) = archive.by_name("pack.mcmeta") {
+    if let Ok(entry) = archive.by_name("pack.mcmeta") {
         let mut content = String::new();
         if entry.take(65536).read_to_string(&mut content).is_ok() {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -349,10 +351,8 @@ fn inspect_pack_metadata(
                 let desc = pack.and_then(|p| {
                     if let Some(s) = p.get("description").and_then(|d| d.as_str()) {
                         Some(s.to_string())
-                    } else if let Some(t) = p.get("description").and_then(|d| d.get("text")).and_then(|t| t.as_str()) {
-                        Some(t.to_string())
                     } else {
-                        None
+                        p.get("description").and_then(|d| d.get("text")).and_then(|t| t.as_str()).map(|t| t.to_string())
                     }
                 });
                 let pack_format = pack
@@ -369,12 +369,12 @@ fn inspect_pack_metadata(
 }
 
 /// Inspects jar file ZIP archive for metadata files (`paper-plugin.yml`, `plugin.yml`, `fabric.mod.json`, `neoforge.mods.toml`, `mods.toml`, `mcmod.info`)
-fn inspect_jar_metadata(file_path: &Path) -> Option<(String, String, String, Option<String>, Option<u32>)> {
+fn inspect_jar_metadata(file_path: &Path) -> Option<JarMetadataTuple> {
     let file = File::open(file_path).ok()?;
     let mut archive = ZipArchive::new(file).ok()?;
 
     // 1. Check paper-plugin.yml
-    if let Ok(mut entry) = archive.by_name("paper-plugin.yml") {
+    if let Ok(entry) = archive.by_name("paper-plugin.yml") {
         let mut content = String::new();
         if entry.take(65536).read_to_string(&mut content).is_ok() {
             let name = parse_yaml_key(&content, "name");
@@ -387,7 +387,7 @@ fn inspect_jar_metadata(file_path: &Path) -> Option<(String, String, String, Opt
     }
 
     // 2. Check plugin.yml
-    if let Ok(mut entry) = archive.by_name("plugin.yml") {
+    if let Ok(entry) = archive.by_name("plugin.yml") {
         let mut content = String::new();
         if entry.take(65536).read_to_string(&mut content).is_ok() {
             let name = parse_yaml_key(&content, "name");
@@ -408,7 +408,7 @@ fn inspect_jar_metadata(file_path: &Path) -> Option<(String, String, String, Opt
     }
 
     // 3. Check fabric.mod.json
-    if let Ok(mut entry) = archive.by_name("fabric.mod.json") {
+    if let Ok(entry) = archive.by_name("fabric.mod.json") {
         let mut content = String::new();
         if entry.take(65536).read_to_string(&mut content).is_ok() {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -434,7 +434,7 @@ fn inspect_jar_metadata(file_path: &Path) -> Option<(String, String, String, Opt
     }
 
     // 4. Check META-INF/neoforge.mods.toml
-    if let Ok(mut entry) = archive.by_name("META-INF/neoforge.mods.toml") {
+    if let Ok(entry) = archive.by_name("META-INF/neoforge.mods.toml") {
         let mut content = String::new();
         if entry.take(65536).read_to_string(&mut content).is_ok() {
             let name = parse_toml_key(&content, "displayName")
@@ -450,7 +450,7 @@ fn inspect_jar_metadata(file_path: &Path) -> Option<(String, String, String, Opt
     }
 
     // 5. Check META-INF/mods.toml (Forge)
-    if let Ok(mut entry) = archive.by_name("META-INF/mods.toml") {
+    if let Ok(entry) = archive.by_name("META-INF/mods.toml") {
         let mut content = String::new();
         if entry.take(65536).read_to_string(&mut content).is_ok() {
             let name = parse_toml_key(&content, "displayName")
@@ -466,7 +466,7 @@ fn inspect_jar_metadata(file_path: &Path) -> Option<(String, String, String, Opt
     }
 
     // 6. Check mcmod.info
-    if let Ok(mut entry) = archive.by_name("mcmod.info") {
+    if let Ok(entry) = archive.by_name("mcmod.info") {
         let mut content = String::new();
         if entry.take(65536).read_to_string(&mut content).is_ok() {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -546,13 +546,13 @@ fn parse_name_version_from_filename(filename: &str) -> (String, String) {
         .unwrap_or(clean);
 
     if let Some((name, ver)) = clean.rsplit_once('-') {
-        if !ver.is_empty() && ver.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+        if !ver.is_empty() && ver.chars().next().is_some_and(|c| c.is_ascii_digit()) {
             return (name.to_string(), ver.to_string());
         }
     }
 
     if let Some((name, ver)) = clean.rsplit_once('_') {
-        if !ver.is_empty() && ver.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+        if !ver.is_empty() && ver.chars().next().is_some_and(|c| c.is_ascii_digit()) {
             return (name.to_string(), ver.to_string());
         }
     }

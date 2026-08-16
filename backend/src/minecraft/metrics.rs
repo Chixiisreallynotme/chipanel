@@ -206,7 +206,8 @@ impl MetricsStore {
         let seconds_back: u64 = match range {
             "24h" => 86400,
             "6h" => 21600,
-            "1h" | _ => 3600,
+            "1h" => 3600,
+            _ => 3600,
         };
 
         let now = SystemTime::now()
