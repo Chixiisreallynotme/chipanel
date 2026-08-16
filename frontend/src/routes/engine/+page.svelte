@@ -4,36 +4,27 @@
 	import VersionPickerButton from '$lib/components/common/VersionPickerButton.svelte';
 	import EngineLogo from '$lib/components/common/EngineLogo.svelte';
 	import {
-		Cpu,
-		Zap,
-		FileText,
-		Hammer,
-		ShieldAlert,
-		Layers,
-		Feather,
-		Box,
-		Activity,
-		Crosshair,
-		Sparkles,
-		CheckCircle2,
-		AlertTriangle,
+		Sliders,
 		RefreshCw,
 		Check,
-		Info,
 		RotateCw,
-		Sliders,
 		Search,
 		Users,
 		ShieldCheck,
 		HardDrive,
 		AlertCircle,
-		CheckCheck,
+		CheckCircle2,
 		Radio,
 		ArrowRight,
 		FolderArchive,
 		Wrench,
 		Settings2,
-		ChevronDown
+		ChevronDown,
+		AlertTriangle,
+		Sparkles,
+		Info,
+		Layers,
+		Activity
 	} from 'lucide-svelte';
 
 	const UNKNOWN = 'Inconnu';
@@ -41,7 +32,7 @@
 	// Engines that support distinct loader or build versions
 	const LOADER_SUPPORTED_ENGINES = ['FABRIC', 'QUILT', 'FORGE', 'NEOFORGE', 'PAPER', 'PURPUR', 'FOLIA'];
 
-	// Page State — `null` means "ChiPanel could not read the config"
+	// Page State
 	let currentType = $state(null);
 	let currentVersion = $state(null);
 	let currentLoaderVersion = $state(null);
@@ -115,7 +106,6 @@
 					env_variable: res.env_variable || ''
 				};
 
-				// Set default selection if not already selected
 				if (!selectedLoaderMap[engineId]) {
 					selectedLoaderMap[engineId] = (currentType === engineId && currentLoaderVersion)
 						? currentLoaderVersion
@@ -157,7 +147,6 @@
 				onlinePlayersCount = res.online_players_count ?? 0;
 				serverState = res.server_state ?? 'stopped';
 
-				// Initialize default version map
 				const vMap = {};
 				const lMap = {};
 				availableTypes.forEach((engine) => {
@@ -172,7 +161,6 @@
 						lMap[engine.id] = 'LATEST';
 					}
 
-					// Pre-fetch loader versions for active or supported engines
 					if (LOADER_SUPPORTED_ENGINES.includes(engine.id)) {
 						fetchLoaderVersions(engine.id, vMap[engine.id]);
 					}
@@ -181,7 +169,7 @@
 				selectedLoaderMap = lMap;
 			}
 		} catch (err) {
-			console.error('Échec du chargement de la configuration des moteurs:', err);
+			console.error('Échec du chargement des moteurs:', err);
 			addToast('error', 'Erreur de chargement', err.message || 'Impossible de récupérer la liste des moteurs.');
 		} finally {
 			isLoading = false;
@@ -267,7 +255,7 @@
 			if (data?.backup_file) {
 				successMsg += ` · Sauvegarde : ${data.backup_file}`;
 			}
-			addToast('success', 'Configuration mise à jour !', successMsg);
+			addToast('success', 'Configuration mise à jour', successMsg);
 
 			currentType = targetType;
 			currentVersion = data?.resolved_version ?? targetVersion;
@@ -279,7 +267,7 @@
 			await loadEngineData();
 		} catch (err) {
 			switchError = {
-				detail: "Requête impossible — le panneau n'a pas pu joindre le backend.",
+				detail: "Connexion au backend impossible.",
 				serverMessage: err instanceof Error ? err.message : ''
 			};
 		} finally {
@@ -287,11 +275,6 @@
 		}
 	}
 
-	/**
-	 * Date lisible pour une alerte de nouvelle version Mojang.
-	 * @param {string | undefined} iso
-	 * @param {number | undefined} fallbackTs
-	 */
 	function formatVersionDate(iso, fallbackTs) {
 		const d = iso ? new Date(iso) : fallbackTs ? new Date(fallbackTs * 1000) : null;
 		if (!d || isNaN(d.getTime())) return '';
@@ -304,7 +287,7 @@
 
 		// Category filter
 		if (selectedCategory === 'PERFORMANCE') {
-			list = list.filter((e) => ['PURPUR', 'PAPER', 'FOLIA'].includes(e.id));
+			list = list.filter((e) => ['PURPUR', 'PAPER', 'FOLIA', 'SPIGOT'].includes(e.id));
 		} else if (selectedCategory === 'MODS') {
 			list = list.filter((e) => ['FABRIC', 'FORGE', 'NEOFORGE', 'QUILT'].includes(e.id));
 		} else if (selectedCategory === 'HYBRID') {
@@ -328,23 +311,6 @@
 
 		return list;
 	});
-
-	function getEngineIcon(iconName) {
-		switch (iconName) {
-			case 'zap': return Zap;
-			case 'file-text': return FileText;
-			case 'cpu': return Cpu;
-			case 'hammer': return Hammer;
-			case 'shield-alert': return ShieldAlert;
-			case 'layers': return Layers;
-			case 'feather': return Feather;
-			case 'box': return Box;
-			case 'activity': return Activity;
-			case 'crosshair': return Crosshair;
-			case 'sparkles': return Sparkles;
-			default: return Cpu;
-		}
-	}
 </script>
 
 <svelte:head>
@@ -354,18 +320,13 @@
 <div class="engine-page">
 	<!-- Page Header -->
 	<header class="page-header">
-		<div class="header-content">
-			<div class="header-title-group">
-				<div class="header-icon-box">
-					<Sliders size={26} />
-				</div>
-				<div>
-					<h1>Moteurs & Versions du Serveur</h1>
-					<p class="subtitle">Basculez dynamiquement entre Fabric, Purpur, Paper, Forge, NeoForge, Spigot, Vanilla, Quilt, Folia, Mohist et Arclight.</p>
-				</div>
+		<div class="header-main">
+			<div class="header-titles">
+				<h1>Moteurs & Versions du Serveur</h1>
+				<p class="subtitle">Gérez et basculez l'environnement d'exécution Minecraft en toute sécurité.</p>
 			</div>
 			<button class="btn btn-secondary btn-sm" onclick={loadEngineData} disabled={isLoading}>
-				<RefreshCw size={15} class={isLoading ? 'spin' : ''} />
+				<RefreshCw size={14} class={isLoading ? 'spin' : ''} />
 				<span>Actualiser</span>
 			</button>
 		</div>
@@ -373,7 +334,7 @@
 
 	{#if configError}
 		<div class="config-alert" role="alert">
-			<AlertTriangle size={18} />
+			<AlertTriangle size={16} />
 			<span>{configError}</span>
 		</div>
 	{/if}
@@ -381,25 +342,25 @@
 	<!-- New version alerts (background Mojang watcher) -->
 	{#if versionWatch?.new_release}
 		{@const alert = versionWatch.new_release}
-		<div class="new-release-banner" role="status">
-			<Sparkles size={20} class="text-emerald" />
-			<div class="new-version-text">
-				<strong>Minecraft {alert.id} est sorti officiellement !</strong>
-				<span>
+		<div class="version-banner release-banner" role="status">
+			<Sparkles size={18} class="text-emerald" />
+			<div class="version-banner-text">
+				<strong>Minecraft {alert.id} est disponible officiellement</strong>
+				<span class="banner-sub">
 					{alert.previous ? `Succède à ${alert.previous}` : 'Nouvelle release officielle Mojang'}
 					{formatVersionDate(alert.published_at, alert.detected_at) ? ` · Publié le ${formatVersionDate(alert.published_at, alert.detected_at)}` : ''}
-					{currentVersion && !['LATEST', alert.id].includes(currentVersion) ? ` — Votre serveur tourne actuellement en ${currentVersion}` : ''}
+					{currentVersion && !['LATEST', alert.id].includes(currentVersion) ? ` — Serveur actuel en ${currentVersion}` : ''}
 				</span>
 			</div>
 		</div>
 	{:else if versionWatch?.new_snapshot}
 		{@const alert = versionWatch.new_snapshot}
-		<div class="new-snapshot-banner" role="status">
-			<Sparkles size={18} />
-			<div class="new-version-text">
+		<div class="version-banner snapshot-banner" role="status">
+			<Activity size={18} />
+			<div class="version-banner-text">
 				<strong>Nouveau snapshot disponible : {alert.id}</strong>
-				<span>
-					{alert.previous ? `Succède à ${alert.previous}` : 'Nouvelle pré-version de test'}
+				<span class="banner-sub">
+					{alert.previous ? `Succède à ${alert.previous}` : 'Pré-version de test Mojang'}
 					{formatVersionDate(alert.published_at, alert.detected_at) ? ` · ${formatVersionDate(alert.published_at, alert.detected_at)}` : ''}
 				</span>
 			</div>
@@ -407,125 +368,126 @@
 	{/if}
 
 	<!-- Current Engine Status Bento Card -->
-	<section class="banner-card glow-card">
-		<div class="banner-info">
+	<section class="banner-card">
+		<div class="banner-primary">
 			<div class="banner-badge">
-				<Radio size={12} class="pulse-icon" />
-				<span>MOTEUR DU SERVEUR ACTIF</span>
+				<Radio size={12} class="pulse-dot" />
+				<span>MOTEUR EN COURS D'EXÉCUTION</span>
 			</div>
-			<div class="banner-title-row">
+
+			<div class="banner-identity">
 				{#if currentType}
-					<EngineLogo engine={currentType} size={46} class="banner-engine-logo" />
+					<EngineLogo engine={currentType} size={52} class="banner-logo" />
 				{/if}
-				<div class="banner-title-info">
-					<div class="banner-title-main">
-						<span class="active-engine-name {currentType ? '' : 'unknown-val'}">{currentType ?? UNKNOWN}</span>
-						<span class="badge {currentVersion ? 'badge-version' : 'badge-muted'}">{currentVersion ?? UNKNOWN}</span>
+				<div class="identity-info">
+					<div class="identity-header">
+						<span class="engine-title {currentType ? '' : 'text-muted'}">{currentType ?? UNKNOWN}</span>
+						<span class="tag tag-version">{currentVersion ?? UNKNOWN}</span>
 						{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
-							<span class="badge badge-loader">Loader {currentLoaderVersion}</span>
+							<span class="tag tag-loader">Loader {currentLoaderVersion}</span>
 						{/if}
 					</div>
+					<p class="identity-desc">
+						{#if currentType && currentVersion}
+							Le conteneur exécute <strong>{currentType}</strong> sur Minecraft <strong>{currentVersion}</strong>.
+							Les modifications de version ou de loader s'appliquent avec migration automatique des permissions et des outils.
+						{:else}
+							La configuration actuelle n'a pas pu être extraite. Sélectionner un moteur réinitialisera proprement l'environnement.
+						{/if}
+					</p>
 				</div>
 			</div>
-			{#if currentType && currentVersion}
-				<p class="banner-desc">
-					Le serveur exécute actuellement <strong>{currentType}</strong> sur Minecraft <strong>{currentVersion}</strong>.
-					Vous pouvez changer de version de jeu ou ajuster le loader ci-dessous en toute sécurité.
-				</p>
-			{:else}
-				<p class="banner-desc">
-					La configuration actuelle n'a pas pu être lue depuis le fichier Quadlet. Un changement appliquera une nouvelle configuration propre.
-				</p>
-			{/if}
 		</div>
 
-		<div class="banner-stats">
-			<div class="stat-chip">
-				<span class="stat-label">Statut Serveur</span>
-				<span class="stat-value flex-align">
+		<div class="banner-kpis">
+			<div class="kpi-card">
+				<span class="kpi-label">État du Serveur</span>
+				<div class="kpi-val">
 					{#if serverState === 'running'}
-						<span class="status-dot dot-green"></span>
-						<span class="text-green">En ligne</span>
+						<span class="status-indicator status-online"></span>
+						<span class="text-emerald">En ligne</span>
 					{:else if serverState === 'hibernating'}
-						<span class="status-dot dot-amber"></span>
-						<span class="text-amber">En veille (lazymc)</span>
+						<span class="status-indicator status-hibernating"></span>
+						<span class="text-amber">En veille</span>
 					{:else}
-						<span class="status-dot dot-gray"></span>
+						<span class="status-indicator status-stopped"></span>
 						<span class="text-muted">Arrêté</span>
 					{/if}
-				</span>
+				</div>
 			</div>
 
-			<div class="stat-chip">
-				<span class="stat-label">Joueurs en ligne</span>
-				<span class="stat-value text-primary flex-align">
+			<div class="kpi-card">
+				<span class="kpi-label">Joueurs en ligne</span>
+				<div class="kpi-val text-primary">
 					<Users size={14} />
 					<span>{onlinePlayersCount}</span>
-				</span>
+				</div>
 			</div>
 
-			<div class="stat-chip">
-				<span class="stat-label">Monde Actif</span>
-				<span class="stat-value flex-align" title="Data Version: {worldDataVersion ?? 'N/A'}">
+			<div class="kpi-card">
+				<span class="kpi-label">Monde Actif</span>
+				<div class="kpi-val" title="Data Version: {worldDataVersion ?? 'N/A'}">
 					<HardDrive size={14} class="text-muted" />
-					<span>{activeWorld}</span>
-				</span>
+					<span class="truncate">{activeWorld}</span>
+				</div>
 			</div>
 
-			<div class="stat-chip">
-				<span class="stat-label">Outils Auto-Gérés</span>
-				<span class="stat-value text-emerald flex-align">
+			<div class="kpi-card">
+				<span class="kpi-label">Outils Synchronisés</span>
+				<div class="kpi-val text-emerald">
 					<ShieldCheck size={14} />
-					<span>Spark, Chunky, LuckPerms</span>
-				</span>
+					<span>Spark, Chunky, LP</span>
+				</div>
 			</div>
 		</div>
 	</section>
 
 	<!-- Filters & Search Toolbar -->
-	<div class="filters-toolbar">
-		<div class="search-box">
-			<Search size={16} class="search-icon" />
+	<nav class="toolbar" aria-label="Filtres des moteurs">
+		<div class="search-wrap">
+			<Search size={15} class="search-icon" />
 			<input
 				type="text"
 				class="search-input"
-				placeholder="Rechercher un moteur (ex: Fabric, Purpur, Forge, Folia, SMP, moddé)..."
+				placeholder="Rechercher un moteur (ex: Fabric, Purpur, Forge, Folia, SMP)..."
 				bind:value={searchQuery}
 			/>
 			{#if searchQuery}
-				<button class="clear-btn" onclick={() => (searchQuery = '')} aria-label="Effacer">✕</button>
+				<button class="clear-search-btn" onclick={() => (searchQuery = '')} aria-label="Effacer la recherche">
+					Effacer
+				</button>
 			{/if}
 		</div>
 
 		<div class="category-tabs">
-			<button class="tab-btn {selectedCategory === 'ALL' ? 'active' : ''}" onclick={() => (selectedCategory = 'ALL')}>
+			<button class="tab-item {selectedCategory === 'ALL' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'ALL')}>
 				Tous ({availableTypes.length})
 			</button>
-			<button class="tab-btn {selectedCategory === 'MODS' ? 'active' : ''}" onclick={() => (selectedCategory = 'MODS')}>
-				🧩 Moddé (Fabric, Forge, NeoForge...)
+			<button class="tab-item {selectedCategory === 'MODS' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'MODS')}>
+				Moddé (Fabric, Forge, NeoForge, Quilt)
 			</button>
-			<button class="tab-btn {selectedCategory === 'PERFORMANCE' ? 'active' : ''}" onclick={() => (selectedCategory = 'PERFORMANCE')}>
-				⚡ Performance & SMP
+			<button class="tab-item {selectedCategory === 'PERFORMANCE' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'PERFORMANCE')}>
+				Performance & SMP (Purpur, Paper, Folia)
 			</button>
-			<button class="tab-btn {selectedCategory === 'HYBRID' ? 'active' : ''}" onclick={() => (selectedCategory = 'HYBRID')}>
-				✨ Hybride (Mods + Plugins)
+			<button class="tab-item {selectedCategory === 'HYBRID' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'HYBRID')}>
+				Hybride (Mohist, Arclight)
 			</button>
-			<button class="tab-btn {selectedCategory === 'VANILLA' ? 'active' : ''}" onclick={() => (selectedCategory = 'VANILLA')}>
-				📦 Officiel Mojang
+			<button class="tab-item {selectedCategory === 'VANILLA' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'VANILLA')}>
+				Vanilla (Officiel)
 			</button>
 		</div>
-	</div>
+	</nav>
 
 	<!-- Engine Cards Grid -->
 	{#if isLoading}
 		<div class="loading-state">
-			<RefreshCw size={32} class="spin text-primary" />
-			<p>Chargement des spécifications des moteurs...</p>
+			<RefreshCw size={28} class="spin text-primary" />
+			<p>Chargement des moteurs et versions...</p>
 		</div>
 	{:else if filteredEngines.length === 0}
 		<div class="empty-state">
-			<Info size={32} class="text-muted" />
-			<p>Aucun moteur ne correspond à votre recherche "{searchQuery}".</p>
+			<Info size={28} class="text-muted" />
+			<p>Aucun moteur ne correspond à "{searchQuery}".</p>
 			<button class="btn btn-secondary btn-sm" onclick={() => { searchQuery = ''; selectedCategory = 'ALL'; }}>
 				Réinitialiser les filtres
 			</button>
@@ -540,83 +502,73 @@
 				{@const loaderData = loaderOptionsMap[engine.id]}
 				{@const hasLoaderSupport = LOADER_SUPPORTED_ENGINES.includes(engine.id)}
 
-				<div class="engine-card {isActive ? 'active-card' : ''}">
-					<!-- Card Header with Engine Brand Logo -->
-					<div class="card-header">
-						<div class="icon-wrapper {isActive ? 'active-icon' : ''}">
-							<EngineLogo engine={engine.id} size={42} />
-						</div>
-						<div class="header-titles">
+				<article class="engine-card {isActive ? 'card-active' : ''}">
+					<!-- Card Header -->
+					<header class="card-header">
+						<EngineLogo engine={engine.id} size={44} class="engine-logo-frame" />
+						<div class="header-details">
 							<div class="title-row">
 								<h3>{engine.name}</h3>
 								{#if isActive}
-									<span class="badge badge-active"><Check size={12} /> Actif</span>
+									<span class="badge-status-active">
+										<Check size={11} />
+										<span>Actif</span>
+									</span>
 								{/if}
 							</div>
-							<div class="tag-row">
-								<span class="category-tag">{engine.category}</span>
+							<div class="tags-row">
+								<span class="tag-meta">{engine.category}</span>
 								{#if engine.stability}
-									<span class="stability-tag">{engine.stability}</span>
+									<span class="tag-stability">{engine.stability}</span>
 								{/if}
 							</div>
 						</div>
-					</div>
+					</header>
 
-					<!-- RAM and Specs Chip -->
-					<div class="specs-bar">
-						<div class="spec-item">
-							<span class="spec-label">RAM :</span>
-							<span class="spec-val">{engine.recommended_ram || '2 à 4 Go'}</span>
-						</div>
+					<!-- Minimal Specs Metadata -->
+					<div class="specs-row">
+						<span class="spec-meta">RAM : <strong>{engine.recommended_ram || '2 à 4 Go'}</strong></span>
+						<span class="spec-dot">·</span>
 						{#if engine.min_version}
-							<div class="spec-item">
-								<span class="spec-label">Support :</span>
-								<span class="spec-val">
-									{engine.min_version}+ {engine.max_version ? `(max ${engine.max_version})` : ''}
-								</span>
-							</div>
+							<span class="spec-meta">Support : <strong>{engine.min_version}+</strong> {engine.max_version ? `(max ${engine.max_version})` : ''}</span>
 						{/if}
 					</div>
 
-					<!-- Description -->
-					<p class="engine-description">{engine.description}</p>
+					<!-- Narrative Description -->
+					<p class="card-description">{engine.description}</p>
 
-					<!-- Pros & Cons list -->
-					<div class="features-list">
+					<!-- Highlights List -->
+					<div class="highlights-list">
 						{#if engine.pros && engine.pros.length > 0}
-							<div class="pros-section">
-								{#each engine.pros.slice(0, 2) as pro}
-									<div class="feature-item pro-item">
-										<CheckCircle2 size={13} class="text-green flex-shrink-0" />
-										<span>{pro}</span>
-									</div>
-								{/each}
-							</div>
+							{#each engine.pros.slice(0, 2) as pro}
+								<div class="highlight-item highlight-pro">
+									<CheckCircle2 size={13} class="text-emerald flex-shrink-0" />
+									<span>{pro}</span>
+								</div>
+							{/each}
 						{/if}
 						{#if engine.cons && engine.cons.length > 0}
-							<div class="cons-section">
-								{#each engine.cons.slice(0, 1) as con}
-									<div class="feature-item con-item">
-										<AlertCircle size={13} class="text-amber flex-shrink-0" />
-										<span>{con}</span>
-									</div>
-								{/each}
-							</div>
+							{#each engine.cons.slice(0, 1) as con}
+								<div class="highlight-item highlight-con">
+									<AlertCircle size={13} class="text-amber flex-shrink-0" />
+									<span>{con}</span>
+								</div>
+							{/each}
 						{/if}
 					</div>
 
 					<!-- Tools Sync Badge -->
 					{#if engine.supports_tools}
-						<div class="tools-sync-badge">
+						<div class="tools-pill">
 							<ShieldCheck size={13} class="text-emerald" />
-							<span>Outils auto-gérés : Spark, Chunky, LuckPerms</span>
+							<span>Spark, Chunky et LuckPerms synchronisés</span>
 						</div>
 					{/if}
 
-					<!-- Card Footer: Version Picker, Loader Picker and Action Button -->
-					<div class="card-footer">
-						<div class="pickers-stack">
-							<!-- Minecraft Game Version Picker (Always unlocked!) -->
+					<!-- Controls & Action Button -->
+					<footer class="card-footer">
+						<div class="pickers-cluster">
+							<!-- Minecraft Game Version Selector -->
 							<VersionPickerButton
 								selectedVersion={targetVer}
 								{releaseVersions}
@@ -625,30 +577,30 @@
 								minVersion={engine.min_version}
 								maxVersion={engine.max_version}
 								allowAll={false}
-								label="Version Minecraft :"
+								label="Version Minecraft"
 								disabled={isSubmitting}
 								onSelect={(newVer) => handleVersionChange(engine.id, newVer)}
 							/>
 
-							<!-- Engine Loader / Build Version Dropdown (Fabric Loader, Forge, NeoForge, Paper build...) -->
+							<!-- Loader / Build Selector -->
 							{#if hasLoaderSupport}
-								<div class="loader-picker-box">
-									<div class="loader-picker-label-row">
-										<span class="picker-label">
-											{engine.id === 'FABRIC' ? 'Fabric Loader :' :
-											 engine.id === 'QUILT' ? 'Quilt Loader :' :
-											 engine.id === 'FORGE' ? 'Version Forge :' :
-											 engine.id === 'NEOFORGE' ? 'Version NeoForge :' :
-											 'Build du Serveur :'}
+								<div class="loader-cluster">
+									<div class="loader-label-row">
+										<span class="input-label">
+											{engine.id === 'FABRIC' ? 'Fabric Loader' :
+											 engine.id === 'QUILT' ? 'Quilt Loader' :
+											 engine.id === 'FORGE' ? 'Version Forge' :
+											 engine.id === 'NEOFORGE' ? 'Version NeoForge' :
+											 'Build du Serveur'}
 										</span>
 										{#if loaderData?.loading}
-											<RefreshCw size={11} class="spin text-muted" />
+											<RefreshCw size={10} class="spin text-muted" />
 										{/if}
 									</div>
 
-									<div class="custom-select-wrapper">
+									<div class="select-wrapper">
 										<select
-											class="custom-select"
+											class="select-control"
 											bind:value={selectedLoaderMap[engine.id]}
 											disabled={isSubmitting}
 										>
@@ -661,36 +613,39 @@
 												{/each}
 											{/if}
 										</select>
-										<ChevronDown size={14} class="select-chevron" />
+										<ChevronDown size={14} class="select-arrow" />
 									</div>
 								</div>
 							{/if}
 						</div>
 
-						<!-- Action Buttons -->
+						<!-- Action Button -->
 						{#if isActive}
 							{#if isVersionChanged}
-								<button class="btn btn-primary w-full" onclick={() => openConfirmModal(engine)}>
-									<RotateCw size={16} /> Changer la version vers {targetVer}
+								<button class="btn btn-primary btn-action" onclick={() => openConfirmModal(engine)}>
+									<RotateCw size={15} />
+									<span>Changer la version ({targetVer})</span>
 								</button>
 							{:else}
-								<button class="btn btn-secondary w-full" onclick={() => openConfirmModal(engine)}>
-									<Check size={16} /> Version Actuelle (Reconfigurer)
+								<button class="btn btn-secondary btn-action" onclick={() => openConfirmModal(engine)}>
+									<Check size={15} />
+									<span>Version Active (Reconfigurer)</span>
 								</button>
 							{/if}
 						{:else}
-							<button class="btn btn-primary w-full" onclick={() => openConfirmModal(engine)}>
-								<RotateCw size={16} /> Passer à {engine.name}
+							<button class="btn btn-primary btn-action" onclick={() => openConfirmModal(engine)}>
+								<RotateCw size={15} />
+								<span>Passer à {engine.name}</span>
 							</button>
 						{/if}
-					</div>
-				</div>
+					</footer>
+				</article>
 			{/each}
 		</div>
 	{/if}
 </div>
 
-<!-- Detailed Confirmation & Impact Modal ("Tout ce qui va être modifié") -->
+<!-- Detailed Confirmation Modal -->
 {#if showConfirmModal && selectedEngine}
 	{@const targetType = selectedEngine.id}
 	{@const targetVersion = selectedVersionMap[targetType] || UNKNOWN}
@@ -707,66 +662,70 @@
 		tabindex="0"
 	>
 		<div
-			class="modal-card impact-modal"
+			class="modal-dialog"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={() => {}}
 			role="dialog"
 			tabindex="-1"
 		>
-			<div class="modal-header">
-				<div class="modal-icon-box">
-					<EngineLogo engine={selectedEngine.id} size={32} />
-				</div>
+			<header class="modal-header">
+				<EngineLogo engine={selectedEngine.id} size={36} class="modal-logo" />
 				<div>
-					<h2>{isSameEngine ? `Mise à jour Minecraft (${selectedEngine.name})` : 'Changement de Moteur de Serveur'}</h2>
-					<p class="modal-subtitle">Bilan d'impact et reconfiguration sécurisée</p>
+					<h2>{isSameEngine ? `Mise à jour Minecraft (${selectedEngine.name})` : `Passage à ${selectedEngine.name}`}</h2>
+					<p class="modal-subtitle">Bilan d'impact et reconfiguration automatique</p>
 				</div>
-			</div>
+			</header>
 
-			<div class="modal-body">
-				<!-- Engine & Version Diff Card -->
-				<div class="switch-diff-card">
-					<div class="diff-side">
-						<div class="diff-header-with-logo">
-							<EngineLogo engine={currentType} size={32} />
+			<div class="modal-content">
+				<!-- Diff View -->
+				<div class="diff-card">
+					<div class="diff-pane">
+						<div class="diff-pane-header">
+							<EngineLogo engine={currentType} size={28} />
 							<div>
-								<span class="diff-label">Actuel</span>
-								<span class="diff-title">{currentType ?? UNKNOWN}</span>
+								<span class="diff-eyebrow">Actuel</span>
+								<span class="diff-name">{currentType ?? UNKNOWN}</span>
 							</div>
 						</div>
-						<span class="diff-sub">{currentVersion ?? UNKNOWN}</span>
-						{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
-							<span class="diff-loader">Loader: {currentLoaderVersion}</span>
-						{/if}
+						<div class="diff-ver-line">
+							<span class="text-muted">{currentVersion ?? UNKNOWN}</span>
+							{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
+								<span class="diff-pill">Loader: {currentLoaderVersion}</span>
+							{/if}
+						</div>
 					</div>
-					<div class="diff-arrow">
-						<ArrowRight size={22} />
+
+					<div class="diff-separator">
+						<ArrowRight size={18} />
 					</div>
-					<div class="diff-side diff-target">
-						<div class="diff-header-with-logo">
-							<EngineLogo engine={selectedEngine.id} size={32} />
+
+					<div class="diff-pane diff-pane-target">
+						<div class="diff-pane-header">
+							<EngineLogo engine={selectedEngine.id} size={28} />
 							<div>
-								<span class="diff-label">{isSameEngine ? 'Nouvelle Version' : 'Nouveau Moteur'}</span>
-								<span class="diff-title text-primary">{selectedEngine.name}</span>
+								<span class="diff-eyebrow">{isSameEngine ? 'Nouvelle Version' : 'Nouveau Moteur'}</span>
+								<span class="diff-name text-primary">{selectedEngine.name}</span>
 							</div>
 						</div>
-						<span class="diff-sub text-emerald">{targetVersion}</span>
-						{#if hasLoader && targetLoader && targetLoader !== 'LATEST'}
-							<span class="diff-loader text-primary">Loader: {targetLoader}</span>
-						{/if}
+						<div class="diff-ver-line">
+							<span class="text-emerald font-semibold">{targetVersion}</span>
+							{#if hasLoader && targetLoader && targetLoader !== 'LATEST'}
+								<span class="diff-pill text-primary">Loader: {targetLoader}</span>
+							{/if}
+						</div>
 					</div>
 				</div>
 
-				<!-- Loader Selector in Modal if applicable -->
+				<!-- Loader Selector in Modal -->
 				{#if hasLoader}
 					<div class="modal-loader-row">
-						<span class="modal-loader-label">
+						<span class="modal-field-label">
 							<Settings2 size={14} class="text-primary" />
-							<span>Version du Loader / Moteur :</span>
+							<span>Version du Loader / Build</span>
 						</span>
-						<div class="custom-select-wrapper modal-select-wrapper">
+						<div class="select-wrapper modal-select-wrap">
 							<select
-								class="custom-select modal-select"
+								class="select-control"
 								bind:value={selectedLoaderMap[targetType]}
 								disabled={isSubmitting}
 							>
@@ -779,156 +738,127 @@
 									{/each}
 								{/if}
 							</select>
-							<ChevronDown size={14} class="select-chevron" />
+							<ChevronDown size={14} class="select-arrow" />
 						</div>
 					</div>
 				{/if}
 
-				<!-- Live Warnings -->
+				<!-- Active Players Warning -->
 				{#if onlinePlayersCount > 0}
-					<div class="alert-box alert-danger">
-						<Users size={18} />
+					<div class="callout callout-danger">
+						<Users size={16} class="flex-shrink-0" />
 						<div>
-							<strong>{onlinePlayersCount} joueur(s) connecté(s) en ce moment !</strong>
-							<p>L'application de la nouvelle configuration redémarrera le serveur et déconnectera immédiatement les joueurs.</p>
+							<strong>{onlinePlayersCount} joueur(s) connecté(s)</strong>
+							<p>L'application redémarrera immédiatement le conteneur Minecraft et déconnectera la session en cours.</p>
 						</div>
 					</div>
 				{/if}
 
-				<!-- Step-by-Step Impact Checklist -->
-				<div class="impact-section">
-					<h4 class="impact-heading">Ce qui va être modifié et exécuté :</h4>
+				<!-- Execution Checklist -->
+				<div class="checklist-section">
+					<h4 class="checklist-heading">Actions exécutées automatiquement :</h4>
 
-					<div class="impact-list">
+					<div class="checklist-items">
 						<!-- 1. World Safety Backup -->
-						<div class="impact-item {autoBackupWorld ? 'item-active' : ''}">
-							<div class="impact-checkbox-row">
+						<div class="checklist-card {autoBackupWorld ? 'card-checked' : ''}">
+							<div class="checklist-toggle">
 								<input
 									type="checkbox"
-									id="backup-world-cb"
-									class="custom-cb"
+									id="modal-backup-cb"
+									class="system-checkbox"
 									bind:checked={autoBackupWorld}
 								/>
-								<label for="backup-world-cb" class="impact-label">
-									<FolderArchive size={16} class="text-primary" />
-									<span>Créer une sauvegarde de sécurité du monde actif (<strong>{activeWorld}</strong>)</span>
+								<label for="modal-backup-cb" class="checklist-label">
+									<FolderArchive size={15} class="text-primary" />
+									<span>Sauvegarde de sécurité du monde actif (<strong>{activeWorld}</strong>)</span>
 								</label>
 							</div>
-							<p class="impact-desc">Une archive compressée du monde sera créée dans ChiPanel avant toute modification pour garantir zéro perte de données.</p>
+							<p class="checklist-detail">Archive compressée créée avant modification pour prévenir toute corruption.</p>
 						</div>
 
-						<!-- 2. LuckPerms Migration -->
-						<div class="impact-item">
-							<div class="impact-header-row">
-								<ShieldCheck size={16} class="text-emerald" />
-								<span class="impact-title">Sauvegarde et restauration LuckPerms</span>
-								<span class="badge badge-auto">Auto</span>
-							</div>
-							<p class="impact-desc">
-								Vos groupes et permissions LuckPerms existants sont automatiquement préservés et réinjectés dans l'environnement {selectedEngine.name}.
-							</p>
-						</div>
-
-						<!-- 3. Tools Re-sync (Spark & Chunky) -->
-						<div class="impact-item">
-							<div class="impact-header-row">
-								<Wrench size={16} class="text-emerald" />
-								<span class="impact-title">Synchronisation des outils d'administration</span>
-								<span class="badge badge-auto">Auto</span>
-							</div>
-							<p class="impact-desc">
-								ChiPanel télécharge et réinstalle automatiquement Spark et Chunky adaptés à {selectedEngine.name} pour Minecraft {targetVersion}.
-							</p>
-						</div>
-
-						<!-- 4. Addons Impact -->
-						{#if !isSameEngine}
-							{#if selectedEngine.supports_plugins && !selectedEngine.supports_mods && installedModsCount > 0}
-								<div class="impact-item item-warning">
-									<div class="impact-header-row">
-										<AlertCircle size={16} class="text-amber" />
-										<span class="impact-title">Impact sur les mods ({installedModsCount} mods)</span>
-									</div>
-									<p class="impact-desc">
-										Les mods dans <code>mods/</code> restent sur le disque mais ne seront pas exécutés par {selectedEngine.name} (moteur purement plugins).
-									</p>
+						<!-- 2. LuckPerms -->
+						<div class="checklist-card">
+							<div class="checklist-row">
+								<div class="checklist-title-wrap">
+									<ShieldCheck size={15} class="text-emerald" />
+									<span class="checklist-title">Permissions LuckPerms</span>
 								</div>
-							{:else if selectedEngine.supports_mods && !selectedEngine.supports_plugins && installedPluginsCount > 0}
-								<div class="impact-item item-warning">
-									<div class="impact-header-row">
-										<AlertCircle size={16} class="text-amber" />
-										<span class="impact-title">Impact sur les plugins ({installedPluginsCount} plugins)</span>
-									</div>
-									<p class="impact-desc">
-										Les plugins dans <code>plugins/</code> restent sur le disque mais ne seront pas exécutés par {selectedEngine.name}.
-									</p>
-								</div>
-							{/if}
-						{/if}
-
-						<!-- 5. Configuration & Restart -->
-						<div class="impact-item">
-							<div class="impact-header-row">
-								<RotateCw size={16} class="text-primary" />
-								<span class="impact-title">Mise à jour Quadlet, Proxy lazymc & Redémarrage</span>
-								<span class="badge badge-auto">Auto</span>
+								<span class="tag-auto">Auto</span>
 							</div>
-							<p class="impact-desc">
-								Écriture de <code>TYPE={targetType}</code>, <code>VERSION={targetVersion}</code>
-								{#if hasLoader && targetLoader && targetLoader !== 'LATEST'}
-									et <code>{loaderOptionsMap[targetType]?.env_variable || 'LOADER'}={targetLoader}</code>
-								{/if}
-								dans le conteneur, mise à jour du proxy lazymc et relance immédiate.
-							</p>
+							<p class="checklist-detail">Préservation et réinjection automatique des groupes et permissions.</p>
+						</div>
+
+						<!-- 3. Tools Sync -->
+						<div class="checklist-card">
+							<div class="checklist-row">
+								<div class="checklist-title-wrap">
+									<Wrench size={15} class="text-emerald" />
+									<span class="checklist-title">Outils Spark & Chunky</span>
+								</div>
+								<span class="tag-auto">Auto</span>
+							</div>
+							<p class="checklist-detail">Téléchargement et configuration des binaires compatibles {selectedEngine.name} {targetVersion}.</p>
+						</div>
+
+						<!-- 4. Environment & Restart -->
+						<div class="checklist-card">
+							<div class="checklist-row">
+								<div class="checklist-title-wrap">
+									<RotateCw size={15} class="text-primary" />
+									<span class="checklist-title">Conteneur & Proxy lazymc</span>
+								</div>
+								<span class="tag-auto">Auto</span>
+							</div>
+							<p class="checklist-detail">Écriture des variables système et redémarrage propre.</p>
 						</div>
 					</div>
 				</div>
 
 				{#if switchError}
-					<div class="switch-error" role="alert">
-						<AlertTriangle size={18} />
+					<div class="callout callout-danger" role="alert">
+						<AlertTriangle size={16} />
 						<div>
-							<div class="switch-error-detail">{switchError.detail}</div>
+							<div class="font-semibold">{switchError.detail}</div>
 							{#if switchError.serverMessage}
-								<div class="switch-error-msg">{switchError.serverMessage}</div>
+								<div class="text-xs text-muted font-mono mt-1">{switchError.serverMessage}</div>
 							{/if}
 						</div>
 					</div>
 				{/if}
 			</div>
 
-			<div class="modal-footer">
+			<footer class="modal-footer">
 				<button class="btn btn-secondary" onclick={closeConfirmModal} disabled={isSubmitting}>
 					Annuler
 				</button>
-				<button class="btn btn-danger" onclick={confirmEngineSwitch} disabled={isSubmitting}>
+				<button class="btn btn-primary" onclick={confirmEngineSwitch} disabled={isSubmitting}>
 					{#if isSubmitting}
-						<RefreshCw size={16} class="spin" />
-						<span>Application & Redémarrage...</span>
+						<RefreshCw size={15} class="spin" />
+						<span>Application en cours...</span>
 					{:else}
-						<RotateCw size={16} />
+						<RotateCw size={15} />
 						<span>{isSameEngine ? 'Appliquer la Version' : 'Confirmer le Changement'}</span>
 					{/if}
 				</button>
-			</div>
+			</footer>
 		</div>
 	</div>
 {/if}
 
-<!-- Toast Notification Area -->
-<div class="toast-area">
+<!-- Toast Notification Center -->
+<div class="toast-center">
 	{#each toasts as toast (toast.id)}
-		<div class="toast toast-{toast.type}">
+		<div class="toast-item toast-{toast.type}">
 			{#if toast.type === 'success'}
-				<CheckCircle2 size={18} class="text-green" />
+				<CheckCircle2 size={16} class="text-emerald" />
 			{:else if toast.type === 'warning'}
-				<AlertTriangle size={18} class="text-amber" />
+				<AlertTriangle size={16} class="text-amber" />
 			{:else}
-				<AlertCircle size={18} class="text-danger" />
+				<AlertCircle size={16} class="text-danger" />
 			{/if}
-			<div>
-				<div class="toast-title">{toast.title}</div>
-				<div class="toast-message">{toast.message}</div>
+			<div class="toast-copy">
+				<span class="toast-head">{toast.title}</span>
+				<span class="toast-body">{toast.message}</span>
 			</div>
 		</div>
 	{/each}
@@ -938,232 +868,223 @@
 	.engine-page {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-6);
-		max-width: 1350px;
+		gap: 2rem;
+		max-width: 1380px;
 		margin: 0 auto;
-		padding-bottom: var(--space-8);
+		padding: 0 0 4rem 0;
 	}
 
+	/* Header */
 	.page-header {
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
-	.header-content {
+	.header-main {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		width: 100%;
+		flex-wrap: wrap;
+		gap: 1rem;
 	}
 
-	.header-title-group {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.header-icon-box {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 50px;
-		height: 50px;
-		border-radius: var(--radius-lg);
-		background: rgba(99, 102, 241, 0.15);
-		color: var(--accent-primary, #818cf8);
-		border: 1px solid rgba(99, 102, 241, 0.3);
-	}
-
-	h1 {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
+	.header-titles h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		color: #f8fafc;
+		letter-spacing: -0.02em;
 		margin: 0;
 	}
 
 	.subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
+		font-size: 0.875rem;
+		color: #94a3b8;
 		margin: 0.25rem 0 0 0;
 	}
 
-	/* Banner Bento Card */
-	.banner-card {
-		display: grid;
-		grid-template-columns: 1.2fr 1fr;
-		gap: var(--space-6);
-		padding: var(--space-6);
-		border-radius: var(--radius-xl);
-		background: var(--bg-card);
-		border: 1px solid var(--border-subtle);
-		box-shadow: var(--shadow-md);
-	}
-
-	.banner-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.7rem;
-		font-weight: 800;
-		letter-spacing: 0.06em;
-		color: var(--accent-primary, #818cf8);
-		margin-bottom: 0.5rem;
-	}
-
-	.banner-title-row {
+	/* Version Alerts */
+	.version-banner {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		margin-bottom: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.banner-engine-logo {
-		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-		border: 1px solid var(--border-subtle);
-	}
-
-	.banner-title-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.banner-title-main {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-	}
-
-	.active-engine-name {
-		font-size: 1.85rem;
-		font-weight: 800;
-		color: var(--text-primary);
-		letter-spacing: -0.02em;
-	}
-
-	.badge-version {
-		background: rgba(99, 102, 241, 0.2);
-		color: #a5b4fc;
-		border: 1px solid rgba(99, 102, 241, 0.4);
-		font-family: var(--font-mono);
-		padding: 0.25rem 0.6rem;
-		font-size: 0.85rem;
-		border-radius: var(--radius-md);
-	}
-
-	.badge-loader {
-		background: rgba(16, 185, 129, 0.15);
-		color: #34d399;
-		border: 1px solid rgba(16, 185, 129, 0.35);
-		font-family: var(--font-mono);
-		padding: 0.25rem 0.55rem;
-		font-size: 0.8rem;
-		border-radius: var(--radius-md);
-	}
-
-	.banner-desc {
+		padding: 0.875rem 1.25rem;
+		border-radius: 12px;
 		font-size: 0.875rem;
-		color: var(--text-secondary);
-		line-height: 1.5;
-		margin: 0;
 	}
 
-	.banner-stats {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
-	}
-
-	.stat-chip {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		padding: 0.75rem 1rem;
-		border-radius: var(--radius-lg);
-		background: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-	}
-
-	.stat-label {
-		font-size: 0.75rem;
-		color: var(--text-muted);
-		font-weight: 500;
-	}
-
-	.stat-value {
-		font-size: 0.95rem;
-		font-weight: 700;
-		color: var(--text-primary);
-	}
-
-	.status-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-
-	.dot-green { background: var(--accent-green, #10b981); box-shadow: 0 0 8px #10b981; }
-	.dot-amber { background: var(--accent-amber, #f59e0b); }
-	.dot-gray { background: var(--text-muted, #64748b); }
-
-	/* Banners */
-	.new-release-banner, .new-snapshot-banner {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 1rem 1.4rem;
-		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-sm);
-	}
-
-	.new-release-banner {
-		background: rgba(16, 185, 129, 0.12);
-		border: 1px solid rgba(16, 185, 129, 0.35);
+	.release-banner {
+		background: rgba(16, 185, 129, 0.08);
+		border: 1px solid rgba(16, 185, 129, 0.25);
 		color: #34d399;
 	}
 
-	.new-snapshot-banner {
-		background: rgba(99, 102, 241, 0.12);
-		border: 1px solid rgba(99, 102, 241, 0.35);
+	.snapshot-banner {
+		background: rgba(99, 102, 241, 0.08);
+		border: 1px solid rgba(99, 102, 241, 0.25);
 		color: #a5b4fc;
 	}
 
-	.new-version-text {
+	.version-banner-text {
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;
-		font-size: 0.875rem;
 	}
 
-	.new-version-text span {
-		color: var(--text-muted);
-		font-size: 0.8rem;
+	.banner-sub {
+		color: #94a3b8;
+		font-size: 0.8125rem;
 	}
 
 	.config-alert {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.85rem 1.25rem;
-		border-radius: var(--radius-lg);
-		background: rgba(245, 158, 11, 0.12);
-		border: 1px solid rgba(245, 158, 11, 0.3);
+		padding: 0.75rem 1.25rem;
+		border-radius: 10px;
+		background: rgba(245, 158, 11, 0.08);
+		border: 1px solid rgba(245, 158, 11, 0.25);
 		color: #fbbf24;
 		font-size: 0.875rem;
 	}
 
-	/* Filters & Search Toolbar */
-	.filters-toolbar {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
+	/* Hero Bento Card */
+	.banner-card {
+		display: grid;
+		grid-template-columns: 1.35fr 1fr;
+		gap: 1.5rem;
+		padding: 1.75rem;
+		border-radius: 16px;
+		background: #111827;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 	}
 
-	.search-box {
+	.banner-primary {
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+	}
+
+	.banner-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 0.6875rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: #818cf8;
+	}
+
+	.pulse-dot {
+		color: #818cf8;
+	}
+
+	.banner-identity {
+		display: flex;
+		align-items: flex-start;
+		gap: 1.25rem;
+	}
+
+	.identity-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.identity-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.engine-title {
+		font-size: 1.75rem;
+		font-weight: 800;
+		color: #f8fafc;
+		letter-spacing: -0.02em;
+	}
+
+	.tag {
+		padding: 0.2rem 0.6rem;
+		border-radius: 6px;
+		font-size: 0.8125rem;
+		font-family: var(--font-mono, monospace);
+		font-weight: 600;
+	}
+
+	.tag-version {
+		background: rgba(99, 102, 241, 0.15);
+		color: #a5b4fc;
+		border: 1px solid rgba(99, 102, 241, 0.3);
+	}
+
+	.tag-loader {
+		background: rgba(16, 185, 129, 0.15);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.3);
+	}
+
+	.identity-desc {
+		font-size: 0.875rem;
+		color: #94a3b8;
+		line-height: 1.5;
+		margin: 0;
+		max-width: 60ch;
+	}
+
+	.banner-kpis {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 0.75rem;
+	}
+
+	.kpi-card {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 0.35rem;
+		padding: 0.875rem 1.125rem;
+		border-radius: 12px;
+		background: #0b0f19;
+		border: 1px solid rgba(255, 255, 255, 0.05);
+	}
+
+	.kpi-label {
+		font-size: 0.75rem;
+		color: #64748b;
+		font-weight: 500;
+	}
+
+	.kpi-val {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 0.9375rem;
+		font-weight: 600;
+		color: #f1f5f9;
+	}
+
+	.status-indicator {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		flex-shrink: 0;
+	}
+
+	.status-online { background: #10b981; box-shadow: 0 0 8px #10b981; }
+	.status-hibernating { background: #f59e0b; }
+	.status-stopped { background: #64748b; }
+
+	/* Toolbar */
+	.toolbar {
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+	}
+
+	.search-wrap {
 		position: relative;
 		display: flex;
 		align-items: center;
@@ -1172,99 +1093,106 @@
 
 	:global(.search-icon) {
 		position: absolute;
-		left: 1rem;
-		color: var(--text-muted);
+		left: 1.125rem;
+		color: #64748b;
 		pointer-events: none;
 	}
 
 	.search-input {
 		width: 100%;
-		padding: 0.7rem 2.5rem 0.7rem 2.75rem;
-		background: var(--bg-card);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-lg);
-		color: var(--text-primary);
+		padding: 0.75rem 4.5rem 0.75rem 2.85rem;
+		background: #111827;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 12px;
+		color: #f8fafc;
 		font-size: 0.875rem;
 		outline: none;
-		transition: all 0.2s ease;
+		transition: border-color 0.2s, box-shadow 0.2s;
 	}
 
 	.search-input:focus {
-		border-color: var(--accent-primary, #6366f1);
-		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+		border-color: #6366f1;
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 	}
 
-	.clear-btn {
+	.clear-search-btn {
 		position: absolute;
 		right: 1rem;
 		background: transparent;
 		border: none;
-		color: var(--text-muted);
+		color: #94a3b8;
 		cursor: pointer;
-		font-size: 0.85rem;
+		font-size: 0.75rem;
+		font-weight: 500;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+	}
+
+	.clear-search-btn:hover {
+		color: #ffffff;
 	}
 
 	.category-tabs {
 		display: flex;
 		gap: 0.5rem;
-		background: var(--bg-card);
+		background: #111827;
 		padding: 0.35rem;
-		border-radius: var(--radius-lg);
-		border: 1px solid var(--border-subtle);
+		border-radius: 12px;
+		border: 1px solid rgba(255, 255, 255, 0.06);
 		overflow-x: auto;
 	}
 
-	.tab-btn {
+	.tab-item {
 		padding: 0.5rem 1rem;
-		font-size: 0.825rem;
+		font-size: 0.8125rem;
 		font-weight: 600;
-		border-radius: var(--radius-md);
+		border-radius: 8px;
 		border: none;
 		background: transparent;
-		color: var(--text-muted);
+		color: #94a3b8;
 		cursor: pointer;
 		transition: all 0.2s;
 		white-space: nowrap;
 	}
 
-	.tab-btn:hover {
-		color: var(--text-primary);
-		background: var(--bg-hover);
+	.tab-item:hover {
+		color: #f8fafc;
+		background: rgba(255, 255, 255, 0.04);
 	}
 
-	.tab-btn.active {
-		background: var(--accent-primary, #6366f1);
-		color: #ffffff;
+	.tab-active {
+		background: #4f46e5 !important;
+		color: #ffffff !important;
 	}
 
 	/* Engine Grid */
 	.engine-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-		gap: var(--space-4);
+		gap: 1.5rem;
 	}
 
 	.engine-card {
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
-		padding: 1.5rem;
-		border-radius: var(--radius-xl);
-		background: var(--bg-card);
-		border: 1px solid var(--border-subtle);
-		transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-		gap: 1rem;
+		padding: 1.75rem;
+		border-radius: 16px;
+		background: #111827;
+		border: 1px solid rgba(255, 255, 255, 0.07);
+		transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+		gap: 1.125rem;
 	}
 
 	.engine-card:hover {
-		border-color: rgba(99, 102, 241, 0.4);
+		border-color: rgba(99, 102, 241, 0.35);
 		transform: translateY(-2px);
-		box-shadow: var(--shadow-md);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 	}
 
-	.active-card {
-		border-color: var(--accent-green, #10b981);
-		background: linear-gradient(180deg, rgba(16, 185, 129, 0.06), var(--bg-card));
+	.card-active {
+		border-color: rgba(16, 185, 129, 0.4);
+		background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), #111827 40%);
 	}
 
 	.card-header {
@@ -1273,27 +1201,11 @@
 		align-items: flex-start;
 	}
 
-	.icon-wrapper {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 48px;
-		height: 48px;
-		border-radius: var(--radius-lg);
-		background: var(--bg-base);
-		color: var(--text-secondary);
-		border: 1px solid var(--border-subtle);
-		flex-shrink: 0;
-	}
-
-	.active-icon {
-		background: rgba(16, 185, 129, 0.15);
-		color: #10b981;
-		border-color: rgba(16, 185, 129, 0.3);
-	}
-
-	.header-titles {
+	.header-details {
 		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 
 	.title-row {
@@ -1302,465 +1214,180 @@
 		justify-content: space-between;
 	}
 
-	h3 {
-		font-size: 1.2rem;
+	.title-row h3 {
+		font-size: 1.15rem;
 		font-weight: 700;
-		color: var(--text-primary);
+		color: #f8fafc;
+		letter-spacing: -0.01em;
 		margin: 0;
 	}
 
-	.tag-row {
+	.tags-row {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		margin-top: 0.25rem;
 		flex-wrap: wrap;
 	}
 
-	.category-tag {
+	.tag-meta {
 		font-size: 0.75rem;
-		color: var(--text-muted);
+		color: #94a3b8;
 		font-weight: 500;
 	}
 
-	.stability-tag {
-		font-size: 0.7rem;
+	.tag-stability {
+		font-size: 0.6875rem;
 		font-weight: 600;
 		padding: 0.1rem 0.45rem;
 		border-radius: 4px;
-		background: rgba(99, 102, 241, 0.12);
+		background: rgba(99, 102, 241, 0.1);
 		color: #a5b4fc;
-		border: 1px solid rgba(99, 102, 241, 0.25);
+		border: 1px solid rgba(99, 102, 241, 0.2);
 	}
 
-	.badge-active {
-		background: rgba(16, 185, 129, 0.2);
-		color: #34d399;
-		border: 1px solid rgba(16, 185, 129, 0.35);
-		padding: 0.2rem 0.5rem;
-		border-radius: var(--radius-sm);
-		font-size: 0.75rem;
-		font-weight: 700;
+	.badge-status-active {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
+		padding: 0.15rem 0.5rem;
+		border-radius: 6px;
+		font-size: 0.6875rem;
+		font-weight: 700;
+		background: rgba(16, 185, 129, 0.15);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.3);
 	}
 
-	/* Specs Bar */
-	.specs-bar {
+	/* Minimal Specs */
+	.specs-row {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 0.75rem;
-		background: var(--bg-base);
-		border-radius: var(--radius-md);
-		border: 1px solid var(--border-subtle);
-		font-size: 0.75rem;
+		gap: 0.5rem;
+		font-size: 0.8125rem;
+		color: #64748b;
 	}
 
-	.spec-item {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
+	.spec-meta strong {
+		color: #cbd5e1;
 	}
 
-	.spec-label {
-		color: var(--text-muted);
+	.spec-dot {
+		color: #475569;
 	}
 
-	.spec-val {
-		color: var(--text-primary);
-		font-weight: 600;
-	}
-
-	.engine-description {
-		font-size: 0.85rem;
-		color: var(--text-secondary);
-		line-height: 1.45;
+	.card-description {
+		font-size: 0.875rem;
+		color: #94a3b8;
+		line-height: 1.5;
 		margin: 0;
-		min-height: 2.5rem;
+		min-height: 2.75rem;
 	}
 
-	.features-list {
+	.highlights-list {
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
 	}
 
-	.feature-item {
+	.highlight-item {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.4rem;
-		font-size: 0.78rem;
-		line-height: 1.35;
+		gap: 0.5rem;
+		font-size: 0.8125rem;
+		line-height: 1.4;
 	}
 
-	.pro-item span {
-		color: var(--text-secondary);
+	.highlight-pro span {
+		color: #cbd5e1;
 	}
 
-	.con-item span {
+	.highlight-con span {
 		color: #fbbf24;
 	}
 
-	.tools-sync-badge {
+	.tools-pill {
 		display: flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.4rem 0.6rem;
-		border-radius: var(--radius-md);
-		background: rgba(16, 185, 129, 0.08);
-		border: 1px solid rgba(16, 185, 129, 0.2);
+		gap: 0.45rem;
+		padding: 0.4rem 0.75rem;
+		border-radius: 8px;
+		background: rgba(16, 185, 129, 0.06);
+		border: 1px solid rgba(16, 185, 129, 0.15);
 		color: #34d399;
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 500;
 	}
 
+	/* Card Footer Controls */
 	.card-footer {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.875rem;
 		margin-top: auto;
 		padding-top: 0.5rem;
 	}
 
-	.pickers-stack {
+	.pickers-cluster {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.65rem;
 	}
 
-	/* Loader Picker in Card */
-	.loader-picker-box {
+	.loader-cluster {
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
 	}
 
-	.loader-picker-label-row {
+	.loader-label-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 	}
 
-	.picker-label {
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: var(--text-muted);
+	.input-label {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: #94a3b8;
 	}
 
-	.custom-select-wrapper {
+	.select-wrapper {
 		position: relative;
 		display: flex;
 		align-items: center;
 		width: 100%;
 	}
 
-	.custom-select {
+	.select-control {
 		width: 100%;
-		padding: 0.55rem 2rem 0.55rem 0.75rem;
-		background: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-md);
-		color: var(--text-primary);
-		font-size: 0.8rem;
+		padding: 0.55rem 2rem 0.55rem 0.875rem;
+		background: #0b0f19;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 8px;
+		color: #f1f5f9;
+		font-size: 0.8125rem;
+		font-weight: 500;
 		outline: none;
 		appearance: none;
 		cursor: pointer;
 		transition: border-color 0.2s;
 	}
 
-	.custom-select:focus {
-		border-color: var(--accent-primary, #6366f1);
+	.select-control:focus {
+		border-color: #6366f1;
 	}
 
-	.select-chevron {
+	.select-arrow {
 		position: absolute;
 		right: 0.75rem;
-		color: var(--text-muted);
+		color: #64748b;
 		pointer-events: none;
 	}
 
-	/* Modal */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.75);
-		backdrop-filter: blur(6px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-		padding: 1rem;
-	}
-
-	.modal-card {
+	.btn-action {
 		width: 100%;
-		max-width: 620px;
-		background: var(--bg-card);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-xl);
-		padding: 1.75rem;
-		box-shadow: var(--shadow-lg);
-		max-height: 90vh;
-		overflow-y: auto;
-	}
-
-	.modal-header {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin-bottom: 1.25rem;
-	}
-
-	.modal-icon-box {
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius-lg);
-		background: rgba(99, 102, 241, 0.15);
-		color: #818cf8;
-		border: 1px solid rgba(99, 102, 241, 0.3);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	h2 {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--text-primary);
-		margin: 0;
-	}
-
-	.modal-subtitle {
-		font-size: 0.8rem;
-		color: var(--text-muted);
-		margin-top: 0.15rem;
-	}
-
-	.switch-diff-card {
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-		gap: 1rem;
-		padding: 1rem;
-		border-radius: var(--radius-lg);
-		background: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-		margin-bottom: 1rem;
-	}
-
-	.diff-side {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.diff-header-with-logo {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-	}
-
-	.diff-label {
-		font-size: 0.7rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		color: var(--text-muted);
-	}
-
-	.diff-title {
-		font-size: 1.1rem;
-		font-weight: 800;
-		color: var(--text-primary);
-	}
-
-	.diff-sub {
-		font-size: 0.8rem;
-		font-family: var(--font-mono);
-		color: var(--text-muted);
-	}
-
-	.diff-loader {
-		font-size: 0.75rem;
-		font-family: var(--font-mono);
-		color: var(--text-muted);
-		margin-top: 0.1rem;
-	}
-
-	.diff-arrow {
-		color: var(--text-muted);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.modal-loader-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		padding: 0.75rem 1rem;
-		border-radius: var(--radius-md);
-		background: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-		margin-bottom: 1rem;
-	}
-
-	.modal-loader-label {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--text-primary);
-		white-space: nowrap;
-	}
-
-	.modal-select-wrapper {
-		max-width: 320px;
-	}
-
-	.alert-box {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
-		padding: 0.85rem 1rem;
-		border-radius: var(--radius-md);
-		font-size: 0.825rem;
-		margin-bottom: 1rem;
-	}
-
-	.alert-danger {
-		background: rgba(239, 68, 68, 0.12);
-		border: 1px solid rgba(239, 68, 68, 0.35);
-		color: #fca5a5;
-	}
-
-	.alert-danger strong {
-		color: #ffffff;
-	}
-
-	.alert-danger p {
-		margin: 0.2rem 0 0 0;
-		color: #fca5a5;
-	}
-
-	.impact-section {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.impact-heading {
-		font-size: 0.85rem;
-		font-weight: 700;
-		color: var(--text-secondary);
-		margin: 0;
-	}
-
-	.impact-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.65rem;
-	}
-
-	.impact-item {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		padding: 0.75rem;
-		border-radius: var(--radius-md);
-		background: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-	}
-
-	.item-active {
-		border-color: rgba(99, 102, 241, 0.35);
-		background: rgba(99, 102, 241, 0.05);
-	}
-
-	.item-warning {
-		border-color: rgba(245, 158, 11, 0.35);
-		background: rgba(245, 158, 11, 0.05);
-	}
-
-	.impact-checkbox-row, .impact-header-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-
-	.impact-checkbox-row {
-		justify-content: flex-start;
-	}
-
-	.impact-label, .impact-title {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--text-primary);
-		cursor: pointer;
-	}
-
-	.custom-cb {
-		width: 18px;
-		height: 18px;
-		accent-color: var(--accent-primary, #6366f1);
-		cursor: pointer;
-	}
-
-	.impact-desc {
-		font-size: 0.78rem;
-		color: var(--text-muted);
-		line-height: 1.4;
-		margin: 0;
-		padding-left: 1.5rem;
-	}
-
-	.badge-auto {
-		font-size: 0.65rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		background: rgba(16, 185, 129, 0.15);
-		color: #34d399;
-		border: 1px solid rgba(16, 185, 129, 0.3);
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-
-	.modal-footer {
-		display: flex;
-		justify-content: flex-end;
-		gap: 0.75rem;
-		margin-top: 1.5rem;
-	}
-
-	.switch-error {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.65rem;
-		margin-top: 1rem;
-		padding: 0.75rem;
-		border-radius: var(--radius-md);
-		background: rgba(239, 68, 68, 0.15);
-		border: 1px solid rgba(239, 68, 68, 0.35);
-		color: #fca5a5;
-	}
-
-	.switch-error-detail {
-		font-size: 0.85rem;
-		font-weight: 600;
-	}
-
-	.switch-error-msg {
-		font-size: 0.75rem;
-		font-family: var(--font-mono);
-		color: #fecaca;
-		word-break: break-word;
+		padding: 0.65rem 1rem;
+		font-size: 0.875rem;
 	}
 
 	/* Buttons */
@@ -1772,45 +1399,36 @@
 		padding: 0.6rem 1.1rem;
 		font-size: 0.875rem;
 		font-weight: 600;
-		border-radius: var(--radius-md);
+		border-radius: 8px;
 		border: none;
 		cursor: pointer;
 		transition: all 0.2s ease;
 	}
 
 	.btn-sm {
-		padding: 0.4rem 0.8rem;
-		font-size: 0.8rem;
+		padding: 0.4rem 0.85rem;
+		font-size: 0.8125rem;
 	}
 
 	.btn-secondary {
-		background: var(--bg-base);
-		border: 1px solid var(--border-subtle);
-		color: var(--text-secondary);
+		background: #1f2937;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		color: #cbd5e1;
 	}
 
 	.btn-secondary:hover:not(:disabled) {
-		background: var(--bg-hover);
-		color: var(--text-primary);
+		background: #374151;
+		color: #ffffff;
 	}
 
 	.btn-primary {
-		background: var(--accent-primary, #6366f1);
+		background: #4f46e5;
 		color: #ffffff;
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		opacity: 0.9;
+		background: #4338ca;
 		transform: translateY(-1px);
-	}
-
-	.btn-danger {
-		background: var(--danger-bg, #ef4444);
-		color: #ffffff;
-	}
-
-	.btn-danger:hover:not(:disabled) {
-		opacity: 0.9;
 	}
 
 	.btn:disabled {
@@ -1818,21 +1436,265 @@
 		cursor: not-allowed;
 	}
 
-	.w-full {
-		width: 100%;
+	/* Modal */
+	.modal-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.8);
+		backdrop-filter: blur(8px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: 1rem;
 	}
 
-	.flex-align {
+	.modal-dialog {
+		width: 100%;
+		max-width: 600px;
+		background: #111827;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 16px;
+		padding: 1.75rem;
+		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+		max-height: 90vh;
+		overflow-y: auto;
+	}
+
+	.modal-header {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-bottom: 1.25rem;
+	}
+
+	.modal-header h2 {
+		font-size: 1.25rem;
+		font-weight: 700;
+		color: #f8fafc;
+		margin: 0;
+	}
+
+	.modal-subtitle {
+		font-size: 0.8125rem;
+		color: #94a3b8;
+		margin: 0.2rem 0 0 0;
+	}
+
+	.modal-content {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.diff-card {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
+		gap: 1rem;
+		padding: 1rem 1.25rem;
+		border-radius: 12px;
+		background: #0b0f19;
+		border: 1px solid rgba(255, 255, 255, 0.06);
+	}
+
+	.diff-pane {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.diff-pane-header {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	.diff-eyebrow {
+		font-size: 0.6875rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		color: #64748b;
+		display: block;
+	}
+
+	.diff-name {
+		font-size: 1.05rem;
+		font-weight: 700;
+		color: #f1f5f9;
+	}
+
+	.diff-ver-line {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.8125rem;
+		font-family: var(--font-mono, monospace);
+	}
+
+	.diff-pill {
+		font-size: 0.75rem;
+		padding: 0.1rem 0.4rem;
+		border-radius: 4px;
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.diff-separator {
+		color: #64748b;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.modal-loader-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.75rem 1rem;
+		border-radius: 10px;
+		background: #0b0f19;
+		border: 1px solid rgba(255, 255, 255, 0.06);
+	}
+
+	.modal-field-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: #e2e8f0;
+		white-space: nowrap;
+	}
+
+	.modal-select-wrap {
+		max-width: 300px;
+	}
+
+	.callout {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		padding: 0.875rem 1rem;
+		border-radius: 10px;
+		font-size: 0.8125rem;
+	}
+
+	.callout-danger {
+		background: rgba(239, 68, 68, 0.1);
+		border: 1px solid rgba(239, 68, 68, 0.25);
+		color: #fca5a5;
+	}
+
+	.callout-danger strong {
+		color: #ffffff;
+	}
+
+	.callout-danger p {
+		margin: 0.2rem 0 0 0;
+	}
+
+	.checklist-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+	}
+
+	.checklist-heading {
+		font-size: 0.8125rem;
+		font-weight: 700;
+		color: #cbd5e1;
+		margin: 0;
+	}
+
+	.checklist-items {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.checklist-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		padding: 0.75rem 0.875rem;
+		border-radius: 10px;
+		background: #0b0f19;
+		border: 1px solid rgba(255, 255, 255, 0.05);
+	}
+
+	.card-checked {
+		border-color: rgba(99, 102, 241, 0.3);
+	}
+
+	.checklist-toggle, .checklist-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.checklist-toggle {
+		justify-content: flex-start;
+	}
+
+	.checklist-title-wrap {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
 	}
 
-	.text-green, .text-emerald { color: var(--accent-green, #10b981) !important; }
-	.text-primary { color: var(--accent-primary, #818cf8) !important; }
-	.text-amber { color: var(--accent-amber, #fbbf24) !important; }
-	.text-danger { color: var(--danger-text, #ef4444) !important; }
-	.text-muted { color: var(--text-muted) !important; }
+	.checklist-label, .checklist-title {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: #f1f5f9;
+		cursor: pointer;
+	}
+
+	.system-checkbox {
+		width: 16px;
+		height: 16px;
+		accent-color: #6366f1;
+		cursor: pointer;
+	}
+
+	.checklist-detail {
+		font-size: 0.75rem;
+		color: #64748b;
+		margin: 0;
+		padding-left: 1.4rem;
+	}
+
+	.tag-auto {
+		font-size: 0.625rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		background: rgba(16, 185, 129, 0.12);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.25);
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+	}
+
+	.modal-footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.75rem;
+		margin-top: 1.25rem;
+		padding-top: 1rem;
+		border-top: 1px solid rgba(255, 255, 255, 0.06);
+	}
+
+	/* Helpers */
+	.text-emerald { color: #34d399 !important; }
+	.text-primary { color: #818cf8 !important; }
+	.text-amber { color: #fbbf24 !important; }
+	.text-danger { color: #f87171 !important; }
+	.text-muted { color: #64748b !important; }
+	.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 	.spin {
 		animation: spin 1s linear infinite;
@@ -1840,46 +1702,50 @@
 
 	@keyframes spin {
 		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
 	}
 
-	/* Toasts */
-	.toast-area {
+	/* Toast Center */
+	.toast-center {
 		position: fixed;
 		bottom: 1.5rem;
 		right: 1.5rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		z-index: var(--z-toast);
+		z-index: 1100;
 	}
 
-	.toast {
+	.toast-item {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.85rem 1.25rem;
-		border-radius: var(--radius-lg);
-		background: var(--bg-card);
-		border: 1px solid var(--border-subtle);
-		box-shadow: var(--shadow-lg);
-		color: var(--text-primary);
-		min-width: 300px;
-		animation: slideIn 0.2s ease-out;
+		padding: 0.875rem 1.25rem;
+		border-radius: 12px;
+		background: #1e293b;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+		color: #f8fafc;
+		min-width: 320px;
 	}
 
-	.toast-success { border-left: 4px solid var(--accent-green, #10b981); }
-	.toast-error { border-left: 4px solid var(--danger-bg, #ef4444); }
-	.toast-warning { border-left: 4px solid var(--accent-amber, #f59e0b); }
+	.toast-success { border-left: 3px solid #10b981; }
+	.toast-warning { border-left: 3px solid #f59e0b; }
+	.toast-error { border-left: 3px solid #ef4444; }
 
-	.toast-title {
+	.toast-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+	}
+
+	.toast-head {
 		font-weight: 700;
-		font-size: 0.85rem;
+		font-size: 0.8125rem;
 	}
 
-	.toast-message {
+	.toast-body {
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: #94a3b8;
 	}
 
 	.empty-state, .loading-state {
@@ -1888,29 +1754,17 @@
 		align-items: center;
 		justify-content: center;
 		padding: 4rem 1rem;
-		gap: 1rem;
-		color: var(--text-muted);
+		gap: 0.875rem;
+		color: #64748b;
 		text-align: center;
 	}
 
-	@keyframes slideIn {
-		from { transform: translateX(100%); opacity: 0; }
-		to { transform: translateX(0); opacity: 1; }
-	}
-
-	@media (max-width: 900px) {
+	@media (max-width: 960px) {
 		.banner-card {
 			grid-template-columns: 1fr;
 		}
-		.banner-stats {
+		.banner-kpis {
 			grid-template-columns: 1fr;
-		}
-		.modal-loader-row {
-			flex-direction: column;
-			align-items: flex-start;
-		}
-		.modal-select-wrapper {
-			max-width: 100%;
 		}
 	}
 </style>

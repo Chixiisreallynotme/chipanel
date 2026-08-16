@@ -3,7 +3,7 @@
 
 	let {
 		engine = '',
-		size = 32,
+		size = 40,
 		class: className = ''
 	} = $props();
 
@@ -11,204 +11,229 @@
 </script>
 
 <div
-	class="engine-logo-box engine-logo-{engineUpper.toLowerCase()} {className}"
+	class="engine-logo-container {className}"
 	style="width: {size}px; height: {size}px; min-width: {size}px; min-height: {size}px;"
+	title={engineUpper}
 >
 	{#if engineUpper === 'FABRIC'}
-		<!-- Official FabricMC Spool & Loom SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<path d="M128 16C66.14 16 16 66.14 16 128s50.14 112 112 112 112-50.14 112-112S189.86 16 128 16z" fill="#E8D5B5" fill-opacity="0.15" />
-			<!-- Fabric cross threads -->
-			<path d="M72 80c0-13.25 10.75-24 24-24h64c13.25 0 24 10.75 24 24v20H72V80z" fill="#C9A368"/>
-			<path d="M64 116h128v24H64v-24z" fill="#90B7DE"/>
-			<path d="M72 156h112v20c0 13.25-10.75 24-24 24H96c-13.25 0-24-10.75-24-24v-20z" fill="#5F8CB8"/>
-			<path d="M96 56v144M160 56v144" stroke="#486D94" stroke-width="8" stroke-linecap="round"/>
-			<circle cx="128" cy="128" r="14" fill="#FFFFFF"/>
-			<circle cx="128" cy="128" r="8" fill="#3B6590"/>
+		<!-- Official FabricMC Loom / Spool Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#1e2433" stroke="#2d3748" stroke-width="2"/>
+			<circle cx="50" cy="50" r="34" fill="#dfb675" fill-opacity="0.12"/>
+			<!-- Spool Structure -->
+			<rect x="30" y="24" width="40" height="10" rx="3" fill="#dfb675"/>
+			<rect x="30" y="66" width="40" height="10" rx="3" fill="#dfb675"/>
+			<rect x="38" y="34" width="24" height="32" fill="#60a5fa"/>
+			<!-- Cross threads -->
+			<line x1="38" y1="40" x2="62" y2="40" stroke="#93c5fd" stroke-width="2.5"/>
+			<line x1="38" y1="50" x2="62" y2="50" stroke="#93c5fd" stroke-width="2.5"/>
+			<line x1="38" y1="60" x2="62" y2="60" stroke="#93c5fd" stroke-width="2.5"/>
+			<line x1="44" y1="34" x2="44" y2="66" stroke="#2563eb" stroke-width="2"/>
+			<line x1="56" y1="34" x2="56" y2="66" stroke="#2563eb" stroke-width="2"/>
+			<circle cx="50" cy="50" r="4.5" fill="#ffffff"/>
 		</svg>
 
 	{:else if engineUpper === 'PURPUR'}
-		<!-- Official Purpur Squid Magenta SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#7B2CBF" fill-opacity="0.15"/>
-			<path d="M64 88c0-35.35 28.65-64 64-64s64 28.65 64 64v80c0 12-8 24-20 24s-20-12-20-24v-40c0-6.63-5.37-12-12-12s-12 5.37-12 12v64c0 12-8 24-20 24s-20-12-20-24v-64c0-6.63-5.37-12-12-12s-12 5.37-12 12v40c0 12-8 24-20 24s-20-12-20-24V88z" fill="url(#purpur-grad)"/>
-			<circle cx="104" cy="96" r="12" fill="#FFFFFF"/>
-			<circle cx="104" cy="96" r="6" fill="#180033"/>
-			<circle cx="152" cy="96" r="12" fill="#FFFFFF"/>
-			<circle cx="152" cy="96" r="6" fill="#180033"/>
+		<!-- Official Purpur Squid Silhouette Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#241434" stroke="#442366" stroke-width="2"/>
+			<!-- Squid Head -->
+			<path d="M28 42 C28 26, 40 18, 50 18 C60 18, 72 26, 72 42 L72 68 L64 68 L64 54 C64 52, 60 52, 60 54 L60 76 L54 76 L54 54 C54 52, 50 52, 50 54 L50 78 L46 78 L46 54 C46 52, 42 52, 42 54 L42 76 L36 76 L36 54 C36 52, 32 52, 32 54 L32 68 L28 68 Z" fill="url(#purpur-svg-grad)"/>
+			<!-- Eyes -->
+			<ellipse cx="40" cy="38" rx="4" ry="4" fill="#ffffff"/>
+			<circle cx="40" cy="38" r="2" fill="#1a0b2e"/>
+			<ellipse cx="60" cy="38" rx="4" ry="4" fill="#ffffff"/>
+			<circle cx="60" cy="38" r="2" fill="#1a0b2e"/>
 			<defs>
-				<linearGradient id="purpur-grad" x1="64" y1="24" x2="192" y2="216" gradientUnits="userSpaceOnUse">
-					<stop stop-color="#E0AAFF"/>
-					<stop offset="0.5" stop-color="#C77DFF"/>
-					<stop offset="1" stop-color="#9D4EDD"/>
+				<linearGradient id="purpur-svg-grad" x1="28" y1="18" x2="72" y2="78" gradientUnits="userSpaceOnUse">
+					<stop stop-color="#e879f9"/>
+					<stop offset="0.6" stop-color="#c084fc"/>
+					<stop offset="1" stop-color="#9333ea"/>
 				</linearGradient>
 			</defs>
 		</svg>
 
 	{:else if engineUpper === 'PAPER'}
-		<!-- Official PaperMC Origami Swan/Paper SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#1F75FE" fill-opacity="0.15"/>
-			<path d="M128 32L48 184h160L128 32z" fill="#3B82F6"/>
-			<path d="M128 32L88 184h80L128 32z" fill="#60A5FA"/>
-			<path d="M128 32l-40 152 40 40 40-40L128 32z" fill="#93C5FD"/>
-			<path d="M128 184l-40 40h80l-40-40z" fill="#2563EB"/>
+		<!-- Official PaperMC Geometric Origami Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#0f223d" stroke="#1e3a5f" stroke-width="2"/>
+			<!-- Origami Swan/Paper Wings -->
+			<path d="M50 20 L22 72 L78 72 Z" fill="#2563eb"/>
+			<path d="M50 20 L36 72 L64 72 Z" fill="#3b82f6"/>
+			<path d="M50 20 L44 72 L50 82 L56 72 Z" fill="#60a5fa"/>
+			<path d="M50 72 L36 82 L64 82 Z" fill="#1d4ed8"/>
 		</svg>
 
 	{:else if engineUpper === 'FORGE'}
-		<!-- Official Minecraft Forge Anvil & Hammer SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#DF6526" fill-opacity="0.15"/>
-			<!-- Anvil Body -->
-			<path d="M52 64h152c8 0 16 8 12 20l-16 44c-4 12-16 20-28 20h-16v28h32c6 0 12 6 12 12v16H52v-16c0-6 6-12 12-12h32v-28H80c-12 0-24-8-28-20L36 84c-4-12 4-20 16-20z" fill="url(#forge-grad)"/>
-			<path d="M72 80h112v20H72V80z" fill="#272528"/>
-			<!-- Forge Fire Accent -->
-			<path d="M128 100c-16 24-8 40 0 56 8-16 16-32 0-56z" fill="#FBBF24"/>
+		<!-- Official Minecraft Forge Heavy Anvil & Ember Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#2c1a14" stroke="#522b1f" stroke-width="2"/>
+			<!-- Anvil -->
+			<path d="M22 28 H78 C81 28, 83 31, 81 35 L74 48 C72 52, 68 55, 63 55 H58 V66 H68 C70 66, 72 68, 72 70 V74 H28 V70 C28 68, 30 66, 32 66 H42 V55 H37 C32 55, 28 52, 26 48 L19 35 C17 31, 19 28, 22 28 Z" fill="url(#forge-svg-grad)"/>
+			<rect x="28" y="33" width="44" height="6" rx="2" fill="#1e1815"/>
+			<!-- Glowing Core Flame -->
+			<path d="M50 42 C44 48, 46 54, 50 58 C54 54, 56 48, 50 42 Z" fill="#fbbf24"/>
 			<defs>
-				<linearGradient id="forge-grad" x1="36" y1="64" x2="220" y2="204" gradientUnits="userSpaceOnUse">
-					<stop stop-color="#E26526"/>
-					<stop offset="1" stop-color="#A5350F"/>
+				<linearGradient id="forge-svg-grad" x1="20" y1="28" x2="80" y2="74" gradientUnits="userSpaceOnUse">
+					<stop stop-color="#f97316"/>
+					<stop offset="0.7" stop-color="#ea580c"/>
+					<stop offset="1" stop-color="#9a3412"/>
 				</linearGradient>
 			</defs>
 		</svg>
 
 	{:else if engineUpper === 'NEOFORGE'}
-		<!-- Official NeoForge Flame Shield SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#FF5722" fill-opacity="0.15"/>
-			<path d="M128 24C80 72 48 112 48 160c0 44.18 35.82 80 80 80s80-35.82 80-80c0-48-32-88-80-136z" fill="url(#neoforge-grad)"/>
-			<path d="M128 72c-28 32-48 60-48 88 0 26.51 21.49 48 48 48s48-21.49 48-48c0-28-20-56-48-88z" fill="#FFC107"/>
-			<path d="M128 120c-12 16-20 28-20 40 0 11.05 8.95 20 20 20s20-8.95 20-20c0-12-8-24-20-40z" fill="#FFF"/>
+		<!-- Official NeoForge Fiery Crest Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#2b1713" stroke="#54251d" stroke-width="2"/>
+			<!-- Outer Flame -->
+			<path d="M50 18 C34 34, 24 50, 24 64 C24 78, 36 84, 50 84 C64 84, 76 78, 76 64 C76 50, 66 34, 50 18 Z" fill="url(#neoforge-svg-grad)"/>
+			<!-- Inner Flame -->
+			<path d="M50 36 C40 48, 34 58, 34 68 C34 76, 41 80, 50 80 C59 80, 66 76, 66 68 C66 58, 60 48, 50 36 Z" fill="#fbbf24"/>
+			<!-- Core Spark -->
+			<path d="M50 54 C46 60, 44 64, 44 70 C44 74, 47 76, 50 76 C53 76, 56 74, 56 70 C56 64, 54 60, 50 54 Z" fill="#ffffff"/>
 			<defs>
-				<linearGradient id="neoforge-grad" x1="48" y1="24" x2="208" y2="240" gradientUnits="userSpaceOnUse">
-					<stop stop-color="#FF3D00"/>
-					<stop offset="0.6" stop-color="#FF6E40"/>
-					<stop offset="1" stop-color="#FF9100"/>
+				<linearGradient id="neoforge-svg-grad" x1="24" y1="18" x2="76" y2="84" gradientUnits="userSpaceOnUse">
+					<stop stop-color="#ef4444"/>
+					<stop offset="0.5" stop-color="#f97316"/>
+					<stop offset="1" stop-color="#ea580c"/>
 				</linearGradient>
 			</defs>
 		</svg>
 
 	{:else if engineUpper === 'SPIGOT'}
-		<!-- Spigot MC Faucet / Tap SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#ED820A" fill-opacity="0.15"/>
-			<path d="M108 40h40v36h-40V40z" fill="#F59E0B"/>
-			<path d="M72 76h112v28H72V76z" fill="#D97706"/>
-			<path d="M96 104h64v56c0 22.09-17.91 40-40 40H80v-28h40c6.63 0 12-5.37 12-12v-56z" fill="#B45309"/>
-			<!-- Water Drop -->
-			<path d="M96 200c-8 12 0 24 12 24s20-12 12-24c-4-6-8-10-12-16-4 6-8 10-12 16z" fill="#38BDF8"/>
+		<!-- Official SpigotMC Brass Tap / Faucet Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#291e13" stroke="#4d351b" stroke-width="2"/>
+			<!-- Faucet Top Handle -->
+			<rect x="42" y="20" width="16" height="10" rx="3" fill="#f59e0b"/>
+			<rect x="30" y="30" width="40" height="8" rx="2" fill="#d97706"/>
+			<!-- Pipe & Spout -->
+			<path d="M38 38 H62 V58 C62 64, 56 68, 50 68 H42 V60 H50 C52 60, 54 58, 54 56 V38 H38 Z" fill="#b45309"/>
+			<!-- Water Droplet -->
+			<path d="M46 74 C43 78, 42 81, 46 84 C50 84, 51 81, 46 74 Z" fill="#38bdf8"/>
 		</svg>
 
 	{:else if engineUpper === 'VANILLA'}
-		<!-- Iconic Minecraft Grass Block Isometric 3D SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#5E9732" fill-opacity="0.15"/>
+		<!-- Official Minecraft Isometric 3D Grass Block Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#192617" stroke="#2c4228" stroke-width="2"/>
 			<!-- Isometric Grass Top -->
-			<path d="M128 32l84 48-84 48-84-48 84-48z" fill="#5EB839"/>
-			<path d="M128 32l84 48-24 14-84-48 24-14z" fill="#75D44C"/>
-			<!-- Dirt Left -->
-			<path d="M44 80l84 48v96l-84-48V80z" fill="#866043"/>
-			<!-- Dirt Right -->
-			<path d="M128 128l84-48v96l-84 48V128z" fill="#573D26"/>
-			<!-- Grass Side Fringe Left -->
-			<path d="M44 80l84 48v20l-16-9-16 12-20-11-16 10-16-12V80z" fill="#4B8E2A"/>
-			<!-- Grass Side Fringe Right -->
-			<path d="M128 128l84-48v30l-20 8-16-12-18 10-16-9-14 8v-35z" fill="#3D7422"/>
+			<polygon points="50,22 78,38 50,54 22,38" fill="#4ade80"/>
+			<polygon points="50,22 78,38 72,41 50,29 28,41 22,38" fill="#86efac"/>
+			<!-- Left Dirt Wall -->
+			<polygon points="22,38 50,54 50,80 22,64" fill="#78350f"/>
+			<!-- Right Dirt Wall -->
+			<polygon points="50,54 78,38 78,64 50,80" fill="#451a03"/>
+			<!-- Grass Edge Fringe Left -->
+			<polygon points="22,38 50,54 50,60 44,57 40,61 34,57 28,60 22,56" fill="#22c55e"/>
+			<!-- Grass Edge Fringe Right -->
+			<polygon points="50,54 78,38 78,56 72,60 66,56 60,61 56,57 50,60" fill="#16a34a"/>
 		</svg>
 
 	{:else if engineUpper === 'QUILT'}
-		<!-- Official QuiltMC Kaleidoscope Purple / Cyan SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#9333EA" fill-opacity="0.15"/>
-			<!-- Quilt 4 Squares -->
-			<path d="M48 48h72v72H48V48z" fill="#8B5CF6"/>
-			<path d="M136 48h72v72h-72V48z" fill="#06B6D4"/>
-			<path d="M48 136h72v72H48v-72z" fill="#EC4899"/>
-			<path d="M136 136h72v72h-72v-72z" fill="#F59E0B"/>
-			<!-- Center Cross -->
-			<path d="M128 32v192M32 128h192" stroke="#1E1B4B" stroke-width="12" stroke-linecap="round"/>
-			<circle cx="128" cy="128" r="20" fill="#FFFFFF"/>
-			<circle cx="128" cy="128" r="10" fill="#7C3AED"/>
+		<!-- Official QuiltMC 4-Panel Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#20152e" stroke="#3b2457" stroke-width="2"/>
+			<!-- 4 Quilt Squares -->
+			<rect x="26" y="26" width="22" height="22" rx="4" fill="#8b5cf6"/>
+			<rect x="52" y="26" width="22" height="22" rx="4" fill="#06b6d4"/>
+			<rect x="26" y="52" width="22" height="22" rx="4" fill="#ec4899"/>
+			<rect x="52" y="52" width="22" height="22" rx="4" fill="#f59e0b"/>
+			<!-- Center Node -->
+			<circle cx="50" cy="50" r="7" fill="#ffffff"/>
+			<circle cx="50" cy="50" r="3.5" fill="#7c3aed"/>
 		</svg>
 
 	{:else if engineUpper === 'FOLIA'}
-		<!-- Official Folia Multithreaded Leaf SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#10B981" fill-opacity="0.15"/>
-			<!-- Leaf Body -->
-			<path d="M56 184C48 120 88 48 200 48c0 112-72 152-136 144l-8-8z" fill="url(#folia-grad)"/>
-			<!-- Leaf Veins (threads) -->
-			<path d="M64 176C112 144 152 104 184 64M112 144c24-12 44-32 56-48M92 160c16-8 32-20 40-32" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-opacity="0.75"/>
+		<!-- Official Folia Multithreaded Leaf Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#132a20" stroke="#204a37" stroke-width="2"/>
+			<!-- Folia Leaf -->
+			<path d="M26 72 C22 46, 38 22, 76 22 C76 60, 52 76, 26 72 Z" fill="url(#folia-svg-grad)"/>
+			<!-- Multithread Veins -->
+			<path d="M30 68 C46 54, 60 40, 72 26" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.8"/>
+			<path d="M46 54 C54 48, 62 44, 66 38" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.8"/>
+			<path d="M38 62 C44 58, 50 56, 54 50" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.8"/>
 			<defs>
-				<linearGradient id="folia-grad" x1="56" y1="48" x2="200" y2="192" gradientUnits="userSpaceOnUse">
-					<stop stop-color="#34D399"/>
+				<linearGradient id="folia-svg-grad" x1="26" y1="22" x2="76" y2="72" gradientUnits="userSpaceOnUse">
+					<stop stop-color="#34d399"/>
 					<stop offset="1" stop-color="#059669"/>
 				</linearGradient>
 			</defs>
 		</svg>
 
 	{:else if engineUpper === 'MOHIST'}
-		<!-- Official Mohist Cauldron & Flask SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#0D9488" fill-opacity="0.15"/>
-			<!-- Cauldron Flask -->
-			<path d="M104 36h48v36l48 84c16 28-4 64-36 64H92c-32 0-52-36-36-64l48-84V36z" fill="url(#mohist-grad)"/>
-			<path d="M96 36h64v16H96V36z" fill="#0F766E"/>
-			<!-- Liquid Bubbles -->
-			<path d="M80 160c20-10 40 10 60 0 16-8 24-2 36 0v28c0 17.67-14.33 32-32 32h-36c-17.67 0-32-14.33-32-32v-28h4z" fill="#EF4444" fill-opacity="0.85"/>
-			<circle cx="112" cy="180" r="6" fill="#FEF08A"/>
-			<circle cx="140" cy="170" r="4" fill="#FEF08A"/>
+		<!-- Official Mohist Alchemical Flask / Crucible Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#132726" stroke="#1d4543" stroke-width="2"/>
+			<!-- Flask Body -->
+			<path d="M42 22 H58 V36 L74 66 C78 74, 72 82, 64 82 H36 C28 82, 22 74, 26 66 L42 36 V22 Z" fill="url(#mohist-svg-grad)"/>
+			<rect x="40" y="20" width="20" height="5" rx="1.5" fill="#0f766e"/>
+			<!-- Crimson Solution in Flask -->
+			<path d="M32 66 L38 54 H62 L68 66 C70 72, 66 78, 60 78 H40 C34 78, 30 72, 32 66 Z" fill="#ef4444" fill-opacity="0.9"/>
+			<circle cx="45" cy="68" r="2.5" fill="#fef08a"/>
+			<circle cx="55" cy="64" r="1.5" fill="#fef08a"/>
 			<defs>
-				<linearGradient id="mohist-grad" x1="56" y1="36" x2="200" y2="220" gradientUnits="userSpaceOnUse">
-					<stop stop-color="#2DD4BF"/>
-					<stop offset="1" stop-color="#0F766E"/>
+				<linearGradient id="mohist-svg-grad" x1="26" y1="20" x2="74" y2="82" gradientUnits="userSpaceOnUse">
+					<stop stop-color="#2dd4bf"/>
+					<stop offset="1" stop-color="#0f766e"/>
 				</linearGradient>
 			</defs>
 		</svg>
 
 	{:else if engineUpper === 'ARCLIGHT'}
-		<!-- Official Arclight Electric Arc Crystal SVG Logo -->
-		<svg viewBox="0 0 256 256" width="{size}" height="{size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-			<rect width="256" height="256" rx="48" fill="#06B6D4" fill-opacity="0.15"/>
-			<!-- Electric Diamond Crystal -->
-			<path d="M128 24l72 64-72 144-72-144 72-64z" fill="url(#arclight-grad)"/>
-			<path d="M128 24v208l72-144-72-64z" fill="#22D3EE" fill-opacity="0.4"/>
-			<!-- Lightning Bolt Arc -->
-			<path d="M136 64l-24 48h24l-16 48 32-56h-24l16-40h-8z" fill="#FACC15"/>
+		<!-- Official Arclight Electric Arc Crystal Vector -->
+		<svg viewBox="0 0 100 100" width="{size}" height="{size}" class="engine-svg">
+			<rect width="100" height="100" rx="22" fill="#112933" stroke="#1c4759" stroke-width="2"/>
+			<!-- Crystal Diamond -->
+			<polygon points="50,18 78,42 50,84 22,42" fill="url(#arclight-svg-grad)"/>
+			<polygon points="50,18 78,42 50,84" fill="#22d3ee" fill-opacity="0.3"/>
+			<!-- Lightning Spark -->
+			<path d="M52 30 L44 48 H52 L46 68 L60 46 H50 L56 30 Z" fill="#facc15"/>
 			<defs>
-				<linearGradient id="arclight-grad" x1="56" y1="24" x2="200" y2="232" gradientUnits="userSpaceOnUse">
-					<stop stop-color="#06B6D4"/>
-					<stop offset="0.5" stop-color="#0891B2"/>
-					<stop offset="1" stop-color="#0E7490"/>
+				<linearGradient id="arclight-svg-grad" x1="22" y1="18" x2="78" y2="84" gradientUnits="userSpaceOnUse">
+					<stop stop-color="#06b6d4"/>
+					<stop offset="1" stop-color="#0e7490"/>
 				</linearGradient>
 			</defs>
 		</svg>
 
 	{:else}
-		<!-- Fallback General Engine Icon -->
-		<div class="fallback-icon">
-			<Cpu size={size * 0.75} />
+		<!-- Fallback General Clean Chip Icon -->
+		<div class="engine-fallback-box">
+			<Cpu size={size * 0.55} />
 		</div>
 	{/if}
 </div>
 
 <style>
-	.engine-logo-box {
+	.engine-logo-container {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: var(--radius-lg, 12px);
-		overflow: hidden;
+		border-radius: 14px;
 		flex-shrink: 0;
-		transition: transform 0.2s ease, filter 0.2s ease;
+		user-select: none;
+		position: relative;
 	}
 
-	.fallback-icon {
+	.engine-svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+		border-radius: 14px;
+	}
+
+	.engine-fallback-box {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		width: 100%;
 		height: 100%;
-		color: var(--text-secondary, #94a3b8);
+		background: #1e293b;
+		border: 1px solid #334155;
+		border-radius: 14px;
+		color: #94a3b8;
 	}
 </style>
