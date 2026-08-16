@@ -222,10 +222,8 @@
 				formData.append('file', file);
 				formData.append('target_dir', targetDir);
 
-				const token = sessionStorage.getItem('chipanel_jwt');
-				const res = await fetch('/api/plugins/upload', {
+				const res = await apiFetch('/api/plugins/upload', {
 					method: 'POST',
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
 					body: formData
 				});
 

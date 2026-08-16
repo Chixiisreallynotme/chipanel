@@ -53,7 +53,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let config = Arc::new(AppConfig::load()?);
-    let ws_hub = WsHub::new(config.clone());
+    let rcon_handle = crate::rcon::RconActorHandle::spawn(config.clone());
+    let ws_hub = WsHub::new(config.clone(), rcon_handle.clone());
     let token_store = Arc::new(crate::auth::tokens::TokenStore::load_or_create(&config.data_dir).await);
     let user_store = Arc::new(crate::auth::users::UserStore::load_or_create(&config.data_dir, &config.admin_username, &config.admin_password_hash).await);
     let profile_store = Arc::new(crate::auth::profiles::ProfileStore::load_or_create(&config.data_dir).await);
@@ -107,6 +108,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest("/api/metrics", routes::metrics_router())
         .nest("/api/profiles", routes::profiles_router())
         .nest("/api/tools", routes::tools_router())
+        .nest("/api/logs", routes::logs_router())
+        .nest("/api/diff", routes::diff_router())
+        .nest("/api/maintenance", routes::database_router())
         .route("/api/public/resourcepack/:filename", get(routes::server::public_resourcepack_handler))
         .route("/api/health", get(health_handler))
         .route("/ws", get(routes::websocket::websocket_handler))
@@ -119,6 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(Extension(ws_hub))
+        .layer(Extension(rcon_handle))
         .layer(Extension(metrics_store))
         .layer(Extension(alert_config))
         .layer(Extension(token_store))

@@ -190,35 +190,17 @@ impl TokenStore {
 }
 
 fn hash_raw_token(raw: &str) -> String {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    raw.hash(&mut hasher);
-    format!("{:016x}", hasher.finish())
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(raw.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 fn generate_random_hex(len: usize) -> String {
-    use std::time::SystemTime;
-    let now = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let pid = std::process::id();
-    let seed = format!("{}-{}-{}", now, pid, len);
-    
-    let mut hash_val: u64 = 14695981039346656037;
-    for b in seed.bytes() {
-        hash_val ^= b as u64;
-        hash_val = hash_val.wrapping_mul(1099511628211);
-    }
-
-    let mut result = String::with_capacity(len * 2);
-    for i in 0..len {
-        let byte = ((hash_val >> ((i % 8) * 8)) & 0xFF) as u8;
-        result.push_str(&format!("{:02x}", byte));
-        hash_val = hash_val.wrapping_add(now as u64);
-    }
-    result.truncate(len * 2);
-    result
+    use argon2::password_hash::rand_core::{OsRng, RngCore};
+    let mut bytes = vec![0u8; len];
+    OsRng.fill_bytes(&mut bytes);
+    hex::encode(bytes)
 }
 
 fn is_expired(exp_str: &str) -> bool {

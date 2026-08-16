@@ -8,7 +8,7 @@ use crate::{
     modrinth::client::ModrinthClient,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AppConfig {
     pub jwt_secret: String,
     pub admin_username: String,
@@ -26,6 +26,27 @@ pub struct AppConfig {
     pub lazymc_config_file: PathBuf,
     pub modrinth_client: Arc<ModrinthClient>,
     pub curseforge_client: Arc<CurseForgeClient>,
+}
+
+impl std::fmt::Debug for AppConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppConfig")
+            .field("jwt_secret", &"[REDACTED]")
+            .field("admin_username", &self.admin_username)
+            .field("admin_password_hash", &"[REDACTED]")
+            .field("data_dir", &self.data_dir)
+            .field("port", &self.port)
+            .field("host", &self.host)
+            .field("allowed_origins", &self.allowed_origins)
+            .field("rcon_host", &self.rcon_host)
+            .field("rcon_port", &self.rcon_port)
+            .field("rcon_password", &"[REDACTED]")
+            .field("podman_container", &self.podman_container)
+            .field("minecraft_data_dir", &self.minecraft_data_dir)
+            .field("systemd_config_dir", &self.systemd_config_dir)
+            .field("lazymc_config_file", &self.lazymc_config_file)
+            .finish()
+    }
 }
 
 impl AppConfig {

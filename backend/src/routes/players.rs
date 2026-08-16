@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::{
-    auth::middleware::AuthUser,
+    auth::middleware::{AuthUser, RequireAdmin},
     config::AppConfig,
     error::AppError,
     minecraft::{
@@ -157,7 +157,7 @@ pub async fn get_player_handler(
 /// POST /api/players/action
 /// Executes admin player management actions via RCON (kick, ban, pardon, teleport, op, deop).
 pub async fn player_action_handler(
-    _auth: AuthUser,
+    _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     AxumJson(payload): AxumJson<PlayerActionRequest>,
 ) -> Result<Json<PlayerActionResponse>, AppError> {
@@ -420,7 +420,7 @@ pub async fn get_player_effects_handler(
 /// POST /api/players/:uuid/effects/apply
 /// Applies a status effect to a player via RCON (`effect give <player> <effect_id> <seconds> <amplifier>`).
 pub async fn apply_player_effect_handler(
-    _auth: AuthUser,
+    _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Path(uuid): Path<String>,
     AxumJson(payload): AxumJson<ApplyEffectRequest>,
@@ -495,7 +495,7 @@ pub async fn apply_player_effect_handler(
 /// POST /api/players/:uuid/effects/clear
 /// Clears status effects for a player via RCON (`effect clear <player> [effect_id]`).
 pub async fn clear_player_effects_handler(
-    _auth: AuthUser,
+    _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Path(uuid): Path<String>,
     AxumJson(payload): AxumJson<ClearEffectsRequest>,
@@ -629,7 +629,7 @@ pub async fn get_player_permissions_handler(
 /// POST /api/players/:uuid/permissions/group
 /// Sets player's LuckPerms parent group via RCON (`lp user <player> parent set <group_name>`).
 pub async fn set_player_group_handler(
-    _auth: AuthUser,
+    _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Path(uuid): Path<String>,
     AxumJson(payload): AxumJson<SetPlayerGroupRequest>,
@@ -725,7 +725,7 @@ pub async fn list_player_pending_commands_handler(
 /// DELETE /api/players/pending-commands/:id
 /// Cancels and deletes a pending command before it gets executed.
 pub async fn delete_pending_command_handler(
-    _auth: AuthUser,
+    _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {

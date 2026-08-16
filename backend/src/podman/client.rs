@@ -333,7 +333,14 @@ pub async fn try_systemd_action(unit_name: &str, action: &str) -> Result<(), App
     // DBus encoder that preceded this was retired: it silently produced malformed
     // messages the bus dropped (wrong header-field alignment and the SIGNATURE
     // field mis-labelled as code 6 instead of 8), so every unit action failed.
-    let connection = zbus::connection::Builder::address("unix:path=/run/user/1000/bus")
+    let bus_address = if let Ok(addr) = env::var("DBUS_SESSION_BUS_ADDRESS") {
+        addr
+    } else {
+        let uid = get_current_uid();
+        format!("unix:path=/run/user/{}/bus", uid)
+    };
+
+    let connection = zbus::connection::Builder::address(bus_address.as_str())
         .map_err(|e| AppError::InternalError(format!("Invalid bus address: {}", e)))?
         .build()
         .await

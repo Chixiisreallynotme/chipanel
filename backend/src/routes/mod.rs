@@ -1,6 +1,9 @@
 pub mod auth;
+pub mod database;
+pub mod diff;
 pub mod engine_catalog;
 pub mod files;
+pub mod logs;
 pub mod metrics;
 pub mod modpacks;
 pub mod permissions;
@@ -15,7 +18,10 @@ pub mod worlds;
 // Routers live in their own module - do NOT redefine them here, a local copy silently
 // shadows the real one (that is how /api/auth/users and /api/auth/tokens went missing).
 pub use auth::auth_router;
+pub use database::database_router;
+pub use diff::diff_router;
 pub use files::files_router;
+pub use logs::logs_router;
 pub use metrics::metrics_router;
 pub use modpacks::modpacks_router;
 pub use permissions::permissions_router;

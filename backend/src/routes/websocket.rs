@@ -9,10 +9,13 @@ use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};
 
 use crate::{
-    auth::middleware::AuthUser,
+    auth::{
+        middleware::{resolve_role, AuthUser},
+        users::UserStore,
+    },
     config::AppConfig,
     models::websocket::{WsClientMessage, WsServerMessage},
-    rcon::RconClient,
+    rcon::RconActorHandle,
     websocket::WsHub,
 };
 
@@ -20,18 +23,29 @@ use crate::{
 /// Rejects unauthenticated requests before upgrade using `AuthUser` extractor
 /// (validates Bearer Authorization header or ?token= query parameter).
 pub async fn websocket_handler(
-    _auth: AuthUser,
+    auth: AuthUser,
     ws: WebSocketUpgrade,
     Extension(hub): Extension<WsHub>,
     Extension(config): Extension<Arc<AppConfig>>,
+    Extension(user_store): Extension<Arc<UserStore>>,
+    Extension(rcon): Extension<RconActorHandle>,
 ) -> Response {
+    let is_admin = auth.0.sub.starts_with("chipanel_sec_")
+        || resolve_role(&user_store, &config, &auth.0.sub).await == "admin";
+
     ws.max_frame_size(65536)
         .max_message_size(65536)
-        .on_upgrade(move |socket| handle_socket(socket, hub, config))
+        .on_upgrade(move |socket| handle_socket(socket, hub, config, rcon, is_admin))
 }
 
-async fn handle_socket(socket: WebSocket, hub: WsHub, config: Arc<AppConfig>) {
-    info!("WebSocket client connected");
+async fn handle_socket(
+    socket: WebSocket,
+    hub: WsHub,
+    _config: Arc<AppConfig>,
+    rcon: RconActorHandle,
+    is_admin: bool,
+) {
+    info!("WebSocket client connected (admin: {})", is_admin);
 
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
@@ -100,6 +114,16 @@ async fn handle_socket(socket: WebSocket, hub: WsHub, config: Arc<AppConfig>) {
                             debug!("Client subscribed to topic: {}", topic);
                         }
                         WsClientMessage::Command { command } => {
+                            if !is_admin {
+                                let err_msg = WsServerMessage::CommandResult {
+                                    command: command.clone(),
+                                    output: "Forbidden: Admin role required to execute console commands".to_string(),
+                                    success: false,
+                                };
+                                send_server_message(&tx_out, &err_msg).await;
+                                continue;
+                            }
+
                             if let Some(last_time) = last_command_time {
                                 if last_time.elapsed() < Duration::from_millis(200) {
                                     let err_msg = WsServerMessage::Error {
@@ -131,30 +155,20 @@ async fn handle_socket(socket: WebSocket, hub: WsHub, config: Arc<AppConfig>) {
 
                             info!("Executing RCON command over WS: {}", command);
 
-                            let result_msg = match RconClient::connect(
-                                &config.rcon_host,
-                                config.rcon_port,
-                                &config.rcon_password,
-                            )
-                            .await
-                            {
-                                Ok(mut rcon) => match rcon.exec(&command).await {
-                                    Ok(output) => WsServerMessage::CommandResult {
-                                        command,
-                                        output,
-                                        success: true,
-                                    },
-                                    Err(err) => WsServerMessage::CommandResult {
-                                        command,
-                                        output: format!("Command execution failed: {}", err),
-                                        success: false,
-                                    },
-                                },
-                                Err(err) => WsServerMessage::CommandResult {
+                            let result_msg = match rcon.exec(&command).await {
+                                Ok(output) => WsServerMessage::CommandResult {
                                     command,
-                                    output: format!("RCON connection failed: {}", err),
-                                    success: false,
+                                    output,
+                                    success: true,
                                 },
+                                Err(err) => {
+                                    tracing::error!("WebSocket RCON command failed: {}", err);
+                                    WsServerMessage::CommandResult {
+                                        command,
+                                        output: "Command execution failed".to_string(),
+                                        success: false,
+                                    }
+                                }
                             };
 
                             send_server_message(&tx_out, &result_msg).await;

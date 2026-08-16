@@ -7,7 +7,7 @@ use crate::config::AppConfig;
 use crate::models::podman::ServerStatus;
 use crate::models::websocket::WsServerMessage;
 use crate::podman::PodmanClient;
-use crate::rcon::RconClient;
+use crate::rcon::RconActorHandle;
 
 /// Telemetry frame emitted before the first poll completes, and whenever nothing could be
 /// reached. Everything is `None`/false — the UI must render "unavailable", not a fake value.
@@ -31,12 +31,13 @@ pub struct WsHub {
     tx: broadcast::Sender<WsServerMessage>,
     latest_telemetry: Arc<RwLock<WsServerMessage>>,
     config: Arc<AppConfig>,
+    rcon: RconActorHandle,
 }
 
 impl WsHub {
     /// Creates a new `WsHub` with a broadcast channel capacity of 100
     /// and spawns the 2-second background telemetry ticker.
-    pub fn new(config: Arc<AppConfig>) -> Self {
+    pub fn new(config: Arc<AppConfig>, rcon: RconActorHandle) -> Self {
         let (tx, _rx) = broadcast::channel(100);
 
         let latest_telemetry = Arc::new(RwLock::new(unavailable_telemetry()));
@@ -45,6 +46,7 @@ impl WsHub {
             tx,
             latest_telemetry,
             config: config.clone(),
+            rcon: rcon.clone(),
         };
 
         hub.spawn_telemetry_loop();
@@ -75,6 +77,7 @@ impl WsHub {
         let tx = self.tx.clone();
         let latest_telemetry = self.latest_telemetry.clone();
         let config = self.config.clone();
+        let rcon = self.rcon.clone();
 
         tokio::spawn(async move {
             loop {
@@ -82,6 +85,7 @@ impl WsHub {
                     tx.clone(),
                     latest_telemetry.clone(),
                     config.clone(),
+                    rcon.clone(),
                 ));
 
                 match handle.await {
@@ -101,6 +105,7 @@ async fn telemetry_loop(
     tx: broadcast::Sender<WsServerMessage>,
     latest_telemetry: Arc<RwLock<WsServerMessage>>,
     config: Arc<AppConfig>,
+    rcon: RconActorHandle,
 ) {
     let mut ticker = interval(Duration::from_secs(2));
     ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -110,7 +115,7 @@ async fn telemetry_loop(
     loop {
         ticker.tick().await;
 
-        let telemetry = fetch_telemetry(&podman_client, &config, &tx).await;
+        let telemetry = fetch_telemetry(&podman_client, &config, &tx, &rcon).await;
 
         {
             let mut lock = latest_telemetry.write().await;
@@ -138,6 +143,7 @@ async fn fetch_telemetry(
     podman_client: &PodmanClient,
     config: &AppConfig,
     tx: &broadcast::Sender<WsServerMessage>,
+    rcon: &RconActorHandle,
 ) -> WsServerMessage {
     let container_name = &config.podman_container;
 
@@ -170,22 +176,11 @@ async fn fetch_telemetry(
         };
 
     let (rcon_available, tps, online_players, max_players) = if should_try_rcon(container_running) {
-        match RconClient::connect(&config.rcon_host, config.rcon_port, &config.rcon_password).await
-        {
-            Ok(mut rcon) => {
-                let (online, max, list_raw) = match rcon.exec("list").await {
-                    Ok(output) => {
-                        let (o, m) = parse_player_list(&output);
-                        (o, m, Some(output))
-                    }
-                    Err(err) => {
-                        debug!("RCON 'list' failed: {}", err);
-                        (None, None, None)
-                    }
-                };
-
+        match rcon.exec("list").await {
+            Ok(list_output) => {
+                let (online, max) = parse_player_list(&list_output);
                 let parsed_tps = match rcon.exec("tps").await {
-                    Ok(output) => parse_tps_output(&output),
+                    Ok(tps_out) => parse_tps_output(&tps_out),
                     Err(err) => {
                         debug!("RCON 'tps' failed: {}", err);
                         None
@@ -193,27 +188,25 @@ async fn fetch_telemetry(
                 };
 
                 // Check pending command queue for online players
-                if let Some(ref list_output) = list_raw {
-                    let online_names = crate::minecraft::player::parse_online_players_from_rcon(list_output);
-                    if !online_names.is_empty() && crate::minecraft::command_queue::has_pending_commands(&config.data_dir) {
-                        let online_set: std::collections::HashSet<String> =
-                            online_names.into_iter().map(|n| n.to_lowercase()).collect();
-                        if let Ok(executed) =
-                            crate::minecraft::command_queue::process_pending_commands(config, &online_set).await
-                        {
-                            if !executed.is_empty() {
-                                let mut per_player: std::collections::HashMap<String, Vec<String>> =
-                                    std::collections::HashMap::new();
-                                for cmd in executed {
-                                    per_player.entry(cmd.player_name).or_default().push(cmd.action);
-                                }
-                                for (pname, actions) in per_player {
-                                    let _ = tx.send(WsServerMessage::PendingCommandsExecuted {
-                                        player_name: pname,
-                                        commands_count: actions.len(),
-                                        actions,
-                                    });
-                                }
+                let online_names = crate::minecraft::player::parse_online_players_from_rcon(&list_output);
+                if !online_names.is_empty() && crate::minecraft::command_queue::has_pending_commands(&config.data_dir) {
+                    let online_set: std::collections::HashSet<String> =
+                        online_names.into_iter().map(|n| n.to_lowercase()).collect();
+                    if let Ok(executed) =
+                        crate::minecraft::command_queue::process_pending_commands(config, &online_set).await
+                    {
+                        if !executed.is_empty() {
+                            let mut per_player: std::collections::HashMap<String, Vec<String>> =
+                                std::collections::HashMap::new();
+                            for cmd in executed {
+                                per_player.entry(cmd.player_name).or_default().push(cmd.action);
+                            }
+                            for (pname, actions) in per_player {
+                                let _ = tx.send(WsServerMessage::PendingCommandsExecuted {
+                                    player_name: pname,
+                                    commands_count: actions.len(),
+                                    actions,
+                                });
                             }
                         }
                     }

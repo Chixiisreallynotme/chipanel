@@ -8,7 +8,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::{
-    auth::middleware::{AuthUser, RequireAdmin},
+    auth::middleware::RequireAdmin,
     config::AppConfig,
     error::AppError,
     minecraft::files::{
@@ -45,7 +45,7 @@ pub fn files_router() -> Router {
 /// GET /api/files/tree?path=...
 /// Returns directory tree starting from path (or root if omitted).
 pub async fn tree_handler(
-    _auth: AuthUser,
+    _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Query(params): Query<TreeQuery>,
 ) -> Result<Json<FileTreeNode>, AppError> {
@@ -57,7 +57,7 @@ pub async fn tree_handler(
 /// GET /api/files/read?path=...
 /// Returns file content and inferred syntax mode.
 pub async fn read_handler(
-    _auth: AuthUser,
+    _auth: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Query(params): Query<ReadQuery>,
 ) -> Result<Json<FileContentResponse>, AppError> {

@@ -28,6 +28,12 @@ build-container:
 
 # Deployment targets
 deploy-quadlet:
+	@if [ ! -f chipanel.container ]; then \
+		echo "Error: chipanel.container not found."; \
+		echo "Create it from example first: cp chipanel.container.example chipanel.container"; \
+		echo "Then set your ADMIN_PASSWORD and RCON_PASSWORD in chipanel.container"; \
+		exit 1; \
+	fi
 	mkdir -p $(QUADLET_DIR)
 	cp chipanel.container $(QUADLET_DIR)/chipanel.container
 	systemctl --user daemon-reload

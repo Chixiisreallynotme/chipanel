@@ -1,11 +1,22 @@
-# Secrets — the real quadlet holds plaintext credentials; never commit it
+# Secrets & credentials — never commit plaintext credentials or local keys
 chipanel.container
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
 
 # Build artifacts
 backend/target/
 frontend/node_modules/
 frontend/build/
 frontend/.svelte-kit/
+
+# Logs
+*.log
 
 # Local/agent tooling & ad-hoc artifacts (not project source)
 .agents/
@@ -14,6 +25,9 @@ frontend/.svelte-kit/
 audit-2026-08-08/
 bento_prototype.html
 
-# OS/editor noise
+# OS & IDEs
 .DS_Store
 *.swp
+.vscode/
+.idea/
+

@@ -102,16 +102,23 @@ make build-backend
 
 ### 3. Container & Quadlet Deployment
 
-```bash
-# Build Podman container image
-make build-container
+1. **Configure Environment & Credentials**:
+   ```bash
+   cp chipanel.container.example chipanel.container
+   ```
+   Edit `chipanel.container` to set your desired `ADMIN_PASSWORD` and `RCON_PASSWORD`.
 
-# Deploy systemd Quadlet configuration to ~/.config/containers/systemd/
-make deploy-quadlet
+2. **Build and Deploy**:
+   ```bash
+   # Build Podman container image
+   make build-container
 
-# Check systemd user service status
-systemctl --user status chipanel
-```
+   # Deploy systemd Quadlet configuration to ~/.config/containers/systemd/
+   make deploy-quadlet
+
+   # Check systemd user service status
+   systemctl --user status chipanel
+   ```
 
 ---
 
@@ -129,10 +136,25 @@ systemctl --user status chipanel
 
 ---
 
-## ⚙️ Environment Variables
+## ⚙️ Configuration & Environment Variables
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
+| `HOST` | `0.0.0.0` | Bind host address |
 | `PORT` | `3000` | HTTP port for backend server |
 | `RUST_LOG` | `info` | Log level filter for `tracing-subscriber` |
+| `ADMIN_USERNAME` | `admin` | Default bootstrap admin username |
+| `ADMIN_PASSWORD` | *(auto-generated if unset)* | Bootstrap admin password (hashed on startup with Argon2) |
+| `ADMIN_PASSWORD_HASH` | *(none)* | Pre-computed Argon2 hash for admin account |
+| `JWT_SECRET` | *(auto-generated 32-byte CSPRNG)* | Secret key used for signing JWT tokens |
+| `RCON_HOST` | `127.0.0.1` | Minecraft server RCON host |
+| `RCON_PORT` | `25575` | Minecraft server RCON port |
+| `RCON_PASSWORD` | *(empty)* | Minecraft server RCON password |
+| `DATA_DIR` | `/app/data` | Path to persistent application data (tokens, profiles, users) |
+| `MINECRAFT_DATA_DIR` | `/app/minecraft-data` | Path to Minecraft server directory (worlds, server.properties) |
+| `SYSTEMD_CONFIG_DIR` | `/app/systemd-config` | Path to systemd Quadlet container definitions |
+| `LAZYMC_CONFIG_FILE` | `/app/lazymc-config/lazymc.toml` | Path to lazymc hibernation configuration |
 | `PODMAN_SOCKET` | `/run/user/1000/podman/podman.sock` | Path to rootless Podman API socket |
+| `ALLOWED_ORIGINS` | `http://127.0.0.1:3000,http://localhost:3000` | Allowed CORS origins (or `*` for all) |
+| `CURSEFORGE_API_KEY` | *(none)* | Optional CurseForge API key for mod search & download |
+

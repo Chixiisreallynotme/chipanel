@@ -2,7 +2,7 @@
 name = "chipanel"
 version = "0.1.0"
 edition = "2021"
-authors = ["ChiServ Maintainers <maintainers@chipanel.local>"]
+authors = ["ChiPanel Maintainers"]
 description = "ChiPanel - Lightweight Homelab & Podman Management Console"
 
 [dependencies]
@@ -34,6 +34,8 @@ zbus = { version = "5", default-features = false, features = ["tokio"] }
 sha1 = "0.10"
 sha2 = "0.10"
 percent-encoding = "2.3"
+similar = "2.4"
+
 
 [profile.release]
 opt-level = "z"
