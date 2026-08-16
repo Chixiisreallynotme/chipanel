@@ -53,6 +53,7 @@
 			title: 'CONFIGURATION',
 			items: [
 				{ label: 'Planificateur & Télémétrie', path: '/metrics', icon: CalendarClock },
+				{ label: 'Base de Données & Purge', path: '/database', icon: Database },
 				{ label: 'Permissions & Rôles', path: '/permissions', icon: ShieldCheck },
 				{ label: 'Gestion des Comptes', path: '/accounts', icon: Users }
 			]

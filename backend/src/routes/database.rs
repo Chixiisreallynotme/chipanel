@@ -225,6 +225,7 @@ pub async fn purge_db_handler(
                 action: "Nettoyage des archives de logs".to_string(),
                 output: format!("{} archives .log.gz supprimées avec succès.", removed_count),
             }))
+        }
         "dimension" => {
             let dim_name = payload.dimension.as_deref().unwrap_or("DIM-1");
             let target_folder = if dim_name == "DIM1" {

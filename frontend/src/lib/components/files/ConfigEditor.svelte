@@ -13,8 +13,12 @@
 		ChevronRight,
 		RotateCw,
 		SlidersHorizontal,
-		Check
+		Check,
+		GitCompare
 	} from 'lucide-svelte';
+	import ConfigDiffModal from './ConfigDiffModal.svelte';
+
+	let showDiffModal = $state(false);
 
 	/**
 	 * @typedef {Object} FileData
@@ -296,6 +300,18 @@
 					</span>
 				</label>
 
+				<!-- Diff Preview Button -->
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					disabled={!isDirty}
+					onclick={() => (showDiffModal = true)}
+					title="Visualiser le diff avant enregistrement"
+				>
+					<GitCompare size={14} />
+					<span>Diff</span>
+				</button>
+
 				<!-- Save Button -->
 				<button
 					type="button"
@@ -311,6 +327,17 @@
 				</button>
 			</div>
 		</header>
+
+		<ConfigDiffModal
+			open={showDiffModal}
+			filePath={fileData.path}
+			newContent={currentContent}
+			onConfirm={() => {
+				showDiffModal = false;
+				handleSave();
+			}}
+			onCancel={() => (showDiffModal = false)}
+		/>
 
 		<!-- CodeMirror Container -->
 		<div class="editor-container-wrapper">

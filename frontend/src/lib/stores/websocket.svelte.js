@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 
 const BYTES_PER_MB = 1024 * 1024;
-const MAX_LOG_ENTRIES = 500;
+const MAX_LOG_ENTRIES = 5000;
 /** Backend broadcasts every 2s; throttle below that so a genuine frame is never dropped. */
 const TELEMETRY_MIN_INTERVAL_MS = 1000;
 

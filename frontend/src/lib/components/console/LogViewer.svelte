@@ -1,5 +1,6 @@
 <script>
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
+	import { apiFetch } from '$lib/api/client.js';
 	import {
 		Search,
 		Download,
@@ -10,13 +11,18 @@
 		AlertTriangle,
 		AlertCircle,
 		Check,
-		Terminal
+		Terminal,
+		Share2,
+		ExternalLink
 	} from 'lucide-svelte';
 
 	let severityFilter = $state('ALL'); // 'ALL' | 'INFO' | 'WARN' | 'ERROR'
 	let searchQuery = $state('');
 	let autoScroll = $state(true);
 	let logContainer = $state(null);
+	let isUploadingMclogs = $state(false);
+	let mclogsUrl = $state('');
+	let mclogsError = $state('');
 
 	/**
 	 * Parse log entry into structured object { timestamp, level, message }
@@ -118,7 +124,7 @@
 		});
 	});
 
-	let visibleLogs = $derived(filteredLogs.slice(-200));
+	let visibleLogs = $derived(filteredLogs.slice(-2000));
 
 	// Calculated severity counts for filter badges
 	let counts = $derived.by(() => {
@@ -159,6 +165,36 @@
 		autoScroll = true;
 		if (logContainer) {
 			logContainer.scrollTop = logContainer.scrollHeight;
+		}
+	}
+
+	async function shareToMclogs() {
+		if (filteredLogs.length === 0 || isUploadingMclogs) return;
+		isUploadingMclogs = true;
+		mclogsUrl = '';
+		mclogsError = '';
+
+		try {
+			const textContent = filteredLogs
+				.map(({ parsed }) => `[${parsed.timestamp}] [${parsed.level}] ${parsed.message}`)
+				.join('\n');
+
+			const res = await apiFetch('/api/logs/mclogs', {
+				method: 'POST',
+				body: { content: textContent }
+			});
+
+			const data = await res.json();
+			if (data.success && data.url) {
+				mclogsUrl = data.url;
+				window.open(data.url, '_blank');
+			} else {
+				mclogsError = data.error || 'Échec de la publication sur mclo.gs';
+			}
+		} catch (err) {
+			mclogsError = err.message || 'Erreur réseau lors de la publication sur mclo.gs';
+		} finally {
+			isUploadingMclogs = false;
 		}
 	}
 
@@ -257,7 +293,16 @@
 				<span class="checkbox-text">Auto-scroll</span>
 			</label>
 
-			<div class="action-divider"></div>
+			<!-- Share to mclo.gs Button -->
+			<button
+				class="btn btn-secondary btn-sm"
+				onclick={shareToMclogs}
+				disabled={filteredLogs.length === 0 || isUploadingMclogs}
+				title="Partager et anonymiser automatiquement les logs sur mclo.gs"
+			>
+				<Share2 size={14} />
+				<span>{isUploadingMclogs ? 'Upload en cours...' : 'mclo.gs'}</span>
+			</button>
 
 			<!-- Log Export Button -->
 			<button
@@ -282,6 +327,27 @@
 			</button>
 		</div>
 	</div>
+
+	{#if mclogsUrl}
+		<div class="mclogs-alert">
+			<div class="mclogs-alert-content">
+				<Check size={16} class="text-success" />
+				<span>Logs publiés avec succès sur mclo.gs (IPs et tokens masqués) :</span>
+				<a href={mclogsUrl} target="_blank" rel="noopener noreferrer" class="mclogs-link font-mono">
+					{mclogsUrl}
+					<ExternalLink size={12} />
+				</a>
+			</div>
+			<button class="btn btn-ghost btn-sm" onclick={() => (mclogsUrl = '')}>Fermer</button>
+		</div>
+	{/if}
+	{#if mclogsError}
+		<div class="mclogs-alert alert-error">
+			<AlertCircle size={16} class="text-danger" />
+			<span>{mclogsError}</span>
+			<button class="btn btn-ghost btn-sm" onclick={() => (mclogsError = '')}>Fermer</button>
+		</div>
+	{/if}
 
 	<!-- Monospace Terminal Stream Output Box -->
 	<div class="console-wrapper">
@@ -581,5 +647,36 @@
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 		z-index: 10;
 		animation: fadeIn var(--transition-fast) ease-out;
+	}
+
+	.mclogs-alert {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--space-2) var(--space-4);
+		background-color: rgba(16, 185, 129, 0.1);
+		border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+		font-size: var(--font-size-sm);
+	}
+
+	.mclogs-alert.alert-error {
+		background-color: rgba(239, 68, 68, 0.1);
+		border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+	}
+
+	.mclogs-alert-content {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+
+	.mclogs-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--accent-blue-text);
+		text-decoration: underline;
+		font-weight: var(--font-weight-medium);
 	}
 </style>
