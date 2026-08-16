@@ -5,7 +5,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::{
     auth::middleware::AuthUser,
@@ -44,6 +44,8 @@ pub struct PlayerActionResponse {
     pub success: bool,
     pub message: String,
     pub output: String,
+    pub queued: bool,
+    pub pending_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -300,19 +302,66 @@ pub async fn player_action_handler(
 
     info!("Executing player action '{}' via RCON: '{}'", action_clean, command);
 
-    let mut rcon_client = RconClient::connect(&config.rcon_host, config.rcon_port, &config.rcon_password)
-        .await
-        .map_err(|err| AppError::InternalError(format!("RCON connection failed: {}", err)))?;
+    let mut rcon_client = match RconClient::connect(&config.rcon_host, config.rcon_port, &config.rcon_password).await {
+        Ok(client) => Some(client),
+        Err(err) => {
+            warn!("RCON connection failed for action '{}': {}. Enqueueing for offline execution.", action_clean, err);
+            None
+        }
+    };
 
-    let output = rcon_client
-        .exec(&command)
-        .await
-        .map_err(|err| AppError::InternalError(format!("RCON command execution failed: {}", err)))?;
+    let mut executed_output = None;
+    let mut needs_queue = rcon_client.is_none();
+
+    if let Some(ref mut rcon) = rcon_client {
+        match rcon.exec(&command).await {
+            Ok(output) => {
+                let out_lower = output.to_lowercase();
+                if out_lower.contains("no player was found")
+                    || out_lower.contains("player is offline")
+                    || out_lower.contains("player not found")
+                    || out_lower.contains("cannot find player")
+                {
+                    warn!("RCON indicated player is offline ('{}'). Enqueueing command for automatic execution.", output);
+                    needs_queue = true;
+                } else {
+                    executed_output = Some(output);
+                }
+            }
+            Err(err) => {
+                warn!("RCON command failed: {}. Enqueueing command for offline execution.", err);
+                needs_queue = true;
+            }
+        }
+    }
+
+    if needs_queue {
+        let queued = crate::minecraft::command_queue::enqueue_command(
+            &config.data_dir,
+            uuid_raw,
+            &target_name,
+            &action_clean,
+            &command,
+        )?;
+
+        return Ok(Json(PlayerActionResponse {
+            success: true,
+            message: format!(
+                "Player '{}' is offline. Command '{}' has been saved and will execute automatically upon connection.",
+                target_name, action_clean
+            ),
+            output: format!("Command queued with ID: {}", queued.id),
+            queued: true,
+            pending_id: Some(queued.id),
+        }));
+    }
 
     Ok(Json(PlayerActionResponse {
         success: true,
         message: format!("Action '{}' executed for player '{}'", action_clean, target_name),
-        output,
+        output: executed_output.unwrap_or_default(),
+        queued: false,
+        pending_id: None,
     }))
 }
 
@@ -432,6 +481,8 @@ pub async fn apply_player_effect_handler(
         success: true,
         message: format!("Effect '{}' applied to player '{}'", clean_effect, target_name),
         output,
+        queued: false,
+        pending_id: None,
     }))
 }
 
@@ -514,6 +565,8 @@ pub async fn clear_player_effects_handler(
         success: true,
         message: format!("Effects cleared for player '{}'", target_name),
         output,
+        queued: false,
+        pending_id: None,
     }))
 }
 
@@ -627,7 +680,58 @@ pub async fn set_player_group_handler(
         success: true,
         message: format!("Group set to '{}' for player '{}'", group_clean, target_name),
         output,
+        queued: false,
+        pending_id: None,
     }))
+}
+
+/// GET /api/players/pending-commands
+/// Returns all currently pending offline commands across the server.
+pub async fn list_pending_commands_handler(
+    _auth: AuthUser,
+    Extension(config): Extension<Arc<AppConfig>>,
+) -> Result<Json<Vec<crate::minecraft::command_queue::PendingCommand>>, AppError> {
+    let pending = crate::minecraft::command_queue::get_all_pending(&config.data_dir);
+    Ok(Json(pending))
+}
+
+/// GET /api/players/pending-commands/history
+/// Returns recent history of executed or failed queued commands.
+pub async fn list_pending_history_handler(
+    _auth: AuthUser,
+    Extension(config): Extension<Arc<AppConfig>>,
+) -> Result<Json<Vec<crate::minecraft::command_queue::PendingCommand>>, AppError> {
+    let history = crate::minecraft::command_queue::get_history(&config.data_dir);
+    Ok(Json(history))
+}
+
+/// GET /api/players/:uuid/pending-commands
+/// Returns pending commands queued for a specific player UUID.
+pub async fn list_player_pending_commands_handler(
+    _auth: AuthUser,
+    Extension(config): Extension<Arc<AppConfig>>,
+    Path(uuid): Path<String>,
+) -> Result<Json<Vec<crate::minecraft::command_queue::PendingCommand>>, AppError> {
+    let pending = crate::minecraft::command_queue::get_pending_for_player(&config.data_dir, &uuid);
+    Ok(Json(pending))
+}
+
+/// DELETE /api/players/pending-commands/:id
+/// Cancels and deletes a pending command before it gets executed.
+pub async fn delete_pending_command_handler(
+    _auth: AuthUser,
+    Extension(config): Extension<Arc<AppConfig>>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let deleted = crate::minecraft::command_queue::delete_pending_command(&config.data_dir, &id)?;
+    if deleted {
+        Ok(Json(serde_json::json!({
+            "success": true,
+            "message": format!("Pending command '{}' successfully cancelled", id)
+        })))
+    } else {
+        Err(AppError::NotFound(format!("Pending command '{}' not found in queue", id)))
+    }
 }
 
 pub fn parse_luckperms_user_info(output: &str) -> (Option<String>, Vec<PermissionNodeInfo>) {

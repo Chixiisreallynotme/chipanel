@@ -133,6 +133,21 @@
 		previousOnlineCount = currentOnline;
 	});
 
+	// Reactive notification when pending commands are executed automatically upon player connect
+	let previousExecutionStamp = $state(null);
+	$effect(() => {
+		const execEvent = wsStore.lastPendingExecution;
+		if (execEvent && execEvent.timestamp !== previousExecutionStamp) {
+			previousExecutionStamp = execEvent.timestamp;
+			addToast(
+				'success',
+				'Commandes différées appliquées',
+				`${execEvent.commandsCount} commande(s) exécutée(s) avec succès pour ${execEvent.playerName} !`
+			);
+			loadPlayers(false);
+		}
+	});
+
 	// Derived Hero Header Stats
 	let totalCount = $derived(players.length);
 	let onlineCount = $derived.by(() => {

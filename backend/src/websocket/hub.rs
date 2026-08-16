@@ -110,7 +110,7 @@ async fn telemetry_loop(
     loop {
         ticker.tick().await;
 
-        let telemetry = fetch_telemetry(&podman_client, &config).await;
+        let telemetry = fetch_telemetry(&podman_client, &config, &tx).await;
 
         {
             let mut lock = latest_telemetry.write().await;
@@ -134,7 +134,11 @@ fn should_try_rcon(container_running: Option<bool>) -> bool {
     container_running != Some(false)
 }
 
-async fn fetch_telemetry(podman_client: &PodmanClient, config: &AppConfig) -> WsServerMessage {
+async fn fetch_telemetry(
+    podman_client: &PodmanClient,
+    config: &AppConfig,
+    tx: &broadcast::Sender<WsServerMessage>,
+) -> WsServerMessage {
     let container_name = &config.podman_container;
 
     let (podman_available, container_running) =
@@ -169,11 +173,14 @@ async fn fetch_telemetry(podman_client: &PodmanClient, config: &AppConfig) -> Ws
         match RconClient::connect(&config.rcon_host, config.rcon_port, &config.rcon_password).await
         {
             Ok(mut rcon) => {
-                let (online, max) = match rcon.exec("list").await {
-                    Ok(output) => parse_player_list(&output),
+                let (online, max, list_raw) = match rcon.exec("list").await {
+                    Ok(output) => {
+                        let (o, m) = parse_player_list(&output);
+                        (o, m, Some(output))
+                    }
                     Err(err) => {
                         debug!("RCON 'list' failed: {}", err);
-                        (None, None)
+                        (None, None, None)
                     }
                 };
 
@@ -184,6 +191,36 @@ async fn fetch_telemetry(podman_client: &PodmanClient, config: &AppConfig) -> Ws
                         None
                     }
                 };
+
+                // Check pending command queue for online players
+                if let Some(ref list_output) = list_raw {
+                    let online_names = crate::minecraft::player::parse_online_players_from_rcon(list_output);
+                    if !online_names.is_empty() {
+                        let pending_store = crate::minecraft::command_queue::load_queue(&config.data_dir);
+                        if !pending_store.pending.is_empty() {
+                            let online_set: std::collections::HashSet<String> =
+                                online_names.into_iter().map(|n| n.to_lowercase()).collect();
+                            if let Ok(executed) =
+                                crate::minecraft::command_queue::process_pending_commands(config, &online_set).await
+                            {
+                                if !executed.is_empty() {
+                                    let mut per_player: std::collections::HashMap<String, Vec<String>> =
+                                        std::collections::HashMap::new();
+                                    for cmd in executed {
+                                        per_player.entry(cmd.player_name).or_default().push(cmd.action);
+                                    }
+                                    for (pname, actions) in per_player {
+                                        let _ = tx.send(WsServerMessage::PendingCommandsExecuted {
+                                            player_name: pname,
+                                            commands_count: actions.len(),
+                                            actions,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 (true, parsed_tps, online, max)
             }

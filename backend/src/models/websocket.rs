@@ -44,6 +44,11 @@ pub enum WsServerMessage {
         output: String,
         success: bool,
     },
+    PendingCommandsExecuted {
+        player_name: String,
+        commands_count: usize,
+        actions: Vec<String>,
+    },
     Error {
         message: String,
     },

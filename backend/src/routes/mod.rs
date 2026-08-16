@@ -26,16 +26,20 @@ pub use tools::tools_router;
 pub use worlds::worlds_router;
 
 use axum::{
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 
-// players.rs does not define its own router; keep this one here until it does.
+// players.rs router with pending command queue endpoints
 pub fn players_router() -> Router {
     Router::new()
         .route("/", get(players::list_players_handler))
         .route("/action", post(players::player_action_handler))
+        .route("/pending-commands", get(players::list_pending_commands_handler))
+        .route("/pending-commands/history", get(players::list_pending_history_handler))
+        .route("/pending-commands/:id", delete(players::delete_pending_command_handler))
         .route("/:uuid", get(players::get_player_handler))
+        .route("/:uuid/pending-commands", get(players::list_player_pending_commands_handler))
         .route("/:uuid/inventory", get(players::get_player_inventory_handler))
         .route("/:uuid/effects", get(players::get_player_effects_handler))
         .route("/:uuid/effects/apply", post(players::apply_player_effect_handler))

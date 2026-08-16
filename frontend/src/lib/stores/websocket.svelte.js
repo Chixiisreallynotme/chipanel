@@ -75,6 +75,8 @@ class WebSocketStore {
 	telemetry = $state(emptyTelemetry());
 	/** @type {Array<{ message: string, level: string, timestamp: string }>} */
 	consoleLogs = $state([]);
+	/** @type {{ playerName: string, commandsCount: number, actions: string[], timestamp: number } | null} */
+	lastPendingExecution = $state(null);
 
 	/** @type {WebSocket | null} */
 	ws = null;
@@ -220,6 +222,21 @@ class WebSocketStore {
 			this.pushLog({
 				message: data.output ? `> ${data.command}\n${data.output}` : `> ${data.command}`,
 				level: data.success ? 'info' : 'error',
+				timestamp: new Date().toISOString()
+			});
+			return;
+		}
+
+		if (data.type === 'pending_commands_executed') {
+			this.lastPendingExecution = {
+				playerName: data.player_name,
+				commandsCount: data.commands_count,
+				actions: data.actions || [],
+				timestamp: Date.now()
+			};
+			this.pushLog({
+				message: `[Auto-Queue] ${data.commands_count} commande(s) différée(s) exécutée(s) pour ${data.player_name}`,
+				level: 'info',
 				timestamp: new Date().toISOString()
 			});
 			return;

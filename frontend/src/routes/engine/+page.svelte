@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { apiGet, apiFetch } from '$lib/api/client.js';
 	import VersionPickerButton from '$lib/components/common/VersionPickerButton.svelte';
+	import EngineLogo from '$lib/components/common/EngineLogo.svelte';
 	import {
 		Cpu,
 		Zap,
@@ -413,11 +414,18 @@
 				<span>MOTEUR DU SERVEUR ACTIF</span>
 			</div>
 			<div class="banner-title-row">
-				<span class="active-engine-name {currentType ? '' : 'unknown-val'}">{currentType ?? UNKNOWN}</span>
-				<span class="badge {currentVersion ? 'badge-version' : 'badge-muted'}">{currentVersion ?? UNKNOWN}</span>
-				{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
-					<span class="badge badge-loader">Loader {currentLoaderVersion}</span>
+				{#if currentType}
+					<EngineLogo engine={currentType} size={46} class="banner-engine-logo" />
 				{/if}
+				<div class="banner-title-info">
+					<div class="banner-title-main">
+						<span class="active-engine-name {currentType ? '' : 'unknown-val'}">{currentType ?? UNKNOWN}</span>
+						<span class="badge {currentVersion ? 'badge-version' : 'badge-muted'}">{currentVersion ?? UNKNOWN}</span>
+						{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
+							<span class="badge badge-loader">Loader {currentLoaderVersion}</span>
+						{/if}
+					</div>
+				</div>
 			</div>
 			{#if currentType && currentVersion}
 				<p class="banner-desc">
@@ -525,7 +533,6 @@
 	{:else}
 		<div class="engine-grid">
 			{#each filteredEngines as engine (engine.id)}
-				{@const IconComp = getEngineIcon(engine.icon)}
 				{@const isActive = currentType === engine.id}
 				{@const targetVer = selectedVersionMap[engine.id]}
 				{@const targetLoader = selectedLoaderMap[engine.id]}
@@ -534,10 +541,10 @@
 				{@const hasLoaderSupport = LOADER_SUPPORTED_ENGINES.includes(engine.id)}
 
 				<div class="engine-card {isActive ? 'active-card' : ''}">
-					<!-- Card Header -->
+					<!-- Card Header with Engine Brand Logo -->
 					<div class="card-header">
 						<div class="icon-wrapper {isActive ? 'active-icon' : ''}">
-							<IconComp size={24} />
+							<EngineLogo engine={engine.id} size={42} />
 						</div>
 						<div class="header-titles">
 							<div class="title-row">
@@ -708,7 +715,7 @@
 		>
 			<div class="modal-header">
 				<div class="modal-icon-box">
-					<RotateCw size={24} />
+					<EngineLogo engine={selectedEngine.id} size={32} />
 				</div>
 				<div>
 					<h2>{isSameEngine ? `Mise à jour Minecraft (${selectedEngine.name})` : 'Changement de Moteur de Serveur'}</h2>
@@ -720,8 +727,13 @@
 				<!-- Engine & Version Diff Card -->
 				<div class="switch-diff-card">
 					<div class="diff-side">
-						<span class="diff-label">Actuel</span>
-						<span class="diff-title">{currentType ?? UNKNOWN}</span>
+						<div class="diff-header-with-logo">
+							<EngineLogo engine={currentType} size={32} />
+							<div>
+								<span class="diff-label">Actuel</span>
+								<span class="diff-title">{currentType ?? UNKNOWN}</span>
+							</div>
+						</div>
 						<span class="diff-sub">{currentVersion ?? UNKNOWN}</span>
 						{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
 							<span class="diff-loader">Loader: {currentLoaderVersion}</span>
@@ -731,8 +743,13 @@
 						<ArrowRight size={22} />
 					</div>
 					<div class="diff-side diff-target">
-						<span class="diff-label">{isSameEngine ? 'Nouvelle Version' : 'Nouveau Moteur'}</span>
-						<span class="diff-title text-primary">{selectedEngine.name}</span>
+						<div class="diff-header-with-logo">
+							<EngineLogo engine={selectedEngine.id} size={32} />
+							<div>
+								<span class="diff-label">{isSameEngine ? 'Nouvelle Version' : 'Nouveau Moteur'}</span>
+								<span class="diff-title text-primary">{selectedEngine.name}</span>
+							</div>
+						</div>
 						<span class="diff-sub text-emerald">{targetVersion}</span>
 						{#if hasLoader && targetLoader && targetLoader !== 'LATEST'}
 							<span class="diff-loader text-primary">Loader: {targetLoader}</span>
@@ -997,8 +1014,26 @@
 	.banner-title-row {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 1rem;
 		margin-bottom: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.banner-engine-logo {
+		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+		border: 1px solid var(--border-subtle);
+	}
+
+	.banner-title-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.banner-title-main {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
 		flex-wrap: wrap;
 	}
 
@@ -1518,7 +1553,13 @@
 	.diff-side {
 		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
+		gap: 0.25rem;
+	}
+
+	.diff-header-with-logo {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
 	}
 
 	.diff-label {

@@ -113,6 +113,20 @@ export async function apiPost(path, body) {
 }
 
 /**
+ * Perform a DELETE request to the API.
+ * @param {string} path - Endpoint path
+ * @returns {Promise<any>} Parsed JSON response
+ */
+export async function apiDelete(path) {
+	const res = await apiFetch(path, { method: 'DELETE' });
+	if (!res.ok) {
+		const errorData = await res.json().catch(() => ({ message: 'Request failed' }));
+		throw new Error(errorData.error || errorData.message || `DELETE ${path} failed (${res.status})`);
+	}
+	return res.json();
+}
+
+/**
  * GET a binary file (e.g. a world export zip) with the auth header attached and
  * trigger a browser download.
  * @param {string} path

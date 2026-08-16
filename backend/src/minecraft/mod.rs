@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 
+pub mod command_queue;
 pub mod effects;
 pub mod files;
 pub mod inventory;
@@ -14,6 +15,8 @@ pub mod tools;
 pub mod version_meta;
 pub mod version_watch;
 pub mod worlds;
+
+pub use command_queue::*;
 
 pub use effects::*;
 pub use files::*;

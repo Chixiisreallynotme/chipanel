@@ -1,6 +1,6 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
-	import { apiGet, apiPost } from '$lib/api/client.js';
+	import { apiGet, apiPost, apiDelete } from '$lib/api/client.js';
 	import { UNAVAILABLE } from '$lib/components/dashboard/serverState.js';
 	import InventoryVisualizer from './InventoryVisualizer.svelte';
 	import StatusEffectsPanel from './StatusEffectsPanel.svelte';
@@ -78,6 +78,10 @@
 	let inventoryData = $state(null);
 	let loadingInventory = $state(false);
 	let inventoryError = $state('');
+
+	// Pending Commands queue state
+	let pendingCommands = $state([]);
+	let loadingPending = $state(false);
 
 	// Action Form inputs
 	let kickReason = $state('Kicked by admin via ChiPanel');
@@ -258,12 +262,52 @@
 		if (showSpinner) loadingDetail = true;
 		try {
 			await fetchPlayerDetail(targetUuid, showSpinner);
+			await fetchPendingCommands(targetUuid);
 			if (activeTab === 'inventory') {
 				await fetchPlayerInventory(targetUuid);
 			}
 		} finally {
 			if (showSpinner) loadingDetail = false;
 		}
+	}
+
+	async function fetchPendingCommands(uuid) {
+		const targetUuid = uuid || (detail || player)?.uuid;
+		if (!targetUuid) return;
+		loadingPending = true;
+		try {
+			const res = await apiGet(`/api/players/${encodeURIComponent(targetUuid)}/pending-commands`);
+			pendingCommands = Array.isArray(res) ? res : [];
+		} catch (err) {
+			console.error(`Failed to fetch pending commands for player ${targetUuid}:`, err);
+		} finally {
+			loadingPending = false;
+		}
+	}
+
+	async function handleDeletePendingCommand(cmdId) {
+		if (!cmdId || actionLoading) return;
+		actionLoading = `del_${cmdId}`;
+		errorMessage = '';
+		try {
+			await apiDelete(`/api/players/pending-commands/${encodeURIComponent(cmdId)}`);
+			pendingCommands = pendingCommands.filter((c) => c.id !== cmdId);
+			onActionSuccess('cancel_pending', 'Commande différée annulée avec succès.');
+		} catch (err) {
+			console.error(`Failed to delete pending command ${cmdId}:`, err);
+			errorMessage = err.message || 'Impossible d\'annuler la commande';
+		} finally {
+			actionLoading = null;
+		}
+	}
+
+	function formatRelativeTime(epochSecs) {
+		if (!epochSecs) return '';
+		const diff = Math.floor(Date.now() / 1000) - epochSecs;
+		if (diff < 60) return `il y a ${Math.max(1, diff)}s`;
+		if (diff < 3600) return `il y a ${Math.floor(diff / 60)} min`;
+		if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+		return `il y a ${Math.floor(diff / 86400)} j`;
 	}
 
 	async function fetchPlayerInventory(uuid) {
@@ -604,6 +648,9 @@
 				>
 					<ShieldAlert size={15} />
 					<span>Moderation</span>
+					{#if pendingCommands.length > 0}
+						<span class="tab-badge-count">{pendingCommands.length}</span>
+					{/if}
 				</button>
 			</div>
 
@@ -883,15 +930,19 @@
 										<button
 											class="btn btn-primary {actionLoading === 'give' ? 'btn-loading' : ''}"
 											onclick={handleGiveItemSubmit}
-											disabled={!p.is_online || actionLoading === 'give'}
+											disabled={actionLoading === 'give'}
 										>
 											{#if actionLoading !== 'give'}
-												<Gift size={16} />
+												{#if p.is_online}
+													<Gift size={16} />
+												{:else}
+													<Clock size={16} />
+												{/if}
 											{/if}
 											<span
 												>{p.is_online
 													? `Give to ${p.username}`
-													: 'Player Offline (RCON Give Requires Online)'}</span
+													: `Queue Give for ${p.username} (on join)`}</span
 											>
 										</button>
 									</div>
@@ -946,6 +997,73 @@
 					<!-- Comprehensive Moderation & Actions Tab -->
 					<div role="tabpanel" id="tabpanel-moderation" aria-labelledby="tab-moderation">
 						<div class="moderation-panel">
+							<!-- Pending Commands Queue Card -->
+							<div class="mod-card pending-queue-card">
+								<div class="mod-card-header">
+									<div class="mod-title-group">
+										<Clock size={18} class="icon-warning" />
+										<div>
+											<div class="pending-title-line">
+												<h4 class="mod-title">Commandes en attente (File d'exécution)</h4>
+												{#if pendingCommands.length > 0}
+													<span class="count-pill queue-count-pill">{pendingCommands.length}</span>
+												{/if}
+											</div>
+											<p class="mod-desc">
+												Commandes enregistrées qui s'exécuteront automatiquement dès la connexion du joueur.
+											</p>
+										</div>
+									</div>
+									<button
+										class="btn btn-ghost btn-icon btn-sm"
+										onclick={() => fetchPendingCommands()}
+										title="Rafraîchir la file d'attente"
+										disabled={loadingPending}
+									>
+										<RefreshCw size={14} class={loadingPending ? 'spin' : ''} />
+									</button>
+								</div>
+								<div class="mod-card-body">
+									{#if loadingPending && pendingCommands.length === 0}
+										<div class="pending-loading-row">
+											<Loader2 size={16} class="spinner" />
+											<span>Chargement des commandes en attente...</span>
+										</div>
+									{:else if pendingCommands.length === 0}
+										<div class="pending-empty-state">
+											<CheckCircle2 size={16} class="icon-green" />
+											<span>Aucune commande en attente. Toutes les actions ont été appliquées.</span>
+										</div>
+									{:else}
+										<div class="pending-commands-list">
+											{#each pendingCommands as cmd}
+												<div class="pending-cmd-row">
+													<div class="pending-cmd-info">
+														<div class="pending-cmd-meta">
+															<span class="badge badge-warning badge-sm">{cmd.action.toUpperCase()}</span>
+															<span class="pending-cmd-time">{formatRelativeTime(cmd.created_at)}</span>
+														</div>
+														<code class="pending-cmd-code">{cmd.command}</code>
+													</div>
+													<button
+														class="btn btn-ghost btn-icon btn-sm btn-del-pending"
+														onclick={() => handleDeletePendingCommand(cmd.id)}
+														title="Annuler cette commande"
+														disabled={actionLoading === `del_${cmd.id}`}
+													>
+														{#if actionLoading === `del_${cmd.id}`}
+															<Loader2 size={14} class="spinner" />
+														{:else}
+															<Trash2 size={14} />
+														{/if}
+													</button>
+												</div>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							</div>
+
 							<!-- Gamemode Switcher Section -->
 							<div class="mod-card">
 								<div class="mod-card-header">
@@ -953,7 +1071,7 @@
 										<Gamepad2 size={18} class="icon-blue" />
 										<div>
 											<h4 class="mod-title">Gamemode Switcher</h4>
-											<p class="mod-desc">Change player's active game mode instantly.</p>
+											<p class="mod-desc">Change player's active game mode instantly (runs on join if offline).</p>
 										</div>
 									</div>
 								</div>
@@ -974,13 +1092,15 @@
 									<button
 										class="btn btn-primary {actionLoading === 'gamemode' ? 'btn-loading' : ''}"
 										onclick={() => handleExecuteAction('gamemode')}
-										disabled={!p.is_online || actionLoading === 'gamemode'}
+										disabled={actionLoading === 'gamemode'}
 									>
 										{#if actionLoading !== 'gamemode'}
 											<Gamepad2 size={16} />
 										{/if}
 										<span
-											>{p.is_online ? `Set to ${selectedGamemode}` : 'Player Offline'}</span
+											>{p.is_online
+												? `Set to ${selectedGamemode}`
+												: `Queue Gamemode ${selectedGamemode} (on join)`}</span
 										>
 									</button>
 								</div>
@@ -993,7 +1113,7 @@
 										<Flame size={18} class="icon-warning" />
 										<div>
 											<h4 class="mod-title">Quick Vitality & Actions</h4>
-											<p class="mod-desc">Instantly restore health, satiate food, kill, or wipe player inventory.</p>
+											<p class="mod-desc">Instantly restore health, satiate food, kill, or wipe player inventory (queued if offline).</p>
 										</div>
 									</div>
 								</div>
@@ -1002,31 +1122,31 @@
 										<button
 											class="btn btn-secondary {actionLoading === 'heal' ? 'btn-loading' : ''}"
 											onclick={() => handleExecuteAction('heal')}
-											disabled={!p.is_online || actionLoading === 'heal'}
-											title="Applies Instant Health 255 & Saturation"
+											disabled={actionLoading === 'heal'}
+											title="Applies Instant Health 255 & Saturation (queued if offline)"
 										>
 											<Heart size={16} class="icon-danger" />
-											<span>Heal & Feed</span>
+											<span>{p.is_online ? 'Heal & Feed' : 'Queue Heal'}</span>
 										</button>
 
 										<button
 											class="btn btn-secondary {actionLoading === 'feed' ? 'btn-loading' : ''}"
 											onclick={() => handleExecuteAction('feed')}
-											disabled={!p.is_online || actionLoading === 'feed'}
-											title="Applies Max Saturation"
+											disabled={actionLoading === 'feed'}
+											title="Applies Max Saturation (queued if offline)"
 										>
 											<Utensils size={16} class="icon-warning" />
-											<span>Feed</span>
+											<span>{p.is_online ? 'Feed' : 'Queue Feed'}</span>
 										</button>
 
 										<button
 											class="btn btn-secondary {actionLoading === 'kill' ? 'btn-loading' : ''}"
 											onclick={() => handleExecuteAction('kill')}
-											disabled={!p.is_online || actionLoading === 'kill'}
-											title="Executes /kill command"
+											disabled={actionLoading === 'kill'}
+											title="Executes /kill command (queued if offline)"
 										>
 											<Skull size={16} class="icon-danger" />
-											<span>Kill Player</span>
+											<span>{p.is_online ? 'Kill Player' : 'Queue Kill'}</span>
 										</button>
 
 										<button
@@ -1036,11 +1156,11 @@
 													handleExecuteAction('clear');
 												}
 											}}
-											disabled={!p.is_online || actionLoading === 'clear'}
-											title="Clears player inventory"
+											disabled={actionLoading === 'clear'}
+											title="Clears player inventory (queued if offline)"
 										>
 											<Trash2 size={16} />
-											<span>Clear Inventory</span>
+											<span>{p.is_online ? 'Clear Inventory' : 'Queue Clear'}</span>
 										</button>
 									</div>
 								</div>
@@ -2110,5 +2230,111 @@
 	}
 	.icon-muted {
 		color: var(--text-muted);
+	}
+
+	/* Tab Badge Count */
+	.tab-badge-count {
+		background-color: var(--warning, #F59E0B);
+		color: #000000;
+		font-size: 10px;
+		font-weight: 700;
+		padding: 1px 5px;
+		border-radius: 9999px;
+		line-height: 1;
+		margin-left: 4px;
+	}
+
+	/* Pending Queue Card */
+	.pending-queue-card {
+		border-color: rgba(245, 158, 11, 0.25);
+		background-color: rgba(245, 158, 11, 0.02);
+	}
+
+	.pending-title-line {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.queue-count-pill {
+		background-color: rgba(245, 158, 11, 0.2);
+		color: var(--warning, #F59E0B);
+		font-size: 11px;
+		font-weight: 700;
+		padding: 2px 7px;
+		border-radius: 9999px;
+	}
+
+	.pending-loading-row,
+	.pending-empty-state {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--font-size-sm);
+		color: var(--text-muted);
+		padding: var(--space-3);
+		background-color: var(--bg-base);
+		border-radius: var(--radius-input);
+		border: 1px dashed var(--border);
+	}
+
+	.pending-commands-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.pending-cmd-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-input);
+		transition: border-color var(--transition-fast);
+	}
+
+	.pending-cmd-row:hover {
+		border-color: rgba(245, 158, 11, 0.35);
+	}
+
+	.pending-cmd-info {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+		flex: 1;
+	}
+
+	.pending-cmd-meta {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.pending-cmd-time {
+		font-size: 11px;
+		color: var(--text-muted);
+	}
+
+	.pending-cmd-code {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--accent-blue-text);
+		background-color: rgba(0, 0, 0, 0.25);
+		padding: 2px 6px;
+		border-radius: 3px;
+		word-break: break-all;
+	}
+
+	.btn-del-pending {
+		color: var(--text-muted);
+	}
+
+	.btn-del-pending:hover:not(:disabled) {
+		color: var(--danger-text);
+		background-color: var(--danger-bg);
 	}
 </style>
