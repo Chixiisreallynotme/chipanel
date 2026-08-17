@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::{
+    audit::{record_audit_event, AuditCategory},
     auth::middleware::{AuthUser, RequireAdmin},
     config::AppConfig,
     error::AppError,
@@ -40,12 +41,37 @@ pub async fn list_backups_handler(
 
 /// POST /api/backups/create — triggers a new backup creation
 pub async fn create_backup_handler(
-    _admin: RequireAdmin,
+    admin: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Json(payload): Json<CreateBackupOptions>,
 ) -> Result<Json<ServerBackupMetadata>, AppError> {
-    let metadata = create_server_backup(&config, payload).await?;
-    Ok(Json(metadata))
+    let scope = payload.scope.clone().unwrap_or_else(|| "full".to_string());
+    match create_server_backup(&config, payload).await {
+        Ok(metadata) => {
+            record_audit_event(
+                &config,
+                &admin.0.sub,
+                "BACKUP_CREATE",
+                AuditCategory::Backups,
+                "SUCCESS",
+                serde_json::json!({ "filename": metadata.filename, "scope": scope, "size_bytes": metadata.file_size_bytes }),
+                None,
+            ).await;
+            Ok(Json(metadata))
+        }
+        Err(e) => {
+            record_audit_event(
+                &config,
+                &admin.0.sub,
+                "BACKUP_CREATE",
+                AuditCategory::Backups,
+                "FAILED",
+                serde_json::json!({ "scope": scope, "error": e.to_string() }),
+                None,
+            ).await;
+            Err(e)
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,16 +88,40 @@ pub struct RestoreBackupResponse {
 
 /// POST /api/backups/restore — restores the server from a backup archive
 pub async fn restore_backup_handler(
-    _admin: RequireAdmin,
+    admin: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Json(payload): Json<RestoreBackupRequest>,
 ) -> Result<Json<RestoreBackupResponse>, AppError> {
-    let count = restore_server_backup(&config, &payload.filename).await?;
-    Ok(Json(RestoreBackupResponse {
-        success: true,
-        restored_files_count: count,
-        message: format!("Sauvegarde '{}' restaurée avec succès ({} fichiers).", payload.filename, count),
-    }))
+    match restore_server_backup(&config, &payload.filename).await {
+        Ok(count) => {
+            record_audit_event(
+                &config,
+                &admin.0.sub,
+                "BACKUP_RESTORE",
+                AuditCategory::Backups,
+                "SUCCESS",
+                serde_json::json!({ "filename": payload.filename, "restored_files_count": count }),
+                None,
+            ).await;
+            Ok(Json(RestoreBackupResponse {
+                success: true,
+                restored_files_count: count,
+                message: format!("Sauvegarde '{}' restaurée avec succès ({} fichiers).", payload.filename, count),
+            }))
+        }
+        Err(e) => {
+            record_audit_event(
+                &config,
+                &admin.0.sub,
+                "BACKUP_RESTORE",
+                AuditCategory::Backups,
+                "FAILED",
+                serde_json::json!({ "filename": payload.filename, "error": e.to_string() }),
+                None,
+            ).await;
+            Err(e)
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -82,15 +132,39 @@ pub struct DeleteBackupResponse {
 
 /// DELETE /api/backups/:filename — removes a backup file from storage
 pub async fn delete_backup_handler(
-    _admin: RequireAdmin,
+    admin: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
     Path(filename): Path<String>,
 ) -> Result<Json<DeleteBackupResponse>, AppError> {
-    delete_server_backup(&config, &filename).await?;
-    Ok(Json(DeleteBackupResponse {
-        success: true,
-        message: format!("Sauvegarde '{}' supprimée avec succès.", filename),
-    }))
+    match delete_server_backup(&config, &filename).await {
+        Ok(_) => {
+            record_audit_event(
+                &config,
+                &admin.0.sub,
+                "BACKUP_DELETE",
+                AuditCategory::Backups,
+                "SUCCESS",
+                serde_json::json!({ "filename": filename }),
+                None,
+            ).await;
+            Ok(Json(DeleteBackupResponse {
+                success: true,
+                message: format!("Sauvegarde '{}' supprimée avec succès.", filename),
+            }))
+        }
+        Err(e) => {
+            record_audit_event(
+                &config,
+                &admin.0.sub,
+                "BACKUP_DELETE",
+                AuditCategory::Backups,
+                "FAILED",
+                serde_json::json!({ "filename": filename, "error": e.to_string() }),
+                None,
+            ).await;
+            Err(e)
+        }
+    }
 }
 
 /// GET /api/backups/settings — retrieves current retention and exclusion rules

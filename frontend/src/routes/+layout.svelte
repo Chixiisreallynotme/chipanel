@@ -28,6 +28,7 @@
 		Database,
 		Network,
 		Archive,
+		ShieldAlert,
 		Webhook,
 		CalendarClock,
 		KeyRound,
@@ -57,6 +58,7 @@
 				{ label: 'Planificateur & Télémétrie', path: '/metrics', icon: CalendarClock },
 				{ label: 'Base de Données & Purge', path: '/database', icon: Database },
 				{ label: 'Cross-Play & Réseau', path: '/network', icon: Network },
+				{ label: 'Registre d\'Audit', path: '/audit', icon: ShieldAlert },
 				{ label: 'Permissions & Rôles', path: '/permissions', icon: ShieldCheck },
 				{ label: 'Gestion des Comptes', path: '/accounts', icon: Users }
 			]

@@ -1,3 +1,4 @@
+pub mod audit;
 mod auth;
 mod config;
 mod curseforge;
@@ -113,6 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest("/api/maintenance", routes::database_router())
         .nest("/api/geyser", routes::geyser_router())
         .nest("/api/backups", routes::backups_router())
+        .nest("/api/audit", routes::audit_router())
         .route("/api/public/resourcepack/:filename", get(routes::server::public_resourcepack_handler))
         .route("/api/health", get(health_handler))
         .route("/ws", get(routes::websocket::websocket_handler))

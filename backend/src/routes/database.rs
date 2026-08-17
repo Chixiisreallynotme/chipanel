@@ -184,7 +184,7 @@ pub struct PurgeDbResponse {
 
 /// Executes safe purge operations via persistent RCON.
 pub async fn purge_db_handler(
-    _admin: RequireAdmin,
+    admin: RequireAdmin,
     Extension(rcon): Extension<RconActorHandle>,
     Extension(config): Extension<Arc<AppConfig>>,
     Json(payload): Json<PurgeDbRequest>,
@@ -196,15 +196,34 @@ pub async fn purge_db_handler(
             info!("Running CoreProtect purge: {}", command);
 
             match rcon.exec(&command).await {
-                Ok(output) => Ok(Json(PurgeDbResponse {
-                    success: true,
-                    action: format!("Purge CoreProtect (> {} jours)", days),
-                    output,
-                })),
-                Err(e) => Err(AppError::InternalError(format!(
-                    "Échec de la commande RCON CoreProtect: {}",
-                    e
-                ))),
+                Ok(output) => {
+                    crate::audit::record_audit_event(
+                        &config,
+                        &admin.0.sub,
+                        "DATABASE_PURGE_COREPROTECT",
+                        crate::audit::AuditCategory::Maintenance,
+                        "SUCCESS",
+                        serde_json::json!({ "days": days, "output": output }),
+                        None,
+                    ).await;
+                    Ok(Json(PurgeDbResponse {
+                        success: true,
+                        action: format!("Purge CoreProtect ({} jours)", days),
+                        output,
+                    }))
+                }
+                Err(e) => {
+                    crate::audit::record_audit_event(
+                        &config,
+                        &admin.0.sub,
+                        "DATABASE_PURGE_COREPROTECT",
+                        crate::audit::AuditCategory::Maintenance,
+                        "FAILED",
+                        serde_json::json!({ "days": days, "error": e.to_string() }),
+                        None,
+                    ).await;
+                    Err(AppError::InternalError(format!("Erreur lors de la purge CoreProtect: {}", e)))
+                }
             }
         }
         "logs" => {
