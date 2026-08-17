@@ -54,6 +54,7 @@
 			items: [
 				{ label: 'Planificateur & Télémétrie', path: '/metrics', icon: CalendarClock },
 				{ label: 'Base de Données & Purge', path: '/database', icon: Database },
+				{ label: 'Cross-Play & Réseau', path: '/network', icon: Network },
 				{ label: 'Permissions & Rôles', path: '/permissions', icon: ShieldCheck },
 				{ label: 'Gestion des Comptes', path: '/accounts', icon: Users }
 			]

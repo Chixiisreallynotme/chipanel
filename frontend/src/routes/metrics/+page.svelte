@@ -97,15 +97,16 @@
 
 	async function handleTriggerSpark(durationSeconds) {
 		try {
-			const res = await apiPost('/api/spark/profile', { duration: durationSeconds }).catch(() => {
-				return {
-					report_url: `https://spark.lucko.me/chipanel-report-${Date.now().toString(36)}`,
-					output_log: `[Spark] Sampling started for ${durationSeconds} seconds...\n[Spark] Worker threads recorded 12,480 stack traces.\n[Spark] Profile report uploaded successfully to https://spark.lucko.me/chipanel-report-${Date.now().toString(36)}`
-				};
+			const res = await apiPost('/api/tools/spark/sampler', {
+				action: 'start',
+				timeout_secs: durationSeconds
 			});
-			return res;
+			return {
+				report_url: res?.url,
+				output_log: res?.output
+			};
 		} catch (err) {
-			throw new Error(err?.message || 'Failed to trigger Spark profiler.');
+			throw new Error(err?.message || 'Impossible de lancer le profilage Spark.');
 		}
 	}
 
