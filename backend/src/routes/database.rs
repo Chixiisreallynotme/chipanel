@@ -232,10 +232,10 @@ pub async fn purge_db_handler(
             if let Ok(mut entries) = tokio::fs::read_dir(&logs_dir).await {
                 while let Ok(Some(entry)) = entries.next_entry().await {
                     let file_name = entry.file_name().to_string_lossy().to_string();
-                    if file_name.ends_with(".log.gz") {
-                        if tokio::fs::remove_file(entry.path()).await.is_ok() {
-                            removed_count += 1;
-                        }
+                    if file_name.ends_with(".log.gz")
+                        && tokio::fs::remove_file(entry.path()).await.is_ok()
+                    {
+                        removed_count += 1;
                     }
                 }
             }

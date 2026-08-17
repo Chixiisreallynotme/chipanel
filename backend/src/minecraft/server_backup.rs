@@ -104,8 +104,7 @@ pub fn is_path_excluded(rel_path: &str, exclusions: &[String]) -> bool {
         let pat = pattern.replace('\\', "/");
         let pat_trimmed = pat.trim_start_matches('/');
 
-        if pat_trimmed.ends_with("/*") {
-            let prefix = &pat_trimmed[..pat_trimmed.len() - 2];
+        if let Some(prefix) = pat_trimmed.strip_suffix("/*") {
             if trimmed.starts_with(prefix) {
                 return true;
             }
@@ -358,7 +357,7 @@ pub async fn list_server_backups(config: &AppConfig) -> Result<Vec<ServerBackupM
     }
 
     // Sort newest first
-    backups.sort_by(|a, b| b.created_at_secs.cmp(&a.created_at_secs));
+    backups.sort_by_key(|b| std::cmp::Reverse(b.created_at_secs));
     Ok(backups)
 }
 

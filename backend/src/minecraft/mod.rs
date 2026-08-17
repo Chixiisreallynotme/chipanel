@@ -4,6 +4,7 @@ pub mod command_queue;
 pub mod effects;
 pub mod files;
 pub mod inventory;
+pub mod log_watcher;
 pub mod luckperms;
 pub mod metrics;
 pub mod modpacks;
@@ -18,6 +19,7 @@ pub mod version_watch;
 pub mod worlds;
 
 pub use command_queue::*;
+pub use log_watcher::*;
 
 pub use effects::*;
 pub use files::*;

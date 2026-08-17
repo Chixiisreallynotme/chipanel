@@ -50,6 +50,7 @@ impl WsHub {
         };
 
         hub.spawn_telemetry_loop();
+        crate::minecraft::spawn_instant_join_log_watcher(config, hub.tx.clone());
 
         hub
     }
