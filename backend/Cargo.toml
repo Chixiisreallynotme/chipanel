@@ -35,6 +35,8 @@ sha1 = "0.10"
 sha2 = "0.10"
 percent-encoding = "2.3"
 similar = "2.4"
+zstd = "0.13"
+walkdir = "2.5"
 
 
 [profile.release]
