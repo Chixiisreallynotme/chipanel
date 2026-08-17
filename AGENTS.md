@@ -139,6 +139,73 @@ Avant toute intervention sur le **frontend de ChiPanel** (`frontend/`) :
 
 ---
 
+## 🗺️ CARTOGRAPHIE DU CODEBASE & GUIDE DES MODULES
+
+```
+chipanel/
+├── backend/                             # Serveur Rust Axum (Binaire natif < 25 Mo RAM)
+│   ├── Cargo.toml                       # Dépendances (Axum 0.7, Tokio, Hyper, Serde, Zbus, SQLite)
+│   └── src/
+│       ├── main.rs                      # Point d'entrée, initialisation Tokio & bind :25500
+│       ├── config.rs                    # Parsing variables d'environnement & profils
+│       ├── error.rs                     # Énumération AppError & conversion en réponses HTTP
+│       ├── container/                   # 🚀 Multi-Runtime Abstraction (Podman / Docker / Quadlets)
+│       │   ├── engine.rs                # Trait asynchrone ContainerEngine
+│       │   ├── podman.rs                # Implémentation Podman rootless (socket + DBus systemd)
+│       │   ├── docker.rs                # Implémentation Docker standard (socket + log demux)
+│       │   ├── detector.rs              # Auto-détection intelligente du runtime actif
+│       │   └── profiles.rs              # Modèles d'images (itzg/minecraft-server, custom lazymc)
+│       ├── engine/                      # 🎮 Game Drivers Modulaires (Multi-Jeux)
+│       │   ├── driver.rs                # Trait unifié GameDriver (cycle de vie, télémétrie, RCON)
+│       │   ├── minecraft.rs             # Driver Minecraft (Paper, Fabric, Purpur, Bedrock)
+│       │   ├── palworld.rs              # Driver Palworld Dedicated Server
+│       │   ├── valheim.rs               # Driver Valheim Dedicated Server
+│       │   └── registry.rs              # Registre dynamique thread-safe des drivers
+│       ├── minecraft/                   # Sous-systèmes approfondis Minecraft
+│       │   ├── player.rs                # Parsing playerdata NBT, inventaires, stats, skins
+│       │   ├── worlds.rs                # Gestion des dimensions, sauvegardes & exports
+│       │   ├── plugins.rs & modpacks.rs # Intégration Modrinth v2 & CurseForge API
+│       │   ├── server_backup.rs         # Sauvegardes atomiques zstd & upload S3 / MinIO
+│       │   └── server_properties.rs     # Parser & diff Myers de configuration
+│       ├── rcon/                        # Acteur RCON multiplexé persistant
+│       ├── websocket/                   # Streaming temps réel SSE / WebSocket (/ws)
+│       ├── routes/                      # Handlers HTTP Axum (77 endpoints REST)
+│       ├── auth/ & audit/               # Sécurité Argon2id, sessions & journaux d'audit
+│       └── models/                      # Structures DTOs & modèles Serde
+├── frontend/                            # Interface SvelteKit (Svelte 5 Runes SPA)
+│   ├── src/
+│   │   ├── lib/
+│   │   │   ├── components/
+│   │   │   │   ├── onboarding/          # 🌟 Wizard Novice 1-Click & ModeSwitch
+│   │   │   │   │   ├── OnboardingWizard.svelte  # Orchestrateur 4 étapes
+│   │   │   │   │   ├── GameSelectorStep.svelte  # Sélection Java / Bedrock / Geyser
+│   │   │   │   │   ├── EngineSelectorStep.svelte# Presets Purpur / Paper / itzg
+│   │   │   │   │   ├── RamAllocationStep.svelte # Jauge segmentée matériel
+│   │   │   │   │   ├── LaunchReviewStep.svelte  # Accord EULA & veille lazymc
+│   │   │   │   │   └── ModeSwitch.svelte        # Bascule Novice / Power-User (Alt+M)
+│   │   │   │   └── ui/                  # Composants Double-Bezel usinés
+│   │   │   └── stores/
+│   │   │       └── preferences.svelte.js# Store réactif Novice/Expert & sonde hôte
+│   │   └── routes/
+│   │       ├── +layout.svelte           # Shell global, header hardware & navigation
+│   │       ├── dashboard/               # Bento grid télémétrie live & contrôles
+│   │       ├── setup/                   # Route dédiée Assistant 1-Click débutant
+│   │       ├── players/                 # Gestion graphique des joueurs & skins
+│   │       └── logs/                    # Console xterm.js & inspection temps réel
+├── docs/                                # Suite documentaire technique de référence
+│   ├── onboarding-spec.md               # Spécification UX/technique débutant & desktop
+│   ├── architecture.md                  # Conception interne Rust Axum & acteurs
+│   ├── api-reference.md                 # Documentation exhaustive des 77 routes API
+│   ├── modules-guide.md                 # Guide NBT, diff Myers, backups S3
+│   └── security.md                      # Modèle de sécurité & isolation rootless
+├── design.md                            # Charte graphique de référence & tokens CSS
+├── PRODUCT.md                           # Vision produit, cibles et piliers stratégiques
+├── CLAUDE.md                            # Commandes et guide opérationnel développeur
+└── Containerfile                        # Image minimale multi-stage de production
+```
+
+---
+
 ## 📚 STRUCTURE DOCUMENTAIRE DE RÉFÉRENCE
 
 | Fichier | Rôle & Contenu |
