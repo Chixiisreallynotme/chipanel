@@ -4,7 +4,7 @@ All ChiPanel API routes are served under the `/api` prefix on the configured por
 
 ---
 
-## 🔐 1. Authentication & Security Mechanism
+## 1. Authentication & Security
 
 ### Authentication Protocols
 ChiPanel supports two authentication methods:
