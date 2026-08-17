@@ -92,11 +92,11 @@ impl AppConfig {
             Ok(val) => val
                 .parse()
                 .map_err(|e| AppError::InternalError(format!("Invalid PORT configuration: {}", e)))?,
-            Err(_) => 3000,
+            Err(_) => 25500,
         };
 
         let allowed_origins_env = env::var("ALLOWED_ORIGINS")
-            .unwrap_or_else(|_| "http://127.0.0.1:3000,http://localhost:3000".to_string());
+            .unwrap_or_else(|_| "http://127.0.0.1:25500,http://localhost:25500".to_string());
 
         let allowed_origins: Vec<String> = allowed_origins_env
             .split(',')

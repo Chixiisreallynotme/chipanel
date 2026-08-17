@@ -71,7 +71,7 @@ Built with a **Rust (Axum 0.7)** backend and a **SvelteKit (Svelte 5)** static S
    ```bash
    systemctl --user status chipanel.service
    ```
-   Open `http://localhost:3000` in your browser.
+   Open `http://localhost:25500` in your browser.
 
 ---
 
@@ -80,7 +80,7 @@ Built with a **Rust (Axum 0.7)** backend and a **SvelteKit (Svelte 5)** static S
 **Prerequisites**: Rust 1.85+, Node.js 22+, `make`
 
 ```bash
-# Terminal 1 — Backend (http://localhost:3000)
+# Terminal 1 — Backend (http://localhost:25500)
 make dev-backend
 
 # Terminal 2 — Frontend with Vite dev server (http://localhost:5173)
@@ -96,7 +96,7 @@ All settings are configured via environment variables or Quadlet `Environment=` 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `HOST` | `0.0.0.0` | Network interface to bind HTTP server |
-| `PORT` | `3000` | HTTP listening port |
+| `PORT` | `25500` | HTTP listening port |
 | `RUST_LOG` | `info` | Logging verbosity filter (`debug`, `info`, `warn`, `error`) |
 | `ADMIN_USERNAME` | `admin` | Bootstrap administrator username |
 | `ADMIN_PASSWORD` | *(generated)* | Bootstrap administrator password (hashed with Argon2 on startup) |

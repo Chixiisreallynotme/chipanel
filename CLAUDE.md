@@ -9,13 +9,13 @@ ChiPanel — homelab & Minecraft server management console. Rust/Axum backend + 
 ## Commands
 
 **Backend** (from `backend/`):
-- `cargo run` — dev server, listens on `HOST:PORT` (defaults to `127.0.0.1:3000`); also `make dev-backend` from repo root
+- `cargo run` — dev server, listens on `HOST:PORT` (defaults to `127.0.0.1:25500`); also `make dev-backend` from repo root
 - `cargo build --release` — release binary; also `make build-backend`
 - `cargo test` — run tests; `cargo test <name>` for a single test. Test modules currently live in `routes/players.rs`, `minecraft/inventory.rs`, `minecraft/effects.rs`, `minecraft/permissions.rs`
 - If no local Rust toolchain is available, validate backend changes via `podman build -f Containerfile .` instead — it runs the same `cargo build --release` inside the `rust:slim` build stage and will surface compile errors
 
 **Frontend** (from `frontend/`):
-- `npm run dev` — Vite dev server on `:5173`; proxies `/api` and `/ws` to `http://localhost:3000` (see `vite.config.js`), so a backend must already be running there
+- `npm run dev` — Vite dev server on `:5173`; proxies `/api` and `/ws` to `http://localhost:25500` (see `vite.config.js`), so a backend must already be running there
 - `npm run build` — static build to `frontend/build/` (`adapter-static`, SPA fallback to `index.html`)
 - `npm run check` — `svelte-check`. This repo has a batch of pre-existing `any`-typed errors in the `players`/`worlds`/`plugins` routes; don't treat the total error count as a regression signal on unrelated changes — compare against a baseline run of the same command
 - No test runner is configured for the frontend (no vitest/jest/playwright in `package.json`)
@@ -28,19 +28,19 @@ ChiPanel — homelab & Minecraft server management console. Rust/Axum backend + 
 
 ## Local preview
 
-To visually check changes before pushing to the host, run the built image locally instead of relying on `npm run dev` (which needs a live backend on `:3000` anyway):
+To visually check changes before pushing to the host, run the built image locally instead of relying on `npm run dev` (which needs a live backend on `:25500` anyway):
 
 ```bash
 podman build -t localhost/chipanel:latest -f Containerfile .
 podman rm -f chipanel-local 2>/dev/null
-podman run -d --name chipanel-local -p 127.0.0.1:3001:3000 \
-  -e HOST=0.0.0.0 -e PORT=3000 \
+podman run -d --name chipanel-local -p 127.0.0.1:25501:25500 \
+  -e HOST=0.0.0.0 -e PORT=25500 \
   -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=preview \
   -e RUST_LOG=info \
   localhost/chipanel:latest
 ```
 
-Then open **http://localhost:3001** (login `admin` / `preview`). Port `3001` on the host maps to `3000` inside the container — `3000` is used deliberately elsewhere and collides. `HOST=0.0.0.0` is required inside the container or the port mapping silently can't reach it (the app's own default is `127.0.0.1`, only overridden to `0.0.0.0` in the real deployed quadlet). No Podman socket, RCON, or Minecraft data volumes are mounted, so container/player/telemetry data reads as disconnected/default — this is for reviewing UI, routing, and auth, not for exercising real server integration. Stop it with `podman rm -f chipanel-local`.
+Then open **http://localhost:25501** (login `admin` / `preview`). Port `25501` on the host maps to `25500` inside the container. `HOST=0.0.0.0` is required inside the container or the port mapping silently can't reach it (the app's own default is `127.0.0.1`, only overridden to `0.0.0.0` in the real deployed quadlet). No Podman socket, RCON, or Minecraft data volumes are mounted, so container/player/telemetry data reads as disconnected/default — this is for reviewing UI, routing, and auth, not for exercising real server integration. Stop it with `podman rm -f chipanel-local`.
 
 ## Architecture
 
@@ -69,10 +69,10 @@ Then open **http://localhost:3001** (login `admin` / `preview`). Port `3001` on 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `HOST` / `PORT` | `127.0.0.1` / `3000` | bind address — the deployed quadlet overrides `HOST=0.0.0.0` |
+| `HOST` / `PORT` | `127.0.0.1` / `25500` | bind address — the deployed quadlet overrides `HOST=0.0.0.0` |
 | `JWT_SECRET` | random per boot | set explicitly in production or every restart invalidates sessions |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` (or `ADMIN_PASSWORD_HASH`) | `admin` / random-generated, logged once | login credentials |
-| `ALLOWED_ORIGINS` | `http://127.0.0.1:3000,http://localhost:3000` | CORS; `*` disables the allow-list |
+| `ALLOWED_ORIGINS` | `http://127.0.0.1:25500,http://localhost:25500` | CORS; `*` disables the allow-list |
 | `RCON_HOST` / `RCON_PORT` / `RCON_PASSWORD` | `127.0.0.1` / `25575` / empty | must match the Minecraft server's `server.properties` |
 | `PODMAN_CONTAINER_NAME` (or `MINECRAFT_CONTAINER_NAME`) | `minecraft-server` | the container `PodmanClient` targets |
 | `PODMAN_SOCKET` | auto-detected (`/run/user/<uid>/podman/podman.sock`, etc.) | rootless Podman API socket |

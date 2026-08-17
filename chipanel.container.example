@@ -30,7 +30,7 @@ Volume=%t/bus:/run/user/1000/bus:ro
 Volume=%t/systemd/private:/run/user/1000/systemd/private:ro
 
 Environment=HOST=0.0.0.0
-Environment=PORT=3000
+Environment=PORT=25500
 Environment=RUST_LOG=info
 Environment=ADMIN_USERNAME=admin
 Environment=ADMIN_PASSWORD=<SET_ME>

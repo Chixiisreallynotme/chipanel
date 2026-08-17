@@ -46,9 +46,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY --from=rust-builder /app/backend/target/release/chipanel /app/chipanel
 COPY --from=frontend-builder /app/frontend/build /app/frontend/build
 
-ENV PORT=3000
+ENV PORT=25500
+ENV HOST=0.0.0.0
 ENV RUST_LOG=info
 
-EXPOSE 3000
+EXPOSE 25500
 USER 1000:1000
 ENTRYPOINT ["/app/chipanel"]
