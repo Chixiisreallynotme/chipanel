@@ -27,6 +27,7 @@
 		HardDrive,
 		Database,
 		Network,
+		Archive,
 		Webhook,
 		CalendarClock,
 		KeyRound,
@@ -46,7 +47,8 @@
 				{ label: 'Fichiers', path: '/files', icon: FileCode },
 				{ label: 'Addons', path: '/addons', icon: Package },
 				{ label: 'Monde', path: '/worlds', icon: Globe },
-				{ label: 'Sauvegardes & Moteur', path: '/engine', icon: Sliders }
+				{ label: 'Sauvegardes & Snapshots', path: '/backups', icon: Archive },
+				{ label: 'Version & Moteur', path: '/engine', icon: Sliders }
 			]
 		},
 		{
