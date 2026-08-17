@@ -1,131 +1,152 @@
-# Architecture & Mécanismes Internes de ChiPanel
+# Architecture & Internal Mechanisms of ChiPanel
 
-ChiPanel est conçu comme une console d'administration ultra-légère, autonome et haute performance, optimisée pour fonctionner sur du matériel homelab contraint (ex: Intel Core i3 2C/4T @ 1.70 GHz, 8 Go de RAM) sans monopoliser les ressources CPU/RAM dédiées au serveur Minecraft.
+ChiPanel is an ultra-lightweight, self-contained, high-performance management console engineered specifically for resource-constrained homelab hardware (e.g., Intel Core i3 2C/4T @ 1.70 GHz, 8 GB RAM) without competing for the CPU and RAM allocations required by the Minecraft server JVM.
 
 ---
 
-## 1. Vue d'Ensemble de l'Architecture
+## 1. System Architecture Overview
 
-ChiPanel repose sur une séparation claire entre un backend asynchrone compilé en Rust natif et une interface monopage (SPA) fluide développée avec Svelte 5.
+ChiPanel decouples into a native, compiled asynchronous Rust backend and a client-side Single Page Application (SPA) built with Svelte 5.
 
 ```
 +-------------------------------------------------------------------------+
-|                              CLIENT (Navigateur)                        |
-|   - Svelte 5 SPA (Runes: $state, $derived, $effect)                     |
-|   - WebSocket Client (Logs streaming, télémétrie temps réel)            |
-|   - CodeMirror 6 (Éditeur syntaxique & Diff Merge)                      |
+|                        WEB BROWSER (Client SPA)                         |
+|   - Svelte 5 Runes: $state, $derived, $effect, $props, $bindable        |
+|   - Native WebSocket Client (Log streaming, live telemetry, queue)      |
+|   - CodeMirror 6 (Syntax highlighting, Myers visual diff editor)        |
+|   - uPlot (Ultra-fast Canvas time-series synchronized graphs)           |
 +-------------------------------------------------------------------------+
                                      │  HTTP / WebSocket (Port 25500)
                                      ▼
 +-------------------------------------------------------------------------+
-|                         CHIPANEL BACKEND (Rust / Axum)                  |
+|                     CHIPANEL BACKEND (Rust / Axum 0.7)                  |
 |                                                                         |
 |  ┌───────────────────────────────────────────────────────────────────┐  |
 |  │                        HTTP Routing Layer (Axum 0.7)              │  |
-|  │   - Auth Middleware (JWT / Argon2 / RBAC admin & viewer)          │  |
-|  │   - REST Endpoints (/api/server, /api/backups, /api/audit...)     │  |
-|  │   - WebSocket Hub (Multiplexeur d'état, broadcast 2s)             │  |
+|  │   - Auth Middleware (Argon2id / HS256 JWT / Persistent API tokens)│  |
+|  │   - REST Endpoints (/api/server, /api/plugins, /api/players...)   │  |
+|  │   - WebSocket Hub (Connection multiplexer, 2s telemetry broadcast)│  |
 |  └──────────────────────────────────┬────────────────────────────────┘  |
 |                                     │                                   |
 |  ┌──────────────────────────────────┴────────────────────────────────┐  |
-|  │                     Systèmes Métier & Acteurs Tokio               │  |
+|  │                 Core Subsystems & Tokio Actors                    │  |
 |  │                                                                   │  |
-|  │  [Acteur RCON Multiplexé]        [Gestionnaire Sauvegardes]       │  |
-|  │  - Single TCP stream persistant  - Compression asynchrone (zip)   │  |
-|  │  - Reconnexion automatique       - Règles d'exclusion & Rétention │  |
-|  │  - Queue mpsc(128) + oneshot     - Export distant S3 / MinIO      │  |
+|  │  [Multiplexed RCON Actor]          [Backup Engine]                │  |
+|  │  - Single persistent TCP socket    - Scoped ZIP creation (zstd)   │  |
+|  │  - Source protocol framing         - SHA-256 integrity hashing    │  |
+|  │  - Tokio mpsc(128) + oneshot       - Direct S3 / MinIO streaming  │  |
+|  │  - Auto-reconnect backoff          - Automated retention policy   │  |
 |  │                                                                   │  |
-|  │  [Supervision Podman & D-Bus]     [Registre d'Audit Immuable]     │  |
-|  │  - Socket /run/user/1000/podman   - Journal append-only .jsonl    │  |
-|  │  - D-Bus session bus (zbus)       - Filtres & Exportation CSV     │  |
+|  │  [Systemd & Podman Integration]    [Immutable Audit Log]          │  |
+|  │  - UDS: /run/user/1000/podman.sock - Append-only audit_log.jsonl  │  |
+|  │  - D-Bus: /run/user/1000/bus (zbus)- Filtered queries & CSV export│  |
+|  │                                                                   │  |
+|  │  [Background Async Engines]                                       │  |
+|  │  - Mojang Version Watcher (1h)     - Telemetry Sampler (2s tick)  │  |
+|  │  - Diagnostic Tools Sync (24h)     - Deferred Command Queue Loop  │  |
 |  └──────────────────────────────────┬────────────────────────────────┘  |
 +-------------------------------------┼───────────────────────────────────+
                                       │
               ┌───────────────────────┼───────────────────────┐
               ▼                       ▼                       ▼
    +─────────────────────+ +─────────────────────+ +─────────────────────+
-   |   Podman Rootless   | |  lazymc (Proxy TCP) | |   Minecraft Server  |
+   |   Podman Rootless   | |  lazymc (TCP Proxy) | |   Minecraft JVM     |
    |   (UID 1000 / crun) | |   Port 25565 proxy  | |    Port 25566 TCP   |
-   |  minecraft.container| |   Auto-hibernation  | |    Port 25575 RCON  |
+   |  minecraft.container| |   Zero-RAM Sleep    | |    Port 25575 RCON  |
    +─────────────────────+ +─────────────────────+ +─────────────────────+
 ```
 
 ---
 
-## 2. Le Backend Rust (Axum 0.7 & Tokio)
+## 2. The Rust Backend (Axum 0.7 & Tokio)
 
-Le backend est entièrement compilé en code machine avec optimisations LTO (`opt-level = "z"`, `panic = "abort"`, `codegen-units = 1`). L'exécutable résultant pèse moins de 15 Mo et consomme moins de 25 Mo de RAM en régime de croisière.
+The backend compiles to a single static binary with Link-Time Optimization (`opt-level = "z"`, `lto = true`, `panic = "abort"`, `codegen-units = 1`). The resulting executable binary occupies under 15 MB on disk and maintains a baseline memory footprint of under 25 MB RAM.
 
-### A. Acteur Tokio RCON Persistant (`src/rcon/actor.rs`)
-Dans les panels traditionnels, chaque requête de métrique ou commande console ouvre une nouvelle connexion TCP vers le port RCON de Minecraft, provoquant :
-- Des tempêtes d'erreurs `Connection refused (os error 111)` quand le serveur est arrêté ou en hibernation.
-- Une surcharge CPU inutile par allocation permanente de sockets.
-- Un spam massif dans les logs du serveur.
+### A. Persistent RCON Actor Pattern (`src/rcon/actor.rs`, `src/rcon/client.rs`)
+Traditional server panels open a new TCP socket for every RCON command or telemetry query. This causes:
+- Cascading `Connection refused (os error 111)` errors when the server is stopped or sleeping.
+- Linux file descriptor exhaustion under concurrent web dashboard users.
+- Substantial CPU overhead and log spam on the Minecraft JVM.
 
-**La Solution ChiPanel :**
-ChiPanel implémente le patron de conception **Tokio Actor** :
-1. Une seule tâche de fond Tokio gère l'unique socket TCP persistant vers le port RCON (`127.0.0.1:25575`).
-2. Les requêtes HTTP et le hub WebSocket envoient leurs messages via un canal asynchrone `tokio::sync::mpsc::channel(128)` sous la forme `RconRequest::Execute { command, responder }`.
-3. Chaque appelant reçoit un canal `oneshot` dédié pour récupérer la réponse sans risque de blocage.
-4. En cas de coupure (ex: hibernation `lazymc`), l'acteur tente de se reconnecter en tâche de fond avec backoff exponentiel sans bloquer le serveur HTTP ni propager d'erreur 500 aux clients web.
+**The ChiPanel Solution:**
+ChiPanel implements the **Tokio Actor Pattern**:
+1. A single async task (`RconActor`) maintains an exclusive, persistent TCP connection to `127.0.0.1:25575`.
+2. Callers send commands over a bounded `tokio::sync::mpsc::channel(128)` envelope with a dedicated `oneshot::Sender` return channel.
+3. Callers enforce an 8-second timeout (`tokio::time::timeout`).
+4. If a connection drops (e.g. server shutdown or hibernation), the actor enters an automatic reconnect state with backoff retry without blocking HTTP handlers or leaking 500 errors to web clients.
 
-### B. Communication Système & Podman Rootless
-ChiPanel s'exécute lui-même dans un conteneur Podman rootless (UID 1000) et dialogue avec l'hôte via deux interfaces montées en lecture seule :
-1. **Le Socket Podman Rootless (`/run/user/1000/podman/podman.sock`)** : Dialogue via le protocole REST de Libpod / Docker pour interroger l'état des conteneurs, surveiller les métriques CPU/RAM et streamer les logs.
-2. **Le Bus D-Bus Utilisateur (`/run/user/1000/bus`)** : Dialogue avec `systemd --user` via la crate `zbus` pour superviser les quadlets (`systemctl --user start/stop/restart minecraft.service`) et contrôler l'unité native `lazymc.service`. La découverte du chemin de socket est résolue dynamiquement à l'exécution via `DBUS_SESSION_BUS_ADDRESS` et `libc::getuid()`.
+#### Multi-Packet Response Handling (Dummy Packet Technique)
+The Minecraft Source RCON protocol splits large command outputs across multiple packets without an end-of-stream delimiter. ChiPanel guarantees complete message collection by sending an immediate empty dummy packet (`SERVERDATA_RESPONSE_VALUE`) following each command. Responses matching the request ID are concatenated until the response with `id == dummy_id` is received, cleanly terminating the stream.
 
----
-
-## 3. Le Frontend Svelte 5 (Architecture Runes)
-
-L'interface de ChiPanel est construite avec SvelteKit en mode SPA (`@sveltejs/adapter-static`). Elle utilise la syntaxe moderne de **Svelte 5 (Runes)**, éliminant les stores réactifs legacy (`writable()`) au profit d'un modèle d'état granulaire et ultra-rapide :
-
-- **`$state`** : Stocke l'état réactif local et global (liste des joueurs, métriques, buffer de logs, état des sauvegardes).
-- **`$derived`** : Calcule automatiquement les vues dérivées sans re-render superflu (filtrage des sauvegardes, KPIs de succès d'audit, conversion de formats).
-- **`$props`** : Déclare les interfaces typées de composants réutilisables.
-- **`$effect`** : Synchronise les timers, les connexions WebSocket et les paramètres d'URL.
-
-### Composants Clés
-- **LogViewer** : Affiche les logs avec virtualisation du scroll pour absorber plus de 50 000 lignes sans ralentissement du navigateur.
-- **ConfigDiffModal** : Intègre CodeMirror Merge pour prévisualiser les différences avant enregistrement sur disque.
-- **SparkProfilerCard** : Contrôle l'échantillonneur Spark et extrait directement les liens de Flamegraphs interactifs.
-- **MetricsChart** : Graphiques de performance (TPS, MSPT, CPU, RAM) légers et réactifs.
+### B. Rootless Podman & Systemd D-Bus Integration
+ChiPanel runs inside an isolated rootless container (UID 1000) and communicates with the host through two read-only mounts:
+1. **Rootless Podman Unix Socket (`/run/user/1000/podman/podman.sock`)**: Communicates with the Libpod REST API using low-level Hyper 1.0 HTTP client over Unix Domain Sockets (`tokio::net::UnixStream`) to query container status and compute CPU/RAM cgroups metrics.
+2. **User D-Bus Session Bus (`/run/user/1000/bus`)**: Uses the `zbus` crate to directly instruct `systemd --user` manager (`org.freedesktop.systemd1.Manager`) to start, stop, or restart Quadlets (`minecraft.service`) and native units (`lazymc.service`). If D-Bus is temporarily unreachable, ChiPanel transparently falls back to direct Libpod API calls.
 
 ---
 
-## 4. Cycle de Vie du Serveur & Intégration lazymc
+## 3. Frontend Architecture (Svelte 5 Runes)
 
-ChiPanel pilote le serveur Minecraft à travers 3 modes d'exploitation :
+The user interface is an ultra-fast Single Page Application (SPA) built with SvelteKit 2 using `@sveltejs/adapter-static` and compiled with Vite 6.
+
+### Svelte 5 Runes System
+ChiPanel adopts modern Svelte 5 runes, eliminating legacy Svelte stores (`writable()`, `readable()`) in favor of fine-grained, compile-time reactivity:
+- **`$state()`**: Encapsulates component-local reactive state (modals, search queries, table filters, inputs, loading indicators).
+- **`$derived()` & `$derived.by()`**: Computes memoized reactive calculations without unnecessary DOM re-renders (inventory slicing, Chunky percentage completion, audit statistics).
+- **`$props()` & `$bindable()`**: Declares strictly typed component interfaces with bidirectional data bindings.
+- **`$effect()`**: Manages lifecycle hooks, WebSocket event listeners, and `uPlot` chart resizing.
+- **`untrack()`**: Isolates reactive dependencies inside polling loops and timer callbacks.
+
+### Core Frontend Libraries
+- **CodeMirror 6**: syntax highlighting for YAML, Properties, JSON, TOML, and integrated visual diff viewer.
+- **uPlot**: high-performance Canvas-based charting engine rendering thousands of telemetry data points without UI frame drops.
+- **Lucide Svelte**: lightweight SVG icon set.
+
+---
+
+## 4. Server Lifecycle & lazymc Hibernation
+
+ChiPanel manages the Minecraft server across three distinct operational states:
 
 ```
              ┌──────────────────────────────────────────────┐
-             │                 MODE ÉTEINT                  │
-             │  (Conteneur arrêté, lazymc.service stoppé)   │
-             │           Consommation RAM : 0 Mo            │
+             │                 OFF MODE                     │
+             │  (Container stopped, lazymc.service stopped) │
+             │            RAM Consumption: 0 MB             │
              └───────────────────────┬──────────────────────┘
                                      │
-                        Démarrer via ChiPanel UI
+                        Start via ChiPanel Dashboard
                                      │
                                      ▼
              ┌──────────────────────────────────────────────┐
-             │              MODE HIBERNATION                │
-             │  (Proxy lazymc actif sur le port 25565 TCP,  │
-             │   conteneur Java en sommeil sur port 25566)  │
-             │          Consommation RAM : ~8 Mo            │
+             │              HIBERNATION MODE                │
+             │  (lazymc TCP proxy active on port 25565,     │
+             │   Minecraft Java container sleeping on 25566)│
+             │           RAM Consumption: ~8 MB             │
              └───────────────────────┬──────────────────────┘
                                      │
-                         Connexion d'un joueur
-                        (Handshake TCP détecté)
+                         Player Connects
+                        (TCP Handshake Detected)
                                      │
                                      ▼
              ┌──────────────────────────────────────────────┐
-             │                 MODE ACTIF                   │
-             │  (Conteneur Java éveillé, monde en mémoire)  │
-             │      Auto-hibernation après 15 min d'inactivité│
-             │        Consommation RAM : ~2.5 à 4 Go        │
+             │                 ACTIVE MODE                  │
+             │  (Java container running, world in memory)   │
+             │      Auto-sleep after 15 min inactivity      │
+             │         RAM Consumption: ~2.5 to 8 GB        │
              └──────────────────────────────────────────────┘
 ```
 
-1. **Mode Éteint** : Aucun processus ne tourne.
-2. **Mode Hibernation (Défaut)** : `lazymc.service` écoute sur le port 25565. Lorsque le premier joueur tente de se connecter, `lazymc` maintient la connexion TCP ouverte, lance le script de réveil `minecraft-wake.sh`, démarre `minecraft.container` sous Podman, attend que le port interne 25566 soit prêt, puis relaye la session de jeu de manière totalement transparente sans déconnecter le joueur.
-3. **Auto-hibernation** : Dès que le serveur est vide depuis 15 minutes, `lazymc` ordonne l'arrêt du conteneur Java, libérant instantanément ~2.5 à 4 Go de RAM pour les autres services du homelab (Jellyfin, Ente, Seafile).
+1. **Off Mode**: All processes are stopped.
+2. **Hibernation Mode (Default)**: `lazymc.service` listens on port 25565. When a player attempts to connect, `lazymc` holds the TCP handshake open, triggers `minecraft-wake.sh` to start `minecraft.container` via Podman, waits for the internal port 25566 to accept traffic, and transparently bridges the session without disconnecting the player.
+3. **Auto-Hibernation**: After 15 minutes of zero connected players, `lazymc` safely stops the Java container, immediately reclaiming 2.5 to 8 GB of RAM for other homelab workloads (Jellyfin, Ente Photos, Seafile).
+
+---
+
+## 5. Background Async Engines
+
+ChiPanel runs four non-blocking background workers within Tokio:
+1. **Mojang Version Watcher (`version_watch.rs`)**: Polls `launchermeta.mojang.com` every 1 hour, discovers newly released Minecraft versions or snapshots, updates the catalog cache, and notifies the UI.
+2. **Diagnostic Tools Synchronizer (`tools.rs`)**: Runs every 24 hours to automatically provision and update engine-compatible builds of `spark`, `chunky`, `luckperms`, and `fabric-api`.
+3. **Telemetry Sampler (`metrics.rs`)**: Ticks every 2 seconds, sampling host CPU (`/proc/stat`), RAM (`/proc/meminfo`), disk usage, and container metrics into a 3,600-sample in-memory ring buffer while evaluating Discord alert thresholds.
+4. **Deferred Command Queue (`command_queue.rs`)**: Observes player joins over WebSocket/RCON and automatically executes pending moderation/give actions for previously offline players.

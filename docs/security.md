@@ -1,83 +1,104 @@
-# Modèle de Sécurité & Bonnes Pratiques de ChiPanel
+# Security Model & Threat Mitigation in ChiPanel
 
-Ce document décrit en détail les mécanismes de protection, le modèle de menaces et les contrôles de sécurité appliqués au sein de ChiPanel.
-
----
-
-## 1. Authentification & Chiffrement des Identifiants
-
-### Hachage des Mots de Passe avec Argon2id
-- Tous les mots de passe des comptes utilisateurs créés via ChiPanel sont hachés avec l'algorithme cryptographique **Argon2id** (standard recommandé par l'ANSSI et l'OWASP).
-- Paramètres de hachage : 3 itérations temporelles, mémoire allouée de 64 Mo, parallélisme adapté au CPU, avec sel cryptographique aléatoire de 128 bits.
-- La vérification des mots de passe s'effectue en temps constant pour neutraliser les attaques par analyse temporelle (*timing attacks*).
-
-### Jetons de Session JWT & Clé Secrète
-- Les sessions utilisateur sont authentifiées via des jetons **JSON Web Tokens (JWT)** signés avec l'algorithme HMAC-SHA256 (`HS256`).
-- Le payload contient le nom du sujet (`sub`), la date d'émission (`iat`) et une date d'expiration stricte (`exp` fixée à 24 heures).
-- Si la variable d'environnement `JWT_SECRET` n'est pas fournie, ChiPanel génère à chaque démarrage une clé secrète aléatoire de 256 bits via un générateur cryptographiquement sûr (`rand::rngs::OsRng`), invalidant immédiatement les anciennes sessions.
+This document outlines the security architecture, cryptographic standards, threat mitigations, and isolation mechanisms implemented across ChiPanel.
 
 ---
 
-## 2. Contrôle d'Accès Basé sur les Rôles (RBAC)
+## 1. Authentication & Cryptographic Standards
 
-ChiPanel applique le principe du moindre privilège à l'aide de deux rôles distincts :
+### Password Hashing with Argon2id
+- **Algorithm**: User passwords are encrypted using **Argon2id** (OWASP and ANSSI recommended standard).
+- **Parameters**: 3 time iterations, 64 MB memory cost, CPU-adaptive parallelism, with 128-bit CSPRNG cryptographic salts (`rand::rngs::OsRng`).
+- **Reactor Offloading**: Password verification and hashing operations run inside `tokio::task::spawn_blocking` to ensure CPU-heavy cryptographic operations never stall Tokio's async event loop.
+- **Brute-Force Rate Limiting**: The login endpoint `/api/auth/login` enforces per-user throttling (maximum 5 attempts per minute) and a global hashing rate cap (maximum 10 hash calculations per 10 seconds) to mitigate credential stuffing and denial of service.
+
+### JWT Session Tokens & Secret Generation
+- **HMAC-SHA256 (`HS256`)**: User sessions use signed JSON Web Tokens.
+- **Payload Constraints**: Contains subject (`sub`), issued-at (`iat`), and strict expiration (`exp` set to 24 hours).
+- **Zero-Config Secret**: If `JWT_SECRET` is not provided in the environment, ChiPanel generates a fresh 256-bit cryptographic key via `OsRng` at startup, immediately invalidating previous session tokens upon container restart.
+
+### Persistent API Access Keys
+- **High Entropy**: API tokens use the `chipanel_sec_<24_hex_chars>` format generated from OS entropy.
+- **One-Way Hashing**: Plaintext tokens are only displayed once upon generation. The backend stores exclusively the SHA-256 hash in `data/api_tokens.json`. Prefixes (`chipanel_sec_<first_6_hex>...`) are preserved for identification in the administrative UI.
+
+---
+
+## 2. Role-Based Access Control (RBAC)
+
+ChiPanel enforces the principle of least privilege across three roles:
 
 ```
                 ┌──────────────────────────────────┐
-                │          RÔLE "VIEWER"           │
-                │  - Consultation console & logs   │
-                │  - Lecture statut & télémétrie   │
-                │  - Consultation des sauvegardes  │
-                │  - Consultation plugins & mondes │
+                │          ROLE: VIEWER            │
+                │  - Read live console & logs      │
+                │  - View server telemetry & stats │
+                │  - View world list & backups     │
+                │  - Inspect plugins & modpacks    │
                 └────────────────┬─────────────────┘
-                                 │  Restrictions strictes
+                                 │  Elevated Permissions
                                  ▼
                 ┌──────────────────────────────────┐
-                │           RÔLE "ADMIN"           │
-                │  - Émission commandes RCON       │
-                │  - Démarrage / Arrêt / Restart   │
-                │  - Création / Restauration backup│
-                │  - Purge de base de données      │
-                │  - Gestion des utilisateurs & API│
-                │  - Consultation Registre d'Audit │
+                │         ROLE: OPERATOR           │
+                │  - Kick / Ban / Pardon players   │
+                │  - Execute player moderation     │
+                │  - Manage pending command queue  │
+                └────────────────┬─────────────────┘
+                                 │  Full System Control
+                                 ▼
+                ┌──────────────────────────────────┐
+                │          ROLE: ADMIN             │
+                │  - Execute arbitrary RCON        │
+                │  - Power actions & engine switch │
+                │  - Filesystem read/write/delete  │
+                │  - Create / Restore backups      │
+                │  - Manage accounts & API tokens  │
+                │  - Database maintenance & purges │
                 └──────────────────────────────────┘
 ```
 
-- **Protection contre l'élévation de privilèges** : Le compte racine `ADMIN_USERNAME` conserve impérativement le rôle `admin` en mémoire afin d'éviter tout verrouillage accidentel du panneau.
-- **Tokens d'API Persistants** : Les jetons d'API longue durée (`chipanel_sec_...`) sont réservés aux automatisations internes et disposent des droits administrateur.
+- **Root Admin Safeguard**: The bootstrap account `ADMIN_USERNAME` retains immutable `admin` privileges in memory to prevent accidental administrative lockout.
 
 ---
 
-## 3. Protection Contre le Path Traversal & Zip-Slip
+## 3. Filesystem Sandboxing & Path Traversal Guards
 
-### Sandboxing du Système de Fichiers (`src/routes/files.rs` & `src/minecraft/server_backup.rs`)
-La manipulation de fichiers sur le serveur Minecraft présente un risque critique si un attaquant tente d'accéder à l'hôte via des chemins relatifs (`../../etc/shadow`).
+File access operations in `/api/files`, `/api/worlds`, and `/api/backups` interact with local files on the server host.
 
-**Mécanismes de protection appliqués :**
-1. **Canonicalisation stricte** : Tous les chemins reçus sont résolus via `std::fs::canonicalize` pour éliminer les séquences `..`, les liens symboliques et les chemins relatifs.
-2. **Vérification de préfixe racine** : Le chemin canonique doit obligatoirement commencer par le chemin canonique de `MINECRAFT_DATA_DIR` :
+### Defense Mechanisms:
+1. **Strict Canonicalization**: Paths are sanitized by stripping null bytes, newlines, carriage returns, and `..` segments, then resolved via `std::fs::canonicalize`.
+2. **Root Prefix Boundary Enforcement**: The canonical target path must strictly begin with the canonical root of `MINECRAFT_DATA_DIR` or `DATA_DIR`:
    ```rust
    if !canonical_target.starts_with(&canonical_root) {
-       return Err(AppError::Forbidden("Accès refusé : chemin hors du répertoire autorisé."));
+       return Err(AppError::Forbidden("Access denied: Target path outside allowed root directory."));
    }
    ```
-3. **Protection contre l'attaque Zip-Slip** : Lors de l'extraction d'une archive de sauvegarde ou d'un plugin, chaque chemin de fichier interne est assaini pour empêcher toute écriture en dehors du dossier de destination.
+3. **Zip-Slip Attack Prevention**: During backup restoration or world ZIP unarchiving, internal relative paths are inspected before writing. Any entry attempting to break out of the target directory is rejected immediately.
 
 ---
 
-## 4. Caviardage Automatique & Confidentialité des Données
+## 4. SSRF & External Integration Hardening
 
-### Export Sécurisé vers `mclo.gs`
-Le partage public de logs de crash sur des plateformes externes expose couramment des adresses IP de joueurs et des identifiants système.
-- ChiPanel applique une passe de désensibilisation par expressions régulières avant tout envoi :
-  - IPs IPv4 publiques (ex: `185.220.101.5` -> `[REDACTED_IP]`) et IPv6.
-  - Mots de passe RCON et tokens de webhooks Discord.
-  - Chemins absolus contenant des noms d'utilisateurs Linux de l'hôte.
+### Discord Alert Webhooks
+The metrics alert engine sends notifications when TPS, CPU, or RAM breach thresholds:
+- **Protocol Enforcement**: Only `https://` URLs are accepted.
+- **Domain Whitelist**: Targets must resolve to approved Discord domains (`discord.com`, `discordapp.com`, `canary.discord.com`, `ptb.discord.com`).
+- **Redirect Disabling**: The HTTP client enforces `redirect(Policy::none())` to prevent attackers from using open redirects to reach internal cloud metadata endpoints (`169.254.169.254`) or homelab services.
 
 ---
 
-## 5. Isolation Système & Podman Rootless
+## 5. PII & Credential Redaction
 
-- **Exécution sans privilèges root** : ChiPanel s'exécute dans un conteneur rootless appartenant à l'utilisateur non-privilégié `chiserv` (UID 1000).
-- **Namespaces Utilisateur (subuid / subgid)** : Même en cas de compromission hypothétique du conteneur, l'attaquant reste confiné aux droits restreints de l'utilisateur non-root de l'hôte sans aucune possibilité d'accès aux fichiers `/etc/passwd`, `/etc/shadow` ou aux processus des autres utilisateurs.
-- **Montages en Lecture Seule (`:ro`)** : Les sockets système sensibles (`/run/user/1000/podman/podman.sock` et `/run/user/1000/bus`) sont impérativement montées avec l'option `:ro` pour empêcher toute altération des descripteurs système.
+Before exporting console logs to external diagnostic services like `mclo.gs`:
+- **Automated Filtering**: Regular expressions scan and sanitize:
+  - Public IPv4 addresses and IPv6 notations (`[REDACTED_IP]`).
+  - RCON authentication passwords.
+  - Discord webhook URLs and Bearer tokens.
+  - Absolute host directories revealing local usernames.
+
+---
+
+## 6. Rootless Podman & Namespace Isolation
+
+- **Non-Root Execution**: ChiPanel runs as non-privileged user `USER 1000:1000` (`chiserv`) inside a rootless container.
+- **Linux User Namespaces (`subuid` / `subgid`)**: In the unlikely event of a container breakout, the process is confined to an unprivileged subordinate UID on the host without root capabilities.
+- **Read-Only System Sockets (`:ro`)**: System control sockets (`/run/user/1000/podman/podman.sock` and `/run/user/1000/bus`) are mounted in read-only mode to prevent descriptor corruption or unauthorized permission escalation.
