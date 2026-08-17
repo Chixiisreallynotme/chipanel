@@ -9,7 +9,7 @@
 	import VersionsCard from '$lib/components/dashboard/VersionsCard.svelte';
 	import MetricsChart from '$lib/components/metrics/MetricsChart.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-	import { Play, Moon, Power, RotateCw, AlertTriangle, X } from 'lucide-svelte';
+	import { Play, Moon, Power, RotateCw, AlertTriangle, X, Sparkles } from 'lucide-svelte';
 
 	const UNKNOWN = 'inconnu';
 	const EMPTY_HISTORY = { timestamps: [], tps: [], cpu: [], ram_mb: [], players: [] };
@@ -193,6 +193,11 @@
 					<span>Hibernation</span>
 				</button>
 			</div>
+
+			<a href="/setup" class="btn btn-secondary" title="Lancer l'assistant de configuration 1-clic">
+				<Sparkles size={16} class="text-blue" />
+				<span>Assistant 1-Click</span>
+			</a>
 
 			<button class="btn btn-secondary" onclick={fetchServerInfo} title="Actualiser la télémétrie">
 				<RotateCw size={16} />

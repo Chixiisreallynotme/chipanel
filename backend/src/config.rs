@@ -1,8 +1,9 @@
-use std::{env, path::PathBuf, sync::Arc};
+use std::{env, path::PathBuf, str::FromStr, sync::Arc};
 use tracing::{info, warn};
 
 use crate::{
     auth::password::hash_password,
+    container::ContainerEngineType,
     curseforge::client::CurseForgeClient,
     error::AppError,
     modrinth::client::ModrinthClient,
@@ -24,6 +25,9 @@ pub struct AppConfig {
     pub minecraft_data_dir: PathBuf,
     pub systemd_config_dir: PathBuf,
     pub lazymc_config_file: PathBuf,
+    pub container_engine: ContainerEngineType,
+    pub container_socket_path: Option<PathBuf>,
+    pub game_driver: String,
     pub modrinth_client: Arc<ModrinthClient>,
     pub curseforge_client: Arc<CurseForgeClient>,
 }
@@ -45,6 +49,9 @@ impl std::fmt::Debug for AppConfig {
             .field("minecraft_data_dir", &self.minecraft_data_dir)
             .field("systemd_config_dir", &self.systemd_config_dir)
             .field("lazymc_config_file", &self.lazymc_config_file)
+            .field("container_engine", &self.container_engine)
+            .field("container_socket_path", &self.container_socket_path)
+            .field("game_driver", &self.game_driver)
             .finish()
     }
 }
@@ -115,7 +122,8 @@ impl AppConfig {
 
         let rcon_password = env::var("RCON_PASSWORD").unwrap_or_default();
 
-        let podman_container = env::var("PODMAN_CONTAINER_NAME")
+        let podman_container = env::var("CONTAINER_NAME")
+            .or_else(|_| env::var("PODMAN_CONTAINER_NAME"))
             .or_else(|_| env::var("MINECRAFT_CONTAINER_NAME"))
             .unwrap_or_else(|_| "minecraft-server".to_string());
 
@@ -130,6 +138,21 @@ impl AppConfig {
         let lazymc_config_file = env::var("LAZYMC_CONFIG_FILE")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("/app/lazymc-config/lazymc.toml"));
+
+        let container_engine = env::var("CONTAINER_ENGINE")
+            .ok()
+            .and_then(|s| ContainerEngineType::from_str(&s).ok())
+            .unwrap_or(ContainerEngineType::Auto);
+
+        let container_socket_path = env::var("CONTAINER_SOCKET")
+            .or_else(|_| env::var("PODMAN_SOCKET"))
+            .or_else(|_| env::var("DOCKER_SOCKET"))
+            .ok()
+            .map(PathBuf::from);
+
+        let game_driver = env::var("GAME_DRIVER")
+            .or_else(|_| env::var("GAME_ENGINE"))
+            .unwrap_or_else(|_| "minecraft".to_string());
 
         let modrinth_client = Arc::new(ModrinthClient::new());
         let curseforge_client = Arc::new(CurseForgeClient::new());
@@ -149,9 +172,11 @@ impl AppConfig {
             minecraft_data_dir,
             systemd_config_dir,
             lazymc_config_file,
+            container_engine,
+            container_socket_path,
+            game_driver,
             modrinth_client,
             curseforge_client,
         })
     }
 }
-

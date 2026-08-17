@@ -1,12 +1,14 @@
 pub mod audit;
 mod auth;
 mod config;
+pub mod container;
 mod curseforge;
+pub mod engine;
 mod error;
 mod minecraft;
 mod models;
 mod modrinth;
-mod podman;
+pub mod podman;
 mod rcon;
 mod routes;
 mod websocket;
@@ -28,6 +30,8 @@ use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::config::AppConfig;
+use crate::container::{build_container_engine, ContainerEngine};
+use crate::engine::GameEngineRegistry;
 use crate::error::AppError;
 use crate::websocket::WsHub;
 
@@ -54,7 +58,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let config = Arc::new(AppConfig::load()?);
+    let container_engine: Arc<dyn ContainerEngine> = Arc::new(build_container_engine(
+        config.container_engine,
+        config.container_socket_path.clone(),
+    ));
+
     let rcon_handle = crate::rcon::RconActorHandle::spawn(config.clone());
+    let engine_registry = Arc::new(GameEngineRegistry::new_default(
+        config.clone(),
+        container_engine.clone(),
+        rcon_handle.clone(),
+    ));
+
     let ws_hub = WsHub::new(config.clone(), rcon_handle.clone());
     let token_store = Arc::new(crate::auth::tokens::TokenStore::load_or_create(&config.data_dir).await);
     let user_store = Arc::new(crate::auth::users::UserStore::load_or_create(&config.data_dir, &config.admin_username, &config.admin_password_hash).await);
@@ -133,10 +148,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(Extension(token_store))
         .layer(Extension(user_store))
         .layer(Extension(profile_store))
+        .layer(Extension(container_engine))
+        .layer(Extension(engine_registry))
         .layer(Extension(config.modrinth_client.clone()))
         .layer(Extension(config.curseforge_client.clone()))
         .layer(Extension(config.clone()));
-
 
     let addr: SocketAddr = format!("{}:{}", config.host, config.port)
         .parse()

@@ -257,3 +257,24 @@ Interdiction formelle des valeurs magiques (`z-index: 9999`). L'échelle est cod
 | Délai fixe de 300ms sur tous les tooltips | Délai initial de 300ms + ouverture instantanée (0ms) sur les tooltips adjacents | Évite les faux positifs initiaux tout en fluidifiant le survol d'une rangée d'icônes d'action. |
 | Animation `@keyframes btn-spin 1.2s linear infinite` | `@keyframes btn-spin 0.6s linear infinite` | Un spinner deux fois plus rapide améliore la perception psychologique de la vitesse réseau/serveur. |
 | `transform: scale(0)` lors de l'apparition d'un badge de statut | `transform: scale(0.9)` combiné avec `opacity: 0` | Rien n'apparaît du néant absolu ; débuter à 0.9 crée une entrée naturelle et fluide. |
+
+---
+
+## 9. Architecture Onboarding Débutant & Navigation Dual-Mode
+
+### 9.1 Paradigme "Novice 1-Click" vs "Power User Expert"
+L'interface de ChiPanel s'adapte dynamiquement au profil de l'administrateur homelab :
+- **Mode Novice (1-Click Setup) :**
+  - Workflow linéaire en 4 étapes (`GameSelectorStep`, `EngineSelectorStep`, `RamAllocationStep`, `LaunchReviewStep`).
+  - Abstraction totale des concepts de conteneurs, Quadlets, et variables d'environnement.
+  - Recommandation intelligente d'allocation mémoire basée sur la RAM hôte détectée (`/proc/meminfo` ou sonde IPC Tauri).
+  - Activation par défaut de la veille `lazymc` (0 Mo au repos).
+- **Mode Power User (Expert) :**
+  - Contrôle d'ingénierie complet : Quadlet `.container` éditable, terminal RCON direct, cgroups Linux et flags JVM avancés.
+  - Bascule instantanée (0ms) via raccourci `Alt+M` ou switch tactile double-bezel.
+
+### 9.2 Composants & Matérialité de l'Onboarding
+1. **Conteneur Hardware Multi-Étapes :** Utilisation de l'enveloppe `.hardware-shell` (p-1.5, bordure 1px subtile) et du cœur `.hardware-core` (`#161922`, chanfrein zénithal 1px).
+2. **Jauge d'Allocation Mémoire :** Visualisation segmentée (OS Reserve, Heap Minecraft, Headroom) avec indicateur de saturation au-delà de 75% de la RAM hôte.
+3. **Micro-Interactions Tactiles :** Boutons d'action et tuiles de sélection dotés de `active:scale-[0.97]` et courbes d'accélération `--ease-out`.
+

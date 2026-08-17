@@ -32,8 +32,10 @@
 		Webhook,
 		CalendarClock,
 		KeyRound,
-		Layers
+		Layers,
+		Sparkles
 	} from 'lucide-svelte';
+	import ModeSwitch from '$lib/components/onboarding/ModeSwitch.svelte';
 
 	let { children } = $props();
 	let sidebarOpen = $state(false);
@@ -43,6 +45,7 @@
 			title: 'GESTION',
 			items: [
 				{ label: "Vue d'ensemble", path: '/', icon: LayoutDashboard },
+				{ label: 'Assistant 1-Click', path: '/setup', icon: Sparkles },
 				{ label: 'Console', path: '/console', icon: Terminal },
 				{ label: 'Joueurs', path: '/players', icon: Users },
 				{ label: 'Fichiers', path: '/files', icon: FileCode },
@@ -284,6 +287,8 @@
 				</div>
 
 				<div class="header-right">
+					<ModeSwitch compact={true} />
+
 					<!-- Quick Telemetry Status Pill -->
 					<div class="quick-status-pill">
 						<div class="pill-item" title="Utilisation CPU">
