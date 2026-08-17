@@ -1,12 +1,11 @@
 # ==============================================================================
 # ChiPanel Podman Quadlet Systemd Unit — EXAMPLE (secrets masked)
 # Location: ~/.config/containers/systemd/chipanel.container
-# User: chiserv (UID 1000)
 #
 # This is a template. Copy it to chipanel.container and fill in real values:
 #   cp chipanel.container.example chipanel.container
 # The real chipanel.container is gitignored because it contains plaintext
-# credentials (see AGENTS.md).
+# credentials.
 # ==============================================================================
 
 [Unit]
