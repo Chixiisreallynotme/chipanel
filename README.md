@@ -14,7 +14,7 @@
   <a href="https://svelte.dev"><img src="https://img.shields.io/badge/frontend-Svelte_5_Runes_%7C_SvelteKit_2-FF3E00?style=flat-square&logo=svelte" alt="Svelte 5" /></a>
   <a href="https://podman.io"><img src="https://img.shields.io/badge/runtime-Podman_5.4_Rootless-892CA0?style=flat-square&logo=podman" alt="Podman 5.4" /></a>
   <a href="#benchmarks--footprint"><img src="https://img.shields.io/badge/RAM_footprint-%3C_25_MB-success?style=flat-square" alt="RAM Footprint" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="Apache-2.0 License" /></a>
 </p>
 
 ---
@@ -190,4 +190,4 @@ Comprehensive technical documentation is available in the [`docs/`](docs/) direc
 
 ## 📄 License
 
-MIT License. See [LICENSE](LICENSE) for details.
+Apache License 2.0. See [LICENSE](LICENSE) for details.

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["ChiPanel Maintainers"]
 description = "ChiPanel - Lightweight Homelab & Podman Management Console"
+license = "Apache-2.0"
 
 [dependencies]
 axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
