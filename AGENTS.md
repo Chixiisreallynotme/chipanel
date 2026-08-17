@@ -127,7 +127,8 @@ Avant toute intervention, modification, ajout de composant, page ou style sur le
 | :--- | :--- |
 | [`PRODUCT.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/PRODUCT.md) | **Vision produit, positionnement, utilisateurs cibles, piliers de performance et roadmap desktop.** |
 | [`design.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/design.md) | **Spécification complète du design system, tokens CSS, anti-patterns et design engineering.** |
-| [`CLAUDE.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/CLAUDE.md) | Détails opérationnels de l'architecture Rust/Axum, RCON, Podman socket et gestion Minecraft. |
+| [`docs/onboarding-spec.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/onboarding-spec.md) | **Spécification détaillée du parcours d'onboarding débutant (Zero-Code 1-Click) et architecture Desktop.** |
+| [`CLAUDE.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/CLAUDE.md) | Détails opérationnels de l'architecture Rust/Axum, RCON, Podman/Docker socket et gestion Minecraft. |
 | [`docs/architecture.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/architecture.md) | Architecture interne approfondie, runtime Tokio, acteur RCON et cycle de vie lazymc. |
 | [`docs/api-reference.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/api-reference.md) | Référence exhaustive des 77 routes API REST et des événements WebSocket. |
 | [`docs/modules-guide.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/modules-guide.md) | Guide exhaustif des modules (NBT, plugins, diff Myers, backups S3, audit log). |
