@@ -964,7 +964,7 @@ pub async fn activate_resource_pack_handler(
     let download_url = if let Some(custom) = payload.custom_url.filter(|s| !s.trim().is_empty()) {
         custom
     } else {
-        let host_ip = if config.host == "0.0.0.0" || config.host == "127.0.0.1" {
+        let host_ip = if config.host == "0.0.0.0" {
             "127.0.0.1".to_string()
         } else {
             config.host.clone()
