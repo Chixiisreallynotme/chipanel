@@ -448,6 +448,9 @@
 	.middle-grid > :global(*),
 	.bottom-grid > :global(*) {
 		min-width: 0;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
 	}
 
 	@media (max-width: 1100px) {

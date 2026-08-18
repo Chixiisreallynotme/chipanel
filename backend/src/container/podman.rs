@@ -103,27 +103,36 @@ impl PodmanEngine {
 
     /// GET /v4.0.0/libpod/containers/{name}/stats?stream=false
     pub async fn get_container_metrics(&self, name: &str) -> Result<ContainerMetrics, AppError> {
-        let sample_a = self.fetch_stats_snapshot(name).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        let sample_b = self.fetch_stats_snapshot(name).await?;
+        let sample = self.fetch_stats_snapshot(name).await?;
 
-        let cpu_percent = if let (Some(a), Some(b)) = (&sample_a.docker, &sample_b.docker) {
-            let cpu_delta = b.total_usage.saturating_sub(a.total_usage);
-            let system_delta = b.system_cpu_usage.saturating_sub(a.system_cpu_usage);
-            let online_cpus = b.online_cpus.max(1) as f32;
-            if system_delta > 0 {
-                ((cpu_delta as f64 / system_delta as f64) * online_cpus as f64 * 100.0) as f32
+        let cpu_percent = if let Some(current) = sample.docker {
+            static PREV_CPU_SAMPLE: std::sync::RwLock<Option<(std::time::Instant, DockerCpuCounters)>> =
+                std::sync::RwLock::new(None);
+
+            let mut prev_guard = PREV_CPU_SAMPLE.write().unwrap_or_else(|e| e.into_inner());
+            let computed_cpu = if let Some((_prev_time, prev)) = *prev_guard {
+                let cpu_delta = current.total_usage.saturating_sub(prev.total_usage);
+                let system_delta = current.system_cpu_usage.saturating_sub(prev.system_cpu_usage);
+                let online_cpus = current.online_cpus.max(1) as f32;
+                if system_delta > 0 {
+                    ((cpu_delta as f64 / system_delta as f64) * online_cpus as f64 * 100.0) as f32
+                } else {
+                    sample.legacy_cpu_percent.unwrap_or(0.0)
+                }
+                .clamp(0.0, online_cpus * 100.0)
             } else {
-                0.0
-            }
-            .clamp(0.0, online_cpus * 100.0)
+                sample.legacy_cpu_percent.unwrap_or(0.0)
+            };
+
+            *prev_guard = Some((std::time::Instant::now(), current));
+            computed_cpu
         } else {
-            sample_b.legacy_cpu_percent.unwrap_or(0.0)
+            sample.legacy_cpu_percent.unwrap_or(0.0)
         };
 
-        let memory_bytes = sample_b.memory_bytes;
-        let memory_limit_bytes = sample_b.memory_limit_bytes;
-        let memory_percent = sample_b.legacy_memory_percent.unwrap_or_else(|| {
+        let memory_bytes = sample.memory_bytes;
+        let memory_limit_bytes = sample.memory_limit_bytes;
+        let memory_percent = sample.legacy_memory_percent.unwrap_or_else(|| {
             if memory_limit_bytes > 0 {
                 (memory_bytes as f32 / memory_limit_bytes as f32) * 100.0
             } else {

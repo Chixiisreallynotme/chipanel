@@ -22,6 +22,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::SystemTime};
 use tower_http::{
+    compression::CompressionLayer,
     cors::{Any, CorsLayer},
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
@@ -157,6 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ServeDir::new(&frontend_build_dir).fallback(ServeFile::new(frontend_build_dir.join("index.html"))),
         )
         .layer(cors)
+        .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
         .layer(Extension(ws_hub))
         .layer(Extension(rcon_handle))

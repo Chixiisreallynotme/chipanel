@@ -112,14 +112,18 @@ pub async fn status_handler(
 ) -> Result<Json<ServerStatusCombinedResponse>, AppError> {
     let podman_client = PodmanClient::default();
 
-    let container = match podman_client.inspect_container(&config.podman_container).await {
-        Ok(status) => status,
-        Err(_) => ContainerStatusResponse {
-            status: ServerStatus::Stopped,
-            uptime_seconds: 0,
-            container_id: String::new(),
-        },
-    };
+    let container_fut = podman_client.inspect_container(&config.podman_container);
+    let power_mode_fut = read_power_mode(&config.data_dir);
+    let lazymc_fut = probe_tcp(&config.rcon_host, 25565);
+
+    let (container_res, power_mode, lazymc_active) =
+        tokio::join!(container_fut, power_mode_fut, lazymc_fut);
+
+    let container = container_res.unwrap_or_else(|_| ContainerStatusResponse {
+        status: ServerStatus::Stopped,
+        uptime_seconds: 0,
+        container_id: String::new(),
+    });
 
     let (metrics, rcon_online) = if container.status == ServerStatus::Running {
         let metrics_fut = podman_client.get_container_metrics(&config.podman_container);
@@ -129,9 +133,6 @@ pub async fn status_handler(
     } else {
         (None, false)
     };
-
-    let power_mode = read_power_mode(&config.data_dir).await;
-    let lazymc_active = probe_tcp(&config.rcon_host, 25565).await;
 
     Ok(Json(ServerStatusCombinedResponse {
         container,
@@ -367,7 +368,7 @@ async fn set_lazymc_key(
 /// Best-effort TCP reachability probe — returns whether a listener answered on `port`.
 pub(crate) async fn probe_tcp(host: &str, port: u16) -> bool {
     tokio::time::timeout(
-        std::time::Duration::from_millis(500),
+        std::time::Duration::from_millis(80),
         tokio::net::TcpStream::connect((host, port)),
     )
     .await

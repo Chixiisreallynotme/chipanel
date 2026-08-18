@@ -531,9 +531,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
-		height: calc(100vh - 100px);
-		height: calc(100dvh - 100px);
-		min-height: 600px;
+		flex: 1;
+		min-height: calc(100dvh - 60px - 48px);
 	}
 
 	.files-page-header {
