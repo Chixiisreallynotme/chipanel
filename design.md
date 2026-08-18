@@ -218,6 +218,11 @@ Au cœur du logo ou dans le header de navigation, une diode micro-luminescente d
 | **Arrêté / Maintenance** | Ardoise Neutre (`#64748B`) | Fixe mat sans halo lumineux |
 | **Incident / Crash RCON** | Rouge Terre (`#EF4444`) | Double clignotement d'avertissement |
 
+### 6.3 Composant Implémenté `ChiPanelLogo.svelte`
+Le composant officiel `src/lib/components/common/ChiPanelLogo.svelte` encapsule l'identité vectorielle Stencil et la télémétrie LED réactive :
+- **Props :** `status` ('active' | 'hibernating' | 'busy' | 'stopped' | 'crash', défaut 'active'), `size` (nombre, défaut 32), `showText` (booléen, défaut false).
+- **Intégration :** Déployé dans `src/routes/+layout.svelte` et réactif aux flux SSE/WebSocket de `wsStore`.
+
 ---
 
 ## 7. Typographie, Densité & Mise en Page
@@ -248,6 +253,8 @@ Interdiction formelle des valeurs magiques (`z-index: 9999`). L'échelle est cod
 
 | Before | After | Why |
 | :--- | :--- | :--- |
+| `transition: width 200ms ease;` sur barres de progression | `transform: scaleX(calc(var(--pct) / 100)); transform-origin: left; transition: transform 160ms var(--ease-out);` | Élimine les reflows/layouts CPU et garantit un rendu 60fps GPU-safe sans layout shifts. |
+| `border-left: 3px/4px solid #color;` (side-tab) sur cartes/toasts | `border: 1px solid var(--border);` avec `border-color: var(--accent-*-border)` ou pastille sémantique | Élimine l'anti-pattern IA des side-tabs asymétriques au profit d'une structure matérielle homogène. |
 | `transition: all 200ms ease;` | `transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);` | Bannir `all` pour éviter d'animer accidentellement layout/paint et garantir 60fps constants. |
 | `.btn:active { transform: translateY(1px); }` | `.btn:active { transform: scale(0.97); }` | `scale(0.97)` offre un retour haptique naturel englobant tout le bouton plutôt qu'un saut vertical 1D. |
 | `@keyframes modalSlideUp { from { opacity: 0; transform: translateY(12px) scale(0.98); } }` | `modal { opacity: 1; transform: translateY(0) scale(1); transition: transform 200ms var(--ease-out), opacity 200ms var(--ease-out); } @starting-style { modal { opacity: 0; transform: translateY(8px) scale(0.95); } }` | Élimine les keyframes non interruptibles au profit d'une transition native interruptible partant de `scale(0.95)`. |
@@ -275,6 +282,6 @@ L'interface de ChiPanel s'adapte dynamiquement au profil de l'administrateur hom
 
 ### 9.2 Composants & Matérialité de l'Onboarding
 1. **Conteneur Hardware Multi-Étapes :** Utilisation de l'enveloppe `.hardware-shell` (p-1.5, bordure 1px subtile) et du cœur `.hardware-core` (`#161922`, chanfrein zénithal 1px).
-2. **Jauge d'Allocation Mémoire :** Visualisation segmentée (OS Reserve, Heap Minecraft, Headroom) avec indicateur de saturation au-delà de 75% de la RAM hôte.
+2. **Jauge d'Allocation Mémoire :** Visualisation segmentée (OS Reserve, Heap Minecraft, Headroom) avec indicateur de saturation au-delà de 75% de la RAM hôte (`transform: scaleX(...)` GPU-safe).
 3. **Micro-Interactions Tactiles :** Boutons d'action et tuiles de sélection dotés de `active:scale-[0.97]` et courbes d'accélération `--ease-out`.
 

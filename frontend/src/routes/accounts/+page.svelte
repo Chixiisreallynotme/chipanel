@@ -905,7 +905,7 @@
 		align-items: center;
 		justify-content: center;
 		font-weight: var(--font-weight-bold);
-		font-size: 13px;
+		font-size: var(--font-size-sm);
 	}
 
 	.current-user-tag {
