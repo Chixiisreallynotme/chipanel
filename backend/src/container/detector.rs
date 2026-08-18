@@ -10,18 +10,13 @@ use crate::container::engine::ContainerEngine;
 use crate::container::podman::{find_podman_socket_path, PodmanEngine};
 use crate::container::AnyContainerEngine;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ContainerEngineType {
     Podman,
     Docker,
+    #[default]
     Auto,
-}
-
-impl Default for ContainerEngineType {
-    fn default() -> Self {
-        Self::Auto
-    }
 }
 
 impl fmt::Display for ContainerEngineType {

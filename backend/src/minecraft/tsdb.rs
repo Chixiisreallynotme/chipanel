@@ -205,10 +205,8 @@ impl TsdbEngine {
                 })
                 .map_err(|e| AppError::InternalError(format!("Query failed: {}", e)))?;
 
-            for r in rows {
-                if let Ok(p) = r {
-                    points.push(p);
-                }
+            for p in rows.flatten() {
+                points.push(p);
             }
         } else {
             let mut stmt = conn
@@ -247,10 +245,8 @@ impl TsdbEngine {
                 })
                 .map_err(|e| AppError::InternalError(format!("Grouped query failed: {}", e)))?;
 
-            for r in rows {
-                if let Ok(p) = r {
-                    points.push(p);
-                }
+            for p in rows.flatten() {
+                points.push(p);
             }
         }
 

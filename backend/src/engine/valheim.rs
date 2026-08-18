@@ -114,8 +114,7 @@ impl GameDriver for ValheimDriver {
             let action = mode.trim().to_lowercase();
             match action.as_str() {
                 "off" | "stop" => {
-                    let _ = self
-                        .container
+                    self.container
                         .stop_container(&self.config.podman_container)
                         .await?;
                     Ok(GamePowerModeResult {
@@ -126,8 +125,7 @@ impl GameDriver for ValheimDriver {
                     })
                 }
                 "on" | "start" => {
-                    let _ = self
-                        .container
+                    self.container
                         .start_container(&self.config.podman_container)
                         .await?;
                     Ok(GamePowerModeResult {
@@ -138,8 +136,7 @@ impl GameDriver for ValheimDriver {
                     })
                 }
                 "restart" => {
-                    let _ = self
-                        .container
+                    self.container
                         .restart_container(&self.config.podman_container)
                         .await?;
                     Ok(GamePowerModeResult {

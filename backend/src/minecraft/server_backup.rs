@@ -259,10 +259,10 @@ pub async fn create_server_backup(
                 if !is_world_related {
                     continue;
                 }
-            } else if scope_clone == "configs_only" {
-                if rel_path.contains("/region/") || rel_path.contains("/entities/") {
-                    continue;
-                }
+            } else if scope_clone == "configs_only"
+                && (rel_path.contains("/region/") || rel_path.contains("/entities/"))
+            {
+                continue;
             }
 
             if path.is_file() {

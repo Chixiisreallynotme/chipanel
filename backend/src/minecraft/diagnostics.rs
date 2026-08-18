@@ -100,13 +100,17 @@ pub fn parse_and_classify_crash_report(
         // Try to identify suspected plugin or mod name from stack trace
         for line in content.lines() {
             let tr = line.trim();
-            if tr.starts_with("at ") && (tr.contains("com.") || tr.contains("org.") || tr.contains("net.") || tr.contains("fr.")) {
-                if !tr.contains("net.minecraft") && !tr.contains("java.") && !tr.contains("jdk.") && !tr.contains("org.bukkit.craftbukkit") {
-                    let segments: Vec<&str> = tr.split('.').collect();
-                    if segments.len() >= 2 {
-                        suspected_source = Some(segments[1].to_string());
-                        break;
-                    }
+            if tr.starts_with("at ")
+                && (tr.contains("com.") || tr.contains("org.") || tr.contains("net.") || tr.contains("fr."))
+                && !tr.contains("net.minecraft")
+                && !tr.contains("java.")
+                && !tr.contains("jdk.")
+                && !tr.contains("org.bukkit.craftbukkit")
+            {
+                let segments: Vec<&str> = tr.split('.').collect();
+                if segments.len() >= 2 {
+                    suspected_source = Some(segments[1].to_string());
+                    break;
                 }
             }
         }
