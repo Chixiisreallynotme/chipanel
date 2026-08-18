@@ -214,6 +214,7 @@
 			current,
 			max: item.max_damage,
 			percent,
+			ratio,
 			colorClass
 		};
 	}
@@ -518,7 +519,7 @@
 		<div class="durability-bar-container" title="Durability: {dur.current} / {dur.max}">
 			<div
 				class="durability-bar-fill {dur.colorClass}"
-				style="width: {dur.percent}%;"
+				style="transform: scaleX({dur.ratio});"
 			></div>
 		</div>
 	{/if}
@@ -897,8 +898,10 @@
 	}
 
 	.durability-bar-fill {
+		width: 100%;
 		height: 100%;
-		transition: width var(--transition-fast);
+		transform-origin: left;
+		transition: transform var(--transition-fast) var(--ease-out);
 	}
 
 	.durability-high {

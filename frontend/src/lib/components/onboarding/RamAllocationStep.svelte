@@ -18,10 +18,14 @@
 	// OS Reserve (at least 2 GB or 25% of host memory)
 	const osReserveGb = 2.0;
 
-	// Memory breakdown percentages
+	// Memory breakdown percentages and normalized scales
 	let heapPercentage = $derived(Math.min(100, (allocatedRamGb / hostRamGb) * 100));
 	let osPercentage = $derived(Math.min(100, (osReserveGb / hostRamGb) * 100));
 	let freePercentage = $derived(Math.max(0, 100 - heapPercentage - osPercentage));
+
+	let osScale = $derived(Math.max(0, Math.min(1, osPercentage / 100)));
+	let heapScale = $derived(Math.max(0, Math.min(1, heapPercentage / 100)));
+	let freeScale = $derived(Math.max(0, Math.min(1, freePercentage / 100)));
 
 	// High memory usage alert threshold (> 75% of host RAM)
 	let isOverAllocated = $derived(allocatedRamGb > hostRamGb * 0.75);
@@ -53,9 +57,9 @@
 	<div class="hardware-probe-card">
 		<div class="probe-header">
 			<div class="probe-meta">
-				<HardDrive size={18} class="probe-icon" />
+				<span class="probe-icon"><HardDrive size={18} /></span>
 				<span class="probe-title">Mémoire système détectée :</span>
-				<span class="probe-val font-mono">{hostRamGb.toFixed(1)} Go RAM</span>
+				<span class="probe-val font-mono tabular-nums">{hostRamGb.toFixed(1)} Go RAM</span>
 			</div>
 
 			<button
@@ -66,43 +70,43 @@
 				title="Appliquer automatiquement l'allocation optimale calculée pour votre matériel"
 			>
 				<Sparkles size={13} />
-				<span>Appliquer recommandation ({recommendedRamGb} Go)</span>
+				<span>Appliquer recommandation (<span class="font-mono tabular-nums">{recommendedRamGb} Go</span>)</span>
 			</button>
 		</div>
 
-		<!-- Segmented Memory Allocation Bar -->
+		<!-- Segmented Memory Allocation Bar (GPU-safe transform: scaleX) -->
 		<div class="memory-meter-container">
 			<div class="memory-meter-bar">
 				<div
-					class="meter-segment segment-os"
-					style="width: {osPercentage}%"
-					title={`Réserve Système OS & ChiPanel : ${osReserveGb} Go`}
+					class="meter-segment segment-free"
+					style="transform: translate3d({(osPercentage + heapPercentage).toFixed(2)}%, 0, 0) scaleX({freeScale.toFixed(4)});"
+					title={`Mémoire Libre Restante : ${(hostRamGb - allocatedRamGb - osReserveGb).toFixed(1)} Go`}
 				></div>
 				<div
 					class="meter-segment segment-heap"
-					style="width: {heapPercentage}%"
+					style="transform: translate3d({osPercentage.toFixed(2)}%, 0, 0) scaleX({heapScale.toFixed(4)});"
 					title={`Mémoire Allouée au Serveur : ${allocatedRamGb} Go`}
 				></div>
 				<div
-					class="meter-segment segment-free"
-					style="width: {freePercentage}%"
-					title={`Mémoire Libre Restante : ${(hostRamGb - allocatedRamGb - osReserveGb).toFixed(1)} Go`}
+					class="meter-segment segment-os"
+					style="transform: scaleX({osScale.toFixed(4)});"
+					title={`Réserve Système OS & ChiPanel : ${osReserveGb} Go`}
 				></div>
 			</div>
 
 			<div class="meter-legend">
 				<div class="legend-item">
 					<span class="legend-dot dot-os"></span>
-					<span class="legend-label">OS & ChiPanel ({osReserveGb} Go)</span>
+					<span class="legend-label">OS & ChiPanel (<span class="num tabular-nums font-mono">{osReserveGb.toFixed(1)} Go</span>)</span>
 				</div>
 				<div class="legend-item">
 					<span class="legend-dot dot-heap"></span>
-					<span class="legend-label">Serveur Minecraft ({allocatedRamGb} Go)</span>
+					<span class="legend-label">Serveur Minecraft (<span class="num tabular-nums font-mono">{allocatedRamGb} Go</span>)</span>
 				</div>
 				<div class="legend-item">
 					<span class="legend-dot dot-free"></span>
 					<span class="legend-label">
-						Marge disponible ({Math.max(0, hostRamGb - allocatedRamGb - osReserveGb).toFixed(1)} Go)
+						Marge disponible (<span class="num tabular-nums font-mono">{Math.max(0, hostRamGb - allocatedRamGb - osReserveGb).toFixed(1)} Go</span>)
 					</span>
 				</div>
 			</div>
@@ -114,7 +118,7 @@
 		<div class="slider-header">
 			<span class="slider-label">Allocation pour le conteneur Minecraft</span>
 			<div class="slider-display-badge">
-				<span class="slider-number font-mono">{allocatedRamGb}</span>
+				<span class="slider-number font-mono tabular-nums">{allocatedRamGb}</span>
 				<span class="slider-unit">Go</span>
 			</div>
 		</div>
@@ -131,7 +135,7 @@
 			/>
 		</div>
 
-		<div class="slider-ticks-row font-mono">
+		<div class="slider-ticks-row font-mono tabular-nums">
 			<span>1 Go</span>
 			<span>2 Go</span>
 			<span>4 Go</span>
@@ -145,7 +149,7 @@
 		<!-- Capacity Indicator -->
 		<div class="capacity-info-box">
 			<div class="capacity-row">
-				<Info size={14} class="text-blue" />
+				<span class="probe-icon"><Info size={14} /></span>
 				<span class="capacity-title">Capacité estimée :</span>
 				<span class="capacity-value">{estimatedPlayers}</span>
 			</div>
@@ -153,7 +157,7 @@
 
 		{#if isOverAllocated}
 			<div class="warning-alert-box">
-				<AlertTriangle size={15} class="text-warning-icon" />
+				<span class="text-warning-icon"><AlertTriangle size={15} /></span>
 				<div class="warning-text">
 					<strong>Attention :</strong> Vous allouez plus de 75% de la mémoire de la machine. Si d'autres services fonctionnent sur l'hôte, cela peut entraîner des ralentissements système.
 				</div>
@@ -197,7 +201,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.2);
 	}
 
 	.probe-header {
@@ -216,6 +220,7 @@
 
 	.probe-icon {
 		color: var(--accent-blue-text);
+		flex-shrink: 0;
 	}
 
 	.probe-title {
@@ -246,7 +251,7 @@
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-semibold);
 		cursor: pointer;
-		transition: transform 150ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
+		transition: transform 160ms var(--ease-out), background-color 150ms var(--ease-out), border-color 150ms var(--ease-out);
 	}
 
 	.recommendation-chip:hover {
@@ -271,29 +276,40 @@
 	}
 
 	.memory-meter-bar {
+		position: relative;
 		height: 12px;
 		background-color: var(--bg-base);
 		border-radius: 6px;
 		overflow: hidden;
-		display: flex;
 		border: 1px solid var(--border);
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
 	}
 
 	.meter-segment {
+		position: absolute;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		width: 100%;
 		height: 100%;
-		transition: width 200ms var(--ease-out);
+		transform-origin: left;
+		transition: transform 160ms var(--ease-out);
+		will-change: transform;
 	}
 
 	.segment-os {
 		background-color: #4B5563; /* Cool Slate Gray */
+		z-index: 2;
 	}
 
 	.segment-heap {
 		background-color: var(--accent-blue);
+		z-index: 1;
 	}
 
 	.segment-free {
 		background-color: #1F2937;
+		z-index: 0;
 	}
 
 	.meter-legend {
@@ -321,6 +337,10 @@
 	.dot-heap { background-color: var(--accent-blue); }
 	.dot-free { background-color: #1F2937; border: 1px solid var(--border-focus); }
 
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
+	}
+
 	.slider-control-card {
 		background-color: var(--bg-surface);
 		border: 1px solid var(--border);
@@ -329,6 +349,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.2);
 	}
 
 	.slider-header {
@@ -352,7 +373,7 @@
 		border: 1px solid var(--accent-blue);
 		padding: 4px 12px;
 		border-radius: var(--radius-btn);
-		box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+		box-shadow: 0 0 12px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	}
 
 	.slider-number {
@@ -374,6 +395,7 @@
 
 	.ram-range-slider {
 		-webkit-appearance: none;
+		appearance: none;
 		width: 100%;
 		height: 8px;
 		background: var(--bg-base);
@@ -393,7 +415,7 @@
 		border: 3px solid var(--accent-blue);
 		cursor: pointer;
 		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-		transition: transform 120ms ease;
+		transition: transform 120ms var(--ease-out);
 	}
 
 	.ram-range-slider::-webkit-slider-thumb:hover {
@@ -467,9 +489,5 @@
 		font-size: var(--font-size-xs);
 		color: var(--accent-orange-text);
 		line-height: 1.4;
-	}
-
-	.text-blue {
-		color: var(--accent-blue-text);
 	}
 </style>

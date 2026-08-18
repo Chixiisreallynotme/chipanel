@@ -170,8 +170,9 @@
 					class="btn mode-btn mode-off {powerMode === 'off' ? 'mode-active' : ''} {loadingMode === 'off' ? 'btn-loading' : ''}"
 					onclick={() => requestMode('off')}
 					disabled={loadingMode !== null}
+					type="button"
 				>
-					<Power size={16} />
+					<Power size={15} />
 					<span>Éteint</span>
 				</button>
 
@@ -179,8 +180,9 @@
 					class="btn mode-btn mode-on {powerMode === 'on' ? 'mode-active' : ''} {loadingMode === 'on' ? 'btn-loading' : ''}"
 					onclick={() => requestMode('on')}
 					disabled={loadingMode !== null}
+					type="button"
 				>
-					<Play size={16} />
+					<Play size={15} />
 					<span>Allumé</span>
 				</button>
 
@@ -188,18 +190,19 @@
 					class="btn mode-btn mode-hibernate {powerMode === 'hibernate' ? 'mode-active' : ''} {loadingMode === 'hibernate' ? 'btn-loading' : ''}"
 					onclick={() => requestMode('hibernate')}
 					disabled={loadingMode !== null}
+					type="button"
 				>
-					<Moon size={16} />
+					<Moon size={15} />
 					<span>Hibernation</span>
 				</button>
 			</div>
 
-			<a href="/setup" class="btn btn-secondary" title="Lancer l'assistant de configuration 1-clic">
+			<a href="/setup" class="btn btn-secondary header-action-btn" title="Lancer l'assistant de configuration 1-clic">
 				<Sparkles size={16} class="text-blue" />
 				<span>Assistant 1-Click</span>
 			</a>
 
-			<button class="btn btn-secondary" onclick={fetchServerInfo} title="Actualiser la télémétrie">
+			<button class="btn btn-secondary header-action-btn" onclick={fetchServerInfo} title="Actualiser la télémétrie" type="button">
 				<RotateCw size={16} />
 				<span>Actualiser</span>
 			</button>
@@ -220,6 +223,7 @@
 				class="btn btn-ghost btn-icon btn-sm"
 				onclick={() => (modeError = null)}
 				aria-label="Masquer l'erreur"
+				type="button"
 			>
 				<X size={14} />
 			</button>
@@ -242,7 +246,7 @@
 	<!-- 2. KPI Cards Row (5 Cards - Real Live Metrics) -->
 	<TelemetryGauges />
 
-	<!-- 3. Middle Section (3 Grid Columns) -->
+	<!-- 3. Middle Section (3 Grid Columns - Bento Grid) -->
 	<div class="middle-grid">
 		<!-- Left Column: Joueurs en ligne (real history, uPlot) -->
 		<MetricsChart
@@ -259,7 +263,7 @@
 		<RecentActivityFeed />
 	</div>
 
-	<!-- 4. Bottom Section (3 Grid Columns) -->
+	<!-- 4. Bottom Section (3 Grid Columns - Bento Grid) -->
 	<div class="bottom-grid">
 		<MetricsChart
 			historyData={metricsHistory}
@@ -306,61 +310,79 @@
 		color: var(--text-secondary);
 		font-size: var(--font-size-sm);
 		margin-top: 2px;
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-2);
 	}
 
 	.header-actions {
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
+		flex-wrap: wrap;
 	}
 
 	.mode-selector {
 		display: inline-flex;
-		align-items: stretch;
-		gap: var(--space-1);
-		padding: var(--space-1);
+		align-items: center;
+		gap: 3px;
+		padding: 3px;
 		background: var(--bg-base);
 		border: 1px solid var(--border);
-		border-radius: var(--radius-badge);
+		border-radius: var(--radius-btn);
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 	}
 
 	.mode-btn {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: 6px;
+		height: 32px;
+		padding: 0 var(--space-3);
 		background: transparent;
 		color: var(--text-secondary);
 		border: 1px solid transparent;
-		border-radius: calc(var(--radius-badge) - 2px);
+		border-radius: calc(var(--radius-btn) - 3px);
+		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-semibold);
-		transition: all var(--transition-fast);
+		cursor: pointer;
+		transition: transform var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 	}
 
 	.mode-btn:hover:not(:disabled) {
 		color: var(--text-primary);
+		background: rgba(255, 255, 255, 0.04);
+	}
+
+	.mode-btn:active:not(:disabled) {
+		transform: scale(0.97);
 	}
 
 	.mode-active.mode-off {
 		background: var(--danger-bg);
 		border-color: var(--danger-border);
 		color: var(--danger-text);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 	}
 
 	.mode-active.mode-on {
 		background: var(--accent-green-bg);
 		border-color: var(--accent-green-border);
-		color: var(--accent-green);
+		color: var(--accent-green-text);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 	}
 
 	.mode-active.mode-hibernate {
-		background: var(--warning-bg, rgba(245, 158, 11, 0.12));
-		border-color: var(--warning-border, rgba(245, 158, 11, 0.3));
-		color: var(--warning);
+		background: var(--warning-bg);
+		border-color: var(--warning-border);
+		color: var(--warning-text, #FBBF24);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 	}
 
 	.mode-badge {
-		display: inline-block;
-		margin-left: var(--space-2);
+		display: inline-flex;
+		align-items: center;
 		padding: 1px 8px;
 		border-radius: var(--radius-badge);
 		font-size: var(--font-size-xs);
@@ -378,16 +400,24 @@
 	.mode-badge-on {
 		background: var(--accent-green-bg);
 		border-color: var(--accent-green-border);
-		color: var(--accent-green);
+		color: var(--accent-green-text);
 	}
 
 	.mode-badge-hibernate {
-		background: var(--warning-bg, rgba(245, 158, 11, 0.12));
-		border-color: var(--warning-border, rgba(245, 158, 11, 0.3));
-		color: var(--warning);
+		background: var(--warning-bg);
+		border-color: var(--warning-border);
+		color: var(--warning-text, #FBBF24);
 	}
 
-	/* Persistent inline alerts — a failed power action must stay on screen. */
+	.header-action-btn {
+		transition: transform var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+	}
+
+	.header-action-btn:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+
+	/* Persistent inline alerts */
 	.page-alert {
 		display: flex;
 		align-items: flex-start;
@@ -395,6 +425,7 @@
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-card);
 		border: 1px solid transparent;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 	}
 
 	.alert-danger {
@@ -404,9 +435,9 @@
 	}
 
 	.alert-warning {
-		background-color: var(--warning-bg, rgba(245, 158, 11, 0.12));
-		border-color: var(--warning-border, rgba(245, 158, 11, 0.3));
-		color: var(--warning);
+		background-color: var(--warning-bg);
+		border-color: var(--warning-border);
+		color: var(--warning-text, #FBBF24);
 	}
 
 	.alert-body {
@@ -434,23 +465,25 @@
 		word-break: break-word;
 	}
 
-	/* Middle & Bottom Grids */
+	/* Middle & Bottom Bento Grids */
 	.middle-grid,
 	.bottom-grid {
 		display: grid;
-		/* minmax(0, …) so a chart can never widen its own column (A15/B2). */
+		grid-auto-flow: dense;
 		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
 		gap: var(--space-6);
 	}
 
-	/* :global(*) because the grid children are components — Svelte cannot scope a
-	   bare `> *` onto them, and the rule would be silently dropped. */
 	.middle-grid > :global(*),
 	.bottom-grid > :global(*) {
 		min-width: 0;
 		height: 100%;
 		display: flex;
 		flex-direction: column;
+	}
+
+	.text-blue {
+		color: var(--accent-blue-text);
 	}
 
 	@media (max-width: 1100px) {

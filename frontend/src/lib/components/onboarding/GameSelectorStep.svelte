@@ -1,5 +1,5 @@
 <script>
-	import { Monitor, Gamepad2, Layers, CheckCircle2, ShieldCheck, Zap } from 'lucide-svelte';
+	import { Monitor, Gamepad2, Layers, CheckCircle2 } from 'lucide-svelte';
 
 	let { selectedGame = $bindable('JAVA') } = $props();
 
@@ -63,7 +63,7 @@
 						{#if option.recommended}
 							<span class="badge badge-success">Recommandé</span>
 						{/if}
-						<span class="badge font-mono">{option.badge}</span>
+						<span class="badge font-mono tabular-nums">{option.badge}</span>
 					</div>
 				</div>
 
@@ -78,7 +78,7 @@
 				<div class="highlights-list">
 					{#each option.highlights as item}
 						<div class="highlight-item">
-							<CheckCircle2 size={12} class="highlight-icon" />
+							<span class="highlight-icon"><CheckCircle2 size={12} /></span>
 							<span>{item}</span>
 						</div>
 					{/each}
@@ -164,7 +164,7 @@
 	.game-card.selected {
 		border-color: var(--accent-blue);
 		background-color: #171B26;
-		box-shadow: inset 0 1px 0 rgba(59, 130, 246, 0.2), 0 0 0 1px var(--accent-blue), 0 8px 24px rgba(0, 0, 0, 0.4);
+		box-shadow: inset 0 1px 0 rgba(59, 130, 246, 0.25), 0 0 0 1px var(--accent-blue), 0 8px 24px rgba(0, 0, 0, 0.4);
 	}
 
 	.card-top-row {
@@ -185,7 +185,8 @@
 		align-items: center;
 		justify-content: center;
 		color: var(--text-secondary);
-		transition: color 150ms ease, background-color 150ms ease;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+		transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 	}
 
 	.icon-avatar.icon-selected {
@@ -255,6 +256,9 @@
 
 	.highlight-icon {
 		color: var(--accent-green);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		flex-shrink: 0;
 	}
 
@@ -275,7 +279,7 @@
 		align-items: center;
 		justify-content: center;
 		background-color: var(--bg-base);
-		transition: border-color 150ms ease;
+		transition: border-color 150ms ease, background-color 150ms ease;
 	}
 
 	.radio-circle.selected {
@@ -300,4 +304,9 @@
 		color: var(--accent-blue-text);
 		font-weight: var(--font-weight-semibold);
 	}
+
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
+	}
 </style>
+

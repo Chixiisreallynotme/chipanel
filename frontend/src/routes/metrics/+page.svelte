@@ -563,7 +563,7 @@
 	.toast {
 		pointer-events: auto;
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border-focus);
+		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
 		box-shadow: var(--elevation-shadow);
 		padding: var(--space-3) var(--space-4);
@@ -574,19 +574,19 @@
 	}
 
 	.toast-success {
-		border-left: 3px solid var(--accent-green);
+		border-color: var(--accent-green-border);
 	}
 
 	.toast-danger {
-		border-left: 3px solid var(--danger);
+		border-color: var(--danger-border);
 	}
 
 	.toast-warning {
-		border-left: 3px solid var(--warning);
+		border-color: var(--accent-orange-border);
 	}
 
 	.toast-info {
-		border-left: 3px solid var(--accent-blue);
+		border-color: var(--accent-blue-border);
 	}
 
 	.toast-icon {

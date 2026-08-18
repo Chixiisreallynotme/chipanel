@@ -1718,19 +1718,19 @@
 	.toast-item {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.875rem 1.25rem;
-		border-radius: 12px;
-		background: #1e293b;
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-card);
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
 		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-		color: #f8fafc;
+		color: var(--text-primary);
 		min-width: 320px;
 	}
 
-	.toast-success { border-left: 3px solid #10b981; }
-	.toast-warning { border-left: 3px solid #f59e0b; }
-	.toast-error { border-left: 3px solid #ef4444; }
+	.toast-success { border-color: var(--accent-green-border); }
+	.toast-warning { border-color: var(--accent-orange-border); }
+	.toast-error { border-color: var(--danger-border); }
 
 	.toast-copy {
 		display: flex;

@@ -1,5 +1,5 @@
 <script>
-	import { Zap, Cpu, Box, Sparkles, Sliders, ChevronDown, Check, Info } from 'lucide-svelte';
+	import { Zap, Cpu, Box, Sparkles, Sliders, ChevronDown, Check, Hammer } from 'lucide-svelte';
 
 	let {
 		selectedEngine = $bindable('PURPUR'),
@@ -60,6 +60,19 @@
 			pluginsSupport: true
 		},
 		{
+			id: 'FORGE',
+			name: 'Forge / NeoForge',
+			category: 'Moddé Avancé',
+			description: 'Le chargeur de mods historique supportant les grands modpacks techniques et d’aventure (All The Mods, Create, RLCraft).',
+			ramRequirement: '4 à 8 Go',
+			badge: 'Gros Modpacks',
+			badgeType: 'badge-orange',
+			icon: Hammer,
+			pros: ['Compatibilité modpacks maximale', 'Support NeoForge & Forge', 'Gestion NBT complexe'],
+			modsSupport: true,
+			pluginsSupport: false
+		},
+		{
 			id: 'VANILLA',
 			name: 'Vanilla Officiel Mojang',
 			category: 'Jeu Pur',
@@ -112,7 +125,7 @@
 	<!-- Curated Presets Bar -->
 	<div class="presets-section">
 		<div class="presets-header">
-			<Sparkles size={14} class="preset-header-icon" />
+			<span class="icon-wrap-blue"><Sparkles size={14} /></span>
 			<span class="presets-label">Modèles Pré-configurés 1-Click (Templates)</span>
 		</div>
 
@@ -127,7 +140,7 @@
 					<div class="template-top">
 						<span class="template-name">{tpl.name}</span>
 						{#if selectedTemplate === tpl.id}
-							<Check size={14} class="text-green" />
+							<span class="check-icon"><Check size={14} /></span>
 						{/if}
 					</div>
 					<p class="template-desc">{tpl.description}</p>
@@ -156,7 +169,7 @@
 
 					<div class="badges-group">
 						<span class="badge {engine.badgeType}">{engine.badge}</span>
-						<span class="badge font-mono">RAM : {engine.ramRequirement}</span>
+						<span class="badge font-mono tabular-nums">RAM : {engine.ramRequirement}</span>
 					</div>
 				</div>
 
@@ -180,7 +193,7 @@
 				<div class="engine-selection-footer">
 					<div class="radio-pill" class:selected={selectedEngine === engine.id}>
 						{#if selectedEngine === engine.id}
-							<Check size={12} class="text-white" />
+							<Check size={12} />
 							<span>Moteur Actif</span>
 						{:else}
 							<span>Choisir ce moteur</span>
@@ -196,18 +209,21 @@
 		<div class="version-card-header">
 			<div class="version-meta">
 				<span class="version-label">Version de Minecraft :</span>
-				<span class="version-selected-badge font-mono">
+				<span class="version-selected-badge font-mono tabular-nums">
 					{standardVersions.find((v) => v.id === selectedVersion)?.label || selectedVersion}
 				</span>
 			</div>
 
 			<button
 				type="button"
-				class="btn btn-secondary btn-sm"
+				class="btn btn-secondary btn-sm version-toggle-btn"
 				onclick={() => (showCustomVersion = !showCustomVersion)}
+				aria-expanded={showCustomVersion}
 			>
 				<span>{showCustomVersion ? 'Masquer les versions' : 'Changer de version'}</span>
-				<ChevronDown size={14} class={showCustomVersion ? 'rotate-180' : ''} />
+				<span class="chevron-wrapper" class:rotated={showCustomVersion}>
+					<ChevronDown size={14} />
+				</span>
 			</button>
 		</div>
 
@@ -223,12 +239,12 @@
 							showCustomVersion = false;
 						}}
 					>
-						<span class="font-mono">{v.label}</span>
+						<span class="font-mono tabular-nums">{v.label}</span>
 						{#if v.tag}
 							<span class="badge badge-success">{v.tag}</span>
 						{/if}
 						{#if selectedVersion === v.id}
-							<Check size={14} class="text-blue" />
+							<span class="check-icon-blue"><Check size={14} /></span>
 						{/if}
 					</button>
 				{/each}
@@ -272,6 +288,7 @@
 		background-color: rgba(255, 255, 255, 0.02);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-card);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 	}
 
 	.presets-header {
@@ -283,10 +300,6 @@
 		font-weight: var(--font-weight-semibold);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-	}
-
-	.preset-header-icon {
-		color: var(--accent-blue);
 	}
 
 	.templates-grid {
@@ -305,7 +318,8 @@
 		border-radius: var(--radius-input);
 		text-align: left;
 		cursor: pointer;
-		transition: transform 150ms var(--ease-out), border-color 150ms ease, background-color 150ms ease;
+		transition: transform 160ms var(--ease-out), border-color 150ms var(--ease-out), background-color 150ms var(--ease-out);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
 	.template-card:hover {
@@ -320,6 +334,7 @@
 	.template-card.active {
 		border-color: var(--accent-blue);
 		background-color: rgba(59, 130, 246, 0.08);
+		box-shadow: inset 0 1px 0 rgba(59, 130, 246, 0.2);
 	}
 
 	.template-top {
@@ -378,7 +393,7 @@
 	.engine-card.selected {
 		border-color: var(--accent-blue);
 		background-color: #171B26;
-		box-shadow: inset 0 1px 0 rgba(59, 130, 246, 0.2), 0 0 0 1px var(--accent-blue), 0 8px 24px rgba(0, 0, 0, 0.4);
+		box-shadow: inset 0 1px 0 rgba(59, 130, 246, 0.25), 0 0 0 1px var(--accent-blue), 0 8px 24px rgba(0, 0, 0, 0.4);
 	}
 
 	.engine-top-row {
@@ -399,6 +414,8 @@
 		align-items: center;
 		justify-content: center;
 		color: var(--text-secondary);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+		transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
 	}
 
 	.engine-icon-avatar.icon-selected {
@@ -490,6 +507,7 @@
 		font-weight: var(--font-weight-medium);
 		padding: 3px 8px;
 		border-radius: var(--radius-sm);
+		transition: background-color 150ms ease, color 150ms ease;
 	}
 
 	.radio-pill.selected {
@@ -506,6 +524,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.2);
 	}
 
 	.version-card-header {
@@ -537,6 +556,25 @@
 		border: 1px solid var(--accent-blue-border);
 	}
 
+	.version-toggle-btn {
+		transition: transform 160ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
+	}
+
+	.version-toggle-btn:active {
+		transform: scale(0.97);
+	}
+
+	.chevron-wrapper {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: transform 160ms var(--ease-out);
+	}
+
+	.chevron-wrapper.rotated {
+		transform: rotate(180deg);
+	}
+
 	.version-options-list {
 		display: flex;
 		flex-direction: column;
@@ -558,7 +596,7 @@
 		color: var(--text-primary);
 		font-size: var(--font-size-xs);
 		cursor: pointer;
-		transition: background-color 150ms ease, border-color 150ms ease;
+		transition: transform 160ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
 	}
 
 	.version-option-btn:hover {
@@ -566,25 +604,38 @@
 		background-color: var(--bg-elevated);
 	}
 
+	.version-option-btn:active {
+		transform: scale(0.97);
+	}
+
 	.version-option-btn.active {
 		border-color: var(--accent-blue);
 		background-color: rgba(59, 130, 246, 0.1);
 	}
 
-	.text-blue {
+	.icon-wrap-blue {
 		color: var(--accent-blue-text);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.text-green {
+	.check-icon {
 		color: var(--accent-green);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.text-white {
-		color: #FFFFFF;
+	.check-icon-blue {
+		color: var(--accent-blue-text);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.rotate-180 {
-		transform: rotate(180deg);
-		transition: transform 150ms ease;
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
 	}
 </style>
+

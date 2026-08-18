@@ -59,11 +59,11 @@
 		</div>
 		<div class="kpi-sub">
 			{#if srv.containerRunning === true}
-				<span class="pulse-dot"></span>
+				<span class="telemetry-led telemetry-led-active"></span>
 			{:else if srv.containerRunning === false}
-				<span class="offline-dot"></span>
+				<span class="telemetry-led telemetry-led-stopped"></span>
 			{:else}
-				<span class="unknown-dot"></span>
+				<span class="telemetry-led telemetry-led-crash"></span>
 			{/if}
 			<span>{statusDetail}</span>
 		</div>
@@ -77,14 +77,14 @@
 			</div>
 			<div class="kpi-meta">
 				<span class="kpi-label">Joueurs en ligne</span>
-				<span class="kpi-val">
+				<span class="kpi-val tabular-nums">
 					{srv.onlinePlayers ?? UNAVAILABLE}
 					<span class="val-sub">/ {srv.maxPlayers ?? UNAVAILABLE}</span>
 				</span>
 			</div>
 		</div>
 		<div class="kpi-sub text-muted">
-			<span>
+			<span class="tabular-nums">
 				{srv.onlinePlayers == null
 					? 'Liste des joueurs indisponible'
 					: `${srv.onlinePlayers} connecté(s)`}
@@ -100,11 +100,14 @@
 			</div>
 			<div class="kpi-meta">
 				<span class="kpi-label">Utilisation CPU</span>
-				<span class="kpi-val">{fmtNum(srv.cpuPercent, 1)}{srv.cpuPercent == null ? '' : '%'}</span>
+				<span class="kpi-val tabular-nums">{fmtNum(srv.cpuPercent, 1)}{srv.cpuPercent == null ? '' : '%'}</span>
 			</div>
 		</div>
 		<div class="kpi-progress-bar-track">
-			<div class="kpi-progress-bar-fill bar-blue" style="width: {barWidth(srv.cpuPercent)}%"></div>
+			<div
+				class="kpi-progress-bar-fill bar-blue"
+				style="--pct: {barWidth(srv.cpuPercent)}; transform: scaleX(calc(var(--pct) / 100));"
+			></div>
 		</div>
 	</div>
 
@@ -116,15 +119,18 @@
 			</div>
 			<div class="kpi-meta">
 				<span class="kpi-label">Mémoire RAM</span>
-				<span class="kpi-val">
+				<span class="kpi-val tabular-nums">
 					{fmtNum(srv.memoryPercent, 0)}{srv.memoryPercent == null ? '' : '%'}
 				</span>
 			</div>
 		</div>
 		<div class="kpi-progress-bar-track">
-			<div class="kpi-progress-bar-fill bar-purple" style="width: {barWidth(srv.memoryPercent)}%"></div>
+			<div
+				class="kpi-progress-bar-fill bar-purple"
+				style="--pct: {barWidth(srv.memoryPercent)}; transform: scaleX(calc(var(--pct) / 100));"
+			></div>
 		</div>
-		<span class="kpi-sub-text">{formattedRam}</span>
+		<span class="kpi-sub-text tabular-nums">{formattedRam}</span>
 	</div>
 
 	<!-- 5. Performance TPS -->
@@ -135,7 +141,7 @@
 			</div>
 			<div class="kpi-meta">
 				<span class="kpi-label">TPS (Ticks/sec)</span>
-				<span class="kpi-val">{srv.tps == null ? 'n/a' : srv.tps.toFixed(1)}</span>
+				<span class="kpi-val tabular-nums">{srv.tps == null ? 'n/a' : srv.tps.toFixed(1)}</span>
 			</div>
 		</div>
 		<div class="kpi-sub {tpsStatus.colorClass} flex-align">
@@ -160,11 +166,20 @@
 
 	.kpi-card {
 		padding: var(--space-4);
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.2);
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
 		gap: var(--space-3);
 		min-height: 110px;
+		transition: border-color var(--transition-fast), transform var(--transition-fast);
+	}
+
+	.kpi-card:hover {
+		border-color: var(--border-focus);
 	}
 
 	.kpi-top {
@@ -176,16 +191,17 @@
 	.kpi-icon-badge {
 		width: 36px;
 		height: 36px;
-		border-radius: var(--radius-btn);
+		border-radius: var(--radius-input);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	}
 
 	.badge-green {
 		background-color: var(--accent-green-bg);
-		color: var(--accent-green);
+		color: var(--accent-green-text);
 		border: 1px solid var(--accent-green-border);
 	}
 
@@ -247,53 +263,37 @@
 		gap: 6px;
 	}
 
-	.pulse-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background-color: var(--accent-green);
-		box-shadow: 0 0 8px var(--accent-green);
-	}
-
-	.offline-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background-color: var(--danger);
-	}
-
-	.unknown-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background-color: var(--text-muted);
-	}
-
 	.kpi-progress-bar-track {
 		height: 4px;
 		background: var(--bg-base);
-		border-radius: 2px;
+		border-radius: var(--radius-badge);
 		overflow: hidden;
+		border: 1px solid var(--border-subtle);
 		margin-top: 4px;
 	}
 
 	.kpi-progress-bar-fill {
 		height: 100%;
-		border-radius: 2px;
-		transition: width var(--transition-fast);
+		width: 100%;
+		border-radius: var(--radius-badge);
+		transform-origin: left;
+		transition: transform var(--transition-fast);
 	}
 
 	.bar-blue {
 		background-color: var(--accent-blue);
+		box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
 	}
 
 	.bar-purple {
 		background-color: var(--accent-purple);
+		box-shadow: 0 0 6px rgba(139, 92, 246, 0.4);
 	}
 
 	.kpi-sub-text {
 		font-size: 0.6875rem;
 		color: var(--text-muted);
+		font-family: var(--font-mono);
 	}
 
 	.flex-align {
@@ -302,8 +302,12 @@
 		gap: 4px;
 	}
 
-	.text-green { color: var(--accent-green); }
-	.text-warning { color: var(--warning); }
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.text-green { color: var(--accent-green-text); }
+	.text-warning { color: var(--warning-text, #FBBF24); }
 	.text-danger { color: var(--danger-text); }
 	.text-muted { color: var(--text-muted); }
 </style>

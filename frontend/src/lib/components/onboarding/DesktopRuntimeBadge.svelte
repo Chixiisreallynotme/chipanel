@@ -1,6 +1,6 @@
 <script>
 	import { preferences } from '$lib/stores/preferences.svelte.js';
-	import { Laptop, Server, Cpu, CheckCircle2, ShieldCheck, Activity } from 'lucide-svelte';
+	import { Laptop, Server, Cpu, ShieldCheck, Activity } from 'lucide-svelte';
 
 	let { showDetails = false } = $props();
 
@@ -15,9 +15,9 @@
 <div class="runtime-badge-container">
 	<div class="runtime-pill" title={`Environnement détecté : ${runtimeLabel}`}>
 		{#if preferences.isDesktop}
-			<Laptop size={13} class="text-blue" />
+			<span class="icon-wrap-blue"><Laptop size={13} /></span>
 		{:else}
-			<Server size={13} class="text-green" />
+			<span class="icon-wrap-green"><Server size={13} /></span>
 		{/if}
 		<span class="runtime-text">{runtimeLabel}</span>
 		<span class="status-dot status-dot-success"></span>
@@ -27,7 +27,7 @@
 		<div class="runtime-details-grid">
 			<div class="detail-item">
 				<div class="detail-label">
-					<Cpu size={12} class="detail-icon" />
+					<span class="detail-icon"><Cpu size={12} /></span>
 					<span>Moteur Conteneur</span>
 				</div>
 				<div class="detail-value">
@@ -43,20 +43,20 @@
 
 			<div class="detail-item">
 				<div class="detail-label">
-					<Activity size={12} class="detail-icon" />
+					<span class="detail-icon"><Activity size={12} /></span>
 					<span>Java Détecté</span>
 				</div>
-				<div class="detail-value font-mono">
+				<div class="detail-value font-mono tabular-nums">
 					{preferences.runtimeStatus.javaVersion || 'Non détecté'}
 				</div>
 			</div>
 
 			<div class="detail-item">
 				<div class="detail-label">
-					<ShieldCheck size={12} class="detail-icon" />
+					<span class="detail-icon"><ShieldCheck size={12} /></span>
 					<span>Isolation & Veille</span>
 				</div>
-				<div class="detail-value">
+				<div class="detail-value font-mono tabular-nums">
 					<span class="badge badge-success">lazymc proxy 25565</span>
 				</div>
 			</div>
@@ -83,18 +83,25 @@
 		color: var(--text-secondary);
 		user-select: none;
 		width: fit-content;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
 	.runtime-text {
 		font-weight: var(--font-weight-medium);
 	}
 
-	.text-blue {
+	.icon-wrap-blue {
 		color: var(--accent-blue-text);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.text-green {
+	.icon-wrap-green {
 		color: var(--accent-green);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.runtime-details-grid {
@@ -105,6 +112,7 @@
 		background-color: var(--bg-base);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-input);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 	}
 
 	.detail-item {
@@ -124,10 +132,18 @@
 
 	.detail-icon {
 		color: var(--text-muted);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.detail-value {
 		font-size: var(--font-size-xs);
 		color: var(--text-primary);
 	}
+
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
+	}
 </style>
+

@@ -16,7 +16,7 @@
 <div class="card versions-card">
 	<div class="card-header">
 		<h3 class="card-title">Moteur & Spécifications</h3>
-		<a href="/engine" class="btn btn-secondary btn-sm flex-align">
+		<a href="/engine" class="btn btn-secondary btn-sm flex-align action-btn">
 			<Sliders size={14} />
 			<span>Modifier</span>
 		</a>
@@ -35,12 +35,12 @@
 
 		<div class="version-row">
 			<span class="version-label">Port de Jeu (TCP)</span>
-			<span class="version-val code-val">25565</span>
+			<span class="version-val code-val tabular-nums">25565</span>
 		</div>
 
 		<div class="version-row">
 			<span class="version-label">Port RCON</span>
-			<span class="version-val code-val">25575</span>
+			<span class="version-val code-val tabular-nums">25575</span>
 		</div>
 
 		<div class="version-row">
@@ -64,6 +64,10 @@
 <style>
 	.versions-card {
 		height: 100%;
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 
 	.versions-body {
@@ -88,7 +92,8 @@
 	}
 
 	.version-label {
-		color: var(--text-muted);
+		color: var(--text-secondary);
+		font-size: var(--font-size-sm);
 	}
 
 	.version-val {
@@ -100,9 +105,10 @@
 		font-family: var(--font-mono);
 		font-size: var(--font-size-xs);
 		background: var(--bg-base);
-		padding: 2px 6px;
+		padding: 2px 8px;
 		border-radius: var(--radius-sm);
 		border: 1px solid var(--border-subtle);
+		color: var(--text-primary);
 	}
 
 	.flex-align {
@@ -111,7 +117,19 @@
 		gap: 6px;
 	}
 
-	.text-green { color: var(--accent-green); }
+	.action-btn {
+		transition: transform var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+	}
+
+	.action-btn:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.text-green { color: var(--accent-green-text); }
 	.text-danger { color: var(--danger-text); }
 	.text-muted { color: var(--text-muted); }
 </style>

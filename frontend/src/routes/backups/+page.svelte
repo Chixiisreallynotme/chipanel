@@ -993,11 +993,11 @@
 		padding: var(--space-3) var(--space-4);
 		background-color: var(--bg-surface);
 		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-		border-left: 4px solid var(--border);
+		border: 1px solid var(--border);
 	}
 
-	.toast-success { border-left-color: #10B981; }
-	.toast-danger { border-left-color: #EF4444; }
+	.toast-success { border-color: var(--accent-green-border); }
+	.toast-danger { border-color: var(--danger-border); }
 
 	.toast p {
 		margin: 2px 0 0 0;

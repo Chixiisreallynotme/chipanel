@@ -1,7 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { preferences } from '$lib/stores/preferences.svelte.js';
-	import { apiPost, apiFetch } from '$lib/api/client.js';
+	import { apiPost } from '$lib/api/client.js';
 	import ModeSwitch from './ModeSwitch.svelte';
 	import DesktopRuntimeBadge from './DesktopRuntimeBadge.svelte';
 	import GameSelectorStep from './GameSelectorStep.svelte';
@@ -13,12 +13,7 @@
 		ArrowRight,
 		CheckCircle2,
 		Sparkles,
-		Terminal,
-		Sliders,
-		HardDrive,
-		Play,
-		RotateCw,
-		HelpCircle
+		Terminal
 	} from 'lucide-svelte';
 
 	let { onCompleted = null } = $props();
@@ -126,8 +121,8 @@
 	}
 </script>
 
-<div class="onboarding-outer-shell">
-	<div class="onboarding-inner-core">
+<div class="hardware-shell onboarding-outer-shell">
+	<div class="hardware-core onboarding-inner-core">
 		<!-- Top Bar: Logo, Desktop Runtime Badge, Mode Switch -->
 		<header class="wizard-header">
 			<div class="header-left">
@@ -150,7 +145,7 @@
 		{#if preferences.mode === 'novice'}
 			<div class="mode-info-banner">
 				<div class="banner-left">
-					<Sparkles size={16} class="text-blue" />
+					<span class="icon-wrap-blue"><Sparkles size={16} /></span>
 					<span><strong>Mode Novice Actif :</strong> Configuration simplifiée en 4 étapes sans ligne de commande.</span>
 				</div>
 				<span class="banner-shortcut font-mono">Alt+M pour le mode Expert</span>
@@ -158,7 +153,7 @@
 		{:else}
 			<div class="mode-info-banner expert-banner">
 				<div class="banner-left">
-					<Terminal size={16} class="text-warning" />
+					<span class="icon-wrap-orange"><Terminal size={16} /></span>
 					<span><strong>Mode Power User Actif :</strong> Accès complet aux Quadlets Podman, ports bruts et JVM flags.</span>
 				</div>
 				<span class="banner-shortcut font-mono">Alt+M pour le mode Novice</span>
@@ -175,7 +170,7 @@
 					class:completed={currentStep > s.step}
 					onclick={() => goToStep(s.step)}
 				>
-					<div class="step-badge font-mono">
+					<div class="step-badge font-mono tabular-nums">
 						{#if currentStep > s.step}
 							<CheckCircle2 size={13} class="text-green" />
 						{:else}
@@ -233,7 +228,7 @@
 					{#if currentStep > 1}
 						<button
 							type="button"
-							class="btn btn-secondary btn-md"
+							class="btn btn-secondary btn-md prev-btn"
 							onclick={prevStep}
 						>
 							<ArrowLeft size={16} />
@@ -259,7 +254,7 @@
 
 <style>
 	/* Machined Hardware Double-Bezel Envelope */
-	.onboarding-outer-shell {
+	.hardware-shell.onboarding-outer-shell {
 		background-color: rgba(255, 255, 255, 0.02);
 		border: 1px solid rgba(255, 255, 255, 0.06);
 		border-radius: 1rem; /* 16px */
@@ -269,7 +264,7 @@
 		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 	}
 
-	.onboarding-inner-core {
+	.hardware-core.onboarding-inner-core {
 		background-color: #161922;
 		border-radius: calc(1rem - 0.375rem); /* 10px */
 		border: 1px solid rgba(255, 255, 255, 0.04);
@@ -349,6 +344,7 @@
 		border-radius: var(--radius-btn);
 		font-size: var(--font-size-xs);
 		color: var(--accent-blue-text);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
 	.mode-info-banner.expert-banner {
@@ -378,6 +374,7 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius-btn);
 		overflow-x: auto;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 	}
 
 	.step-progress-item {
@@ -390,13 +387,17 @@
 		padding: 4px 8px;
 		border-radius: var(--radius-input);
 		color: var(--text-secondary);
-		transition: color 150ms ease, background-color 150ms ease;
+		transition: transform 160ms var(--ease-out), color 150ms ease, background-color 150ms ease;
 		white-space: nowrap;
 	}
 
 	.step-progress-item:hover {
 		color: var(--text-primary);
 		background-color: rgba(255, 255, 255, 0.03);
+	}
+
+	.step-progress-item:active {
+		transform: scale(0.97);
 	}
 
 	.step-progress-item.active {
@@ -407,6 +408,7 @@
 		background-color: var(--accent-blue-solid);
 		border-color: var(--accent-blue-solid);
 		color: #FFFFFF;
+		box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
 	}
 
 	.step-badge {
@@ -445,7 +447,7 @@
 		height: 2px;
 		background-color: var(--border);
 		min-width: 16px;
-		transition: background-color 200ms ease;
+		transition: background-color 200ms var(--ease-out);
 	}
 
 	.step-connector.filled {
@@ -467,15 +469,28 @@
 		border-top: 1px solid var(--border-subtle);
 	}
 
+	.prev-btn {
+		transition: transform 160ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
+	}
+
+	.prev-btn:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+
 	.next-btn {
 		background-color: var(--accent-blue-solid);
 		border-color: var(--accent-blue-solid);
 		color: #FFFFFF;
 		box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2);
+		transition: transform 160ms var(--ease-out), background-color 150ms ease, box-shadow 150ms ease;
 	}
 
 	.next-btn:hover:not(:disabled) {
 		background-color: var(--accent-blue-solid-hover);
+	}
+
+	.next-btn:active:not(:disabled) {
+		transform: scale(0.97);
 	}
 
 	.error-banner {
@@ -488,15 +503,26 @@
 		margin-top: 12px;
 	}
 
-	.text-blue {
+	.icon-wrap-blue {
 		color: var(--accent-blue-text);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.icon-wrap-orange {
+		color: var(--accent-orange-text);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.text-green {
 		color: var(--accent-green);
 	}
 
-	.text-warning {
-		color: var(--accent-orange-text);
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
 	}
 </style>
+

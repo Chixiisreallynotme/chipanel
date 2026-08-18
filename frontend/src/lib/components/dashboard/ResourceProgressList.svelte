@@ -40,10 +40,13 @@
 					<Cpu size={16} class="resource-icon text-blue" />
 					<span>Processeur (CPU)</span>
 				</span>
-				<span class="resource-value">{fmtNum(srv.cpuPercent, 1)}{srv.cpuPercent == null ? '' : '%'}</span>
+				<span class="resource-value tabular-nums">{fmtNum(srv.cpuPercent, 1)}{srv.cpuPercent == null ? '' : '%'}</span>
 			</div>
 			<div class="progress-track">
-				<div class="progress-bar bar-blue" style="width: {barWidth(srv.cpuPercent)}%"></div>
+				<div
+					class="progress-bar bar-blue"
+					style="--pct: {barWidth(srv.cpuPercent)}; transform: scaleX(calc(var(--pct) / 100));"
+				></div>
 			</div>
 		</div>
 
@@ -55,14 +58,17 @@
 					<span>Mémoire (RAM)</span>
 				</span>
 				<div class="resource-val-group">
-					<span class="resource-value">
+					<span class="resource-value tabular-nums">
 						{fmtNum(srv.memoryPercent, 0)}{srv.memoryPercent == null ? '' : '%'}
 					</span>
-					<span class="resource-sub">{formattedRam}</span>
+					<span class="resource-sub tabular-nums">{formattedRam}</span>
 				</div>
 			</div>
 			<div class="progress-track">
-				<div class="progress-bar bar-purple" style="width: {barWidth(srv.memoryPercent)}%"></div>
+				<div
+					class="progress-bar bar-purple"
+					style="--pct: {barWidth(srv.memoryPercent)}; transform: scaleX(calc(var(--pct) / 100));"
+				></div>
 			</div>
 		</div>
 
@@ -76,7 +82,10 @@
 				<span class="resource-value {podman.cls}">{podman.text}</span>
 			</div>
 			<div class="progress-track">
-				<div class="progress-bar bar-green" style="width: {podman.width}%"></div>
+				<div
+					class="progress-bar bar-green"
+					style="--pct: {podman.width}; transform: scaleX(calc(var(--pct) / 100));"
+				></div>
 			</div>
 		</div>
 	</div>
@@ -85,13 +94,17 @@
 <style>
 	.resources-card {
 		height: 100%;
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 
 	.resources-body {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-5);
-		padding: var(--space-6);
+		padding: var(--space-5) var(--space-6);
 	}
 
 	.resource-item {
@@ -134,6 +147,7 @@
 	.resource-sub {
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
+		font-family: var(--font-mono);
 	}
 
 	.progress-track {
@@ -146,28 +160,34 @@
 
 	.progress-bar {
 		height: 100%;
+		width: 100%;
 		border-radius: var(--radius-badge);
-		transition: width var(--transition-fast) ease-out;
+		transform-origin: left;
+		transition: transform var(--transition-fast);
 	}
 
 	.bar-blue {
 		background-color: var(--accent-blue);
-		box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+		box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
 	}
 
 	.bar-purple {
 		background-color: var(--accent-purple);
-		box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+		box-shadow: 0 0 8px rgba(139, 92, 246, 0.35);
 	}
 
 	.bar-green {
 		background-color: var(--accent-green);
-		box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+		box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+	}
+
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
 	}
 
 	.text-blue { color: var(--accent-blue-text); }
 	.text-purple { color: var(--accent-purple-text); }
-	.text-green { color: var(--accent-green); }
+	.text-green { color: var(--accent-green-text); }
 	.text-danger { color: var(--danger-text); }
 	.text-muted { color: var(--text-muted); }
 </style>

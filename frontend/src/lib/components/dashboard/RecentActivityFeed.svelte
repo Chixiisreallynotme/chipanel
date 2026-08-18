@@ -1,6 +1,6 @@
 <script>
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
-	import { Terminal, Info, AlertTriangle, XCircle, Inbox } from 'lucide-svelte';
+	import { Terminal, AlertTriangle, XCircle, Inbox } from 'lucide-svelte';
 
 	// Extract the 5 most recent console log events from live wsStore
 	let recentLogs = $derived.by(() => {
@@ -43,7 +43,7 @@
 						<div class="activity-details">
 							<span class="activity-title" title={log.message}>{log.message}</span>
 							{#if formatTime(log.timestamp)}
-								<span class="activity-time">{formatTime(log.timestamp)}</span>
+								<span class="activity-time tabular-nums">{formatTime(log.timestamp)}</span>
 							{/if}
 						</div>
 					</div>
@@ -52,7 +52,7 @@
 		{:else}
 			<div class="empty-state">
 				<Inbox size={28} class="empty-icon" />
-				<span class="empty-text">Aucun événement récents</span>
+				<span class="empty-text">Aucun événement récent</span>
 				<span class="empty-sub">Les flux de la console RCON s'afficheront ici en direct.</span>
 			</div>
 		{/if}
@@ -62,6 +62,10 @@
 <style>
 	.activity-card {
 		height: 100%;
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 
 	.activity-body {
@@ -71,7 +75,7 @@
 	.activity-feed {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-3);
+		gap: var(--space-2);
 	}
 
 	.activity-item {
@@ -80,7 +84,12 @@
 		gap: var(--space-3);
 		padding: 6px var(--space-2);
 		border-radius: var(--radius-sm);
+		border-bottom: 1px solid var(--border-subtle);
 		transition: background-color var(--transition-fast);
+	}
+
+	.activity-item:last-child {
+		border-bottom: none;
 	}
 
 	.activity-item:hover {
@@ -95,6 +104,7 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	}
 
 	.icon-blue {
@@ -105,7 +115,7 @@
 
 	.icon-orange {
 		background-color: var(--accent-orange-bg);
-		color: var(--accent-orange);
+		color: var(--accent-orange-text, #FBBF24);
 		border: 1px solid var(--accent-orange-border);
 	}
 
@@ -135,6 +145,19 @@
 	.activity-time {
 		font-size: 0.6875rem;
 		color: var(--text-muted);
+		font-family: var(--font-mono);
+	}
+
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.badge-secondary {
+		background-color: var(--bg-base);
+		color: var(--text-secondary);
+		border: 1px solid var(--border-subtle);
+		font-family: var(--font-mono);
+		font-size: 0.6875rem;
 	}
 
 	.empty-state {

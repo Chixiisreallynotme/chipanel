@@ -19,7 +19,6 @@
 		LogOut,
 		Menu,
 		X,
-		Server,
 		Sliders,
 		User as UserIcon,
 		Settings,
@@ -36,6 +35,7 @@
 		Sparkles,
 		Zap
 	} from 'lucide-svelte';
+	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 	import ModeSwitch from '$lib/components/onboarding/ModeSwitch.svelte';
 
 	let { children } = $props();
@@ -149,33 +149,33 @@
 
 	// Server Status Helper
 	let serverStatus = $derived.by(() => {
-		const danger = { dotClass: 'status-dot-danger', textClass: 'badge-danger' };
-		const warning = { dotClass: 'status-dot-warning status-dot-pulse', textClass: 'badge-warning' };
-		const success = { dotClass: 'status-dot-success status-dot-pulse', textClass: 'badge-success' };
+		const danger = { dotClass: 'status-dot-danger', textClass: 'badge-danger', logoStatus: 'stopped' };
+		const warning = { dotClass: 'status-dot-warning status-dot-pulse', textClass: 'badge-warning', logoStatus: 'hibernating' };
+		const success = { dotClass: 'status-dot-success status-dot-pulse', textClass: 'badge-success', logoStatus: 'active' };
 
 		if (!wsStore.connected) {
-			return { label: 'Hors ligne', ...danger };
+			return { label: 'Hors ligne', ...danger, logoStatus: 'stopped' };
 		}
 
 		const { containerRunning, rconAvailable, tps } = wsStore.telemetry;
 
 		if (containerRunning === false) {
-			return { label: 'Arrêté', ...danger };
+			return { label: 'Arrêté', ...danger, logoStatus: 'stopped' };
 		}
 		if (!rconAvailable) {
-			return { label: 'RCON indisponible', ...warning };
+			return { label: 'En veille / RCON indisponible', ...warning, logoStatus: 'hibernating' };
 		}
 		if (tps === null) {
 			// RCON is up but the server has no `tps` command (vanilla) — not an error, not 20.0.
-			return { label: 'En ligne (TPS n/a)', ...success };
+			return { label: 'En ligne', ...success, logoStatus: 'active' };
 		}
 		if (tps >= 18) {
-			return { label: 'En ligne', ...success };
+			return { label: 'En ligne', ...success, logoStatus: 'active' };
 		}
 		if (tps > 0) {
-			return { label: `Lenteur (${tps.toFixed(1)} TPS)`, ...warning };
+			return { label: `Lenteur (${tps.toFixed(1)} TPS)`, ...warning, logoStatus: 'busy' };
 		}
-		return { label: 'Arrêté', ...danger };
+		return { label: 'Arrêté', ...danger, logoStatus: 'stopped' };
 	});
 
 	let isLoginPage = $derived(page.url.pathname === '/login');
@@ -208,11 +208,9 @@
 		<aside class="sidebar {sidebarOpen ? 'open' : ''}">
 			<div class="sidebar-header">
 				<div class="brand-logo-container">
-					<div class="brand-square-icon">
-						<Server size={20} />
-					</div>
+					<ChiPanelLogo status={serverStatus.logoStatus} size={32} />
 					<div class="brand-title-group">
-						<span class="brand-title">ChiServ</span>
+						<span class="brand-title">ChiPanel</span>
 						<span class="online-status-badge">
 							<span class="status-dot {serverStatus.dotClass}"></span>
 							<span>{serverStatus.label}</span>
@@ -292,7 +290,7 @@
 					<ModeSwitch compact={true} />
 
 					<!-- Quick Telemetry Status Pill -->
-					<div class="quick-status-pill">
+					<div class="quick-status-pill tabular-nums">
 						<div class="pill-item" title="Utilisation CPU">
 							<span class="pill-label">CPU:</span>
 							<span class="pill-value">{show(wsStore.telemetry.cpu, (v) => `${v.toFixed(0)}%`)}</span>
@@ -417,19 +415,6 @@
 		gap: var(--space-3);
 	}
 
-	.brand-square-icon {
-		width: 32px;
-		height: 32px;
-		border-radius: var(--radius-btn);
-		background-color: var(--accent-green-bg);
-		border: 1px solid var(--accent-green-border);
-		color: var(--accent-green);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		box-shadow: 0 0 10px rgba(15, 169, 104, 0.2);
-	}
-
 	.user-avatar-badge {
 		width: 32px;
 		height: 32px;
@@ -441,6 +426,7 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 	}
 
 	.brand-title-group {
@@ -499,24 +485,34 @@
 		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-medium);
 		color: var(--text-secondary);
-		transition: all var(--transition-fast);
+		border: 1px solid transparent;
+		transition: color 150ms var(--ease-out),
+					background-color 150ms var(--ease-out),
+					border-color 150ms var(--ease-out),
+					transform 160ms var(--ease-out);
 		text-decoration: none;
 	}
 
 	.nav-item:hover {
 		color: var(--text-primary);
-		background-color: var(--border-subtle);
+		background-color: rgba(255, 255, 255, 0.04);
+	}
+
+	.nav-item:active {
+		transform: scale(0.98);
 	}
 
 	.nav-item.active {
-		color: var(--accent-green);
+		color: var(--accent-green-text);
 		background-color: var(--accent-green-bg);
-		border-left: 3px solid var(--accent-green);
+		border: 1px solid var(--accent-green-border);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 		font-weight: var(--font-weight-semibold);
 	}
 
 	.nav-item.active :global(.nav-icon) {
-		color: var(--accent-green);
+		color: var(--accent-green-text);
+		filter: drop-shadow(0 0 6px rgba(15, 169, 104, 0.35));
 	}
 
 	/* Footer User Profile Box */
@@ -534,6 +530,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 
 	.user-profile-top {
@@ -590,7 +587,7 @@
 
 	.action-btn {
 		background: transparent;
-		border: none;
+		border: 1px solid transparent;
 		color: var(--text-muted);
 		cursor: pointer;
 		padding: 4px;
@@ -598,15 +595,26 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: color var(--transition-fast);
+		transition: color 150ms var(--ease-out),
+					background-color 150ms var(--ease-out),
+					border-color 150ms var(--ease-out),
+					transform 160ms var(--ease-out);
 	}
 
 	.action-btn:hover {
 		color: var(--text-primary);
+		background-color: rgba(255, 255, 255, 0.04);
+		border-color: var(--border-subtle);
+	}
+
+	.action-btn:active {
+		transform: scale(0.94);
 	}
 
 	.action-btn.action-logout:hover {
 		color: var(--danger-text);
+		background-color: var(--danger-bg);
+		border-color: var(--danger-border);
 	}
 
 	/* Content Area */
@@ -622,6 +630,7 @@
 		height: 60px;
 		background-color: var(--bg-surface);
 		border-bottom: 1px solid var(--border);
+		box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -658,11 +667,12 @@
 		align-items: center;
 		gap: var(--space-3);
 		background-color: var(--bg-base);
-		border: 1px solid var(--border);
+		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-badge);
 		padding: 4px var(--space-4);
 		font-size: var(--font-size-xs);
 		font-family: var(--font-mono);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 	}
 
 	.pill-item {
@@ -710,6 +720,7 @@
 		align-items: center;
 		justify-content: center;
 		color: var(--text-secondary);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	}
 
 	.header-user-name {

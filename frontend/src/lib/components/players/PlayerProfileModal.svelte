@@ -707,7 +707,7 @@
 											<div class="gauge-bar gauge-unknown" title="Health not reported for this player"></div>
 										{:else}
 											<div class="gauge-bar">
-												<div class="gauge-fill gauge-fill-success" style="width: {healthPct}%;"></div>
+												<div class="gauge-fill gauge-fill-success" style="transform: scaleX({(healthPct ?? 0) / 100});"></div>
 											</div>
 										{/if}
 									</div>
@@ -725,7 +725,7 @@
 											<div class="gauge-bar gauge-unknown" title="Food level not reported for this player"></div>
 										{:else}
 											<div class="gauge-bar">
-												<div class="gauge-fill gauge-fill-warning" style="width: {foodPct}%;"></div>
+												<div class="gauge-fill gauge-fill-warning" style="transform: scaleX({(foodPct ?? 0) / 100});"></div>
 											</div>
 										{/if}
 									</div>
@@ -748,7 +748,7 @@
 											<div class="gauge-bar gauge-unknown" title="Experience not reported for this player"></div>
 										{:else}
 											<div class="gauge-bar">
-												<div class="gauge-fill gauge-fill-primary" style="width: {expPct}%;"></div>
+												<div class="gauge-fill gauge-fill-primary" style="transform: scaleX({(expPct ?? 0) / 100});"></div>
 											</div>
 										{/if}
 									</div>
@@ -1701,9 +1701,11 @@
 	}
 
 	.gauge-fill {
+		width: 100%;
 		height: 100%;
 		border-radius: var(--radius-full);
-		transition: width var(--transition-normal);
+		transform-origin: left;
+		transition: transform var(--transition-normal) var(--ease-out);
 	}
 
 	.gauge-fill-success {

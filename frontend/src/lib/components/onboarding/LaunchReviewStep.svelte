@@ -2,15 +2,12 @@
 	import {
 		Play,
 		Moon,
-		CheckCircle2,
 		Code,
 		ShieldCheck,
 		Server,
 		HardDrive,
 		Sliders,
-		Terminal,
 		ChevronDown,
-		ExternalLink,
 		RotateCw
 	} from 'lucide-svelte';
 
@@ -70,7 +67,7 @@ WantedBy=default.target`);
 		<div class="summary-grid">
 			<div class="summary-item">
 				<div class="summary-label">
-					<Server size={14} class="text-blue" />
+					<span class="icon-wrap-blue"><Server size={14} /></span>
 					<span>Édition & Jeu</span>
 				</div>
 				<div class="summary-value">
@@ -82,17 +79,17 @@ WantedBy=default.target`);
 						Cross-Play (Java + Geyser)
 					{/if}
 				</div>
-				<div class="summary-sub font-mono">
+				<div class="summary-sub font-mono tabular-nums">
 					{selectedGame === 'BEDROCK' ? 'Port 19132 UDP' : selectedGame === 'CROSSPLAY' ? 'Ports 25565 + 19132' : 'Port 25565 TCP'}
 				</div>
 			</div>
 
 			<div class="summary-item">
 				<div class="summary-label">
-					<Sliders size={14} class="text-blue" />
+					<span class="icon-wrap-blue"><Sliders size={14} /></span>
 					<span>Moteur & Version</span>
 				</div>
-				<div class="summary-value font-mono">
+				<div class="summary-value font-mono tabular-nums">
 					{selectedEngine} {selectedVersion}
 				</div>
 				<div class="summary-sub">
@@ -102,10 +99,10 @@ WantedBy=default.target`);
 
 			<div class="summary-item">
 				<div class="summary-label">
-					<HardDrive size={14} class="text-blue" />
+					<span class="icon-wrap-blue"><HardDrive size={14} /></span>
 					<span>Mémoire Dédiée</span>
 				</div>
-				<div class="summary-value font-mono">
+				<div class="summary-value font-mono tabular-nums">
 					{allocatedRamGb} Go RAM
 				</div>
 				<div class="summary-sub">
@@ -115,13 +112,13 @@ WantedBy=default.target`);
 
 			<div class="summary-item">
 				<div class="summary-label">
-					<Moon size={14} class="text-warning" />
+					<span class="icon-wrap-orange"><Moon size={14} /></span>
 					<span>Économie d'Énergie</span>
 				</div>
 				<div class="summary-value">
 					{lazymcEnabled ? 'Veille lazymc Active' : 'Toujours Allumé'}
 				</div>
-				<div class="summary-sub">
+				<div class="summary-sub font-mono tabular-nums">
 					{lazymcEnabled ? '0 Mo RAM au repos' : 'Consommation continue'}
 				</div>
 			</div>
@@ -134,7 +131,7 @@ WantedBy=default.target`);
 		<label class="option-row">
 			<div class="option-info">
 				<div class="option-title-group">
-					<Moon size={16} class="text-warning" />
+					<span class="icon-wrap-orange"><Moon size={16} /></span>
 					<span class="option-title">Veille automatique intelligente (lazymc)</span>
 					<span class="badge badge-success">Recommandé</span>
 				</div>
@@ -142,21 +139,21 @@ WantedBy=default.target`);
 					Économise 100% de la RAM serveur lorsqu'aucun joueur n'est connecté (après 10 minutes). Le serveur se réveille instantanément dès qu'un ami se connecte.
 				</p>
 			</div>
-			<input type="checkbox" bind:checked={lazymcEnabled} class="checkbox" />
+			<input type="checkbox" bind:checked={lazymcEnabled} class="checkbox-input" />
 		</label>
 
 		<!-- EULA Agreement -->
 		<label class="option-row">
 			<div class="option-info">
 				<div class="option-title-group">
-					<ShieldCheck size={16} class="text-blue" />
+					<span class="icon-wrap-blue"><ShieldCheck size={16} /></span>
 					<span class="option-title">Acceptation de l'EULA Minecraft (Mojang)</span>
 				</div>
 				<p class="option-description">
 					En démarrant le serveur, vous acceptez le contrat de licence utilisateur final (EULA) de Mojang / Microsoft.
 				</p>
 			</div>
-			<input type="checkbox" bind:checked={eulaAccepted} class="checkbox" />
+			<input type="checkbox" bind:checked={eulaAccepted} class="checkbox-input" />
 		</label>
 	</div>
 
@@ -166,18 +163,21 @@ WantedBy=default.target`);
 			type="button"
 			class="preview-toggle-btn"
 			onclick={() => (showQuadletPreview = !showQuadletPreview)}
+			aria-expanded={showQuadletPreview}
 		>
 			<div class="preview-toggle-left">
-				<Code size={15} class="text-muted" />
+				<span class="preview-icon"><Code size={15} /></span>
 				<span class="preview-title">Aperçu technique Quadlet Podman</span>
 				<span class="badge font-mono">minecraft.container</span>
 			</div>
-			<ChevronDown size={15} class={showQuadletPreview ? 'rotate-180' : ''} />
+			<span class="chevron-wrapper" class:rotated={showQuadletPreview}>
+				<ChevronDown size={15} />
+			</span>
 		</button>
 
 		{#if showQuadletPreview}
 			<div class="quadlet-code-block">
-				<pre class="font-mono">{generatedQuadletCode}</pre>
+				<pre class="font-mono tabular-nums">{generatedQuadletCode}</pre>
 			</div>
 		{/if}
 	</div>
@@ -186,7 +186,9 @@ WantedBy=default.target`);
 	<div class="action-footer-container">
 		{#if isLaunching}
 			<div class="launch-progress-banner">
-				<RotateCw size={16} class="spin-icon text-blue" />
+				<span class="spin-wrapper icon-wrap-blue">
+					<RotateCw size={16} />
+				</span>
 				<div class="progress-details">
 					<span class="progress-step-text font-mono">{launchProgressStep || 'Initialisation du conteneur...'}</span>
 					<span class="progress-sub">Veuillez patienter pendant la génération et le premier démarrage.</span>
@@ -201,7 +203,9 @@ WantedBy=default.target`);
 			onclick={onLaunch}
 		>
 			{#if isLaunching}
-				<RotateCw size={18} class="spin-icon" />
+				<span class="spin-wrapper">
+					<RotateCw size={18} />
+				</span>
 				<span>Création du serveur en cours...</span>
 			{:else}
 				<Play size={18} />
@@ -243,7 +247,7 @@ WantedBy=default.target`);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
 		padding: 16px;
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 16px rgba(0, 0, 0, 0.2);
 	}
 
 	.summary-grid {
@@ -297,12 +301,20 @@ WantedBy=default.target`);
 		border-radius: var(--radius-card);
 		cursor: pointer;
 		user-select: none;
-		transition: border-color 150ms ease, background-color 150ms ease;
+		transition: transform 160ms var(--ease-out),
+					border-color 150ms var(--ease-out),
+					background-color 150ms var(--ease-out),
+					box-shadow 150ms var(--ease-out);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 
 	.option-row:hover {
 		border-color: var(--border-focus);
 		background-color: rgba(255, 255, 255, 0.02);
+	}
+
+	.option-row:active {
+		transform: scale(0.99);
 	}
 
 	.option-info {
@@ -330,11 +342,21 @@ WantedBy=default.target`);
 		line-height: 1.4;
 	}
 
+	.checkbox-input {
+		width: 18px;
+		height: 18px;
+		accent-color: var(--accent-blue-solid);
+		cursor: pointer;
+		margin-top: 2px;
+		flex-shrink: 0;
+	}
+
 	.power-user-preview-card {
 		background-color: var(--bg-base);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-input);
 		overflow: hidden;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 	}
 
 	.preview-toggle-btn {
@@ -348,12 +370,16 @@ WantedBy=default.target`);
 		color: var(--text-secondary);
 		cursor: pointer;
 		font-size: var(--font-size-xs);
-		transition: color 150ms ease, background-color 150ms ease;
+		transition: color 150ms var(--ease-out), background-color 150ms var(--ease-out);
 	}
 
 	.preview-toggle-btn:hover {
 		color: var(--text-primary);
-		background-color: rgba(255, 255, 255, 0.02);
+		background-color: rgba(255, 255, 255, 0.03);
+	}
+
+	.preview-toggle-btn:active {
+		transform: scale(0.99);
 	}
 
 	.preview-toggle-left {
@@ -362,8 +388,24 @@ WantedBy=default.target`);
 		gap: 8px;
 	}
 
+	.preview-icon {
+		color: var(--text-muted);
+	}
+
 	.preview-title {
 		font-weight: var(--font-weight-medium);
+	}
+
+	.chevron-wrapper {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--text-muted);
+		transition: transform 160ms var(--ease-out);
+	}
+
+	.chevron-wrapper.rotated {
+		transform: rotate(180deg);
 	}
 
 	.quadlet-code-block {
@@ -424,7 +466,7 @@ WantedBy=default.target`);
 		background-color: var(--accent-green-solid);
 		border-color: var(--accent-green-solid);
 		box-shadow: 0 4px 16px rgba(15, 169, 104, 0.25);
-		transition: transform 160ms var(--ease-out), background-color 150ms ease, box-shadow 150ms ease;
+		transition: transform 160ms var(--ease-out), background-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
 	}
 
 	.launch-button:hover:not(:disabled) {
@@ -437,15 +479,24 @@ WantedBy=default.target`);
 		transform: scale(0.97);
 	}
 
-	.text-blue {
+	.icon-wrap-blue {
 		color: var(--accent-blue-text);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.text-warning {
+	.icon-wrap-orange {
 		color: var(--accent-orange-text);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.spin-icon {
+	.spin-wrapper {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		animation: spin 0.6s linear infinite;
 	}
 
@@ -453,8 +504,8 @@ WantedBy=default.target`);
 		to { transform: rotate(360deg); }
 	}
 
-	.rotate-180 {
-		transform: rotate(180deg);
-		transition: transform 150ms ease;
+	.tabular-nums {
+		font-variant-numeric: tabular-nums;
 	}
 </style>
+

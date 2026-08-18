@@ -18,7 +18,8 @@
 		Layers,
 		Flame,
 		Terminal,
-		Sliders
+		Sliders,
+		Info
 	} from 'lucide-svelte';
 
 	let health = $state({
@@ -309,8 +310,9 @@
 							<strong>Cause racine identifiée :</strong> {crash.root_cause}
 						</p>
 
-						<div class="crash-recommendation text-sm alert alert-info">
-							<span>💡 <strong>Conseil :</strong> {crash.recommendation}</span>
+						<div class="crash-recommendation text-sm alert alert-info flex items-center gap-2">
+							<Info size={14} class="flex-shrink-0" />
+							<span><strong>Conseil :</strong> {crash.recommendation}</span>
 						</div>
 
 						<div class="crash-footer">
@@ -646,7 +648,8 @@
 		gap: var(--space-3);
 		padding: var(--space-4);
 		background-color: var(--bg-card);
-		border-left: 4px solid var(--accent-blue-solid);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
 	}
 
 	.crash-item-header {
@@ -781,11 +784,11 @@
 		padding: var(--space-3) var(--space-4);
 		background-color: var(--bg-surface);
 		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-		border-left: 4px solid var(--border);
+		border: 1px solid var(--border);
 	}
 
-	.toast-success { border-left-color: #10B981; }
-	.toast-danger { border-left-color: #EF4444; }
+	.toast-success { border-color: var(--accent-green-border); }
+	.toast-danger { border-color: var(--danger-border); }
 
 	.toast p {
 		margin: 2px 0 0 0;

@@ -22,7 +22,8 @@
 		Plus,
 		Upload,
 		Play,
-		Trash2
+		Trash2,
+		AlertTriangle
 	} from 'lucide-svelte';
 
 	// Main Page Data States
@@ -751,10 +752,13 @@
 						created automatically first and kept in the backups list.
 					</p>
 					{#if activeWorld === deleteTarget.folder_name}
-						<p class="delete-warning-text delete-warning-strong">
-							⚠️ This is the <strong>active world</strong>. The server will be stopped, and it
-							will have no world to load until you create or switch to another one.
-						</p>
+						<div class="delete-warning-strong flex items-start gap-2">
+							<AlertTriangle size={16} class="flex-shrink-0" />
+							<p class="delete-warning-text m-0">
+								This is the <strong>active world</strong>. The server will be stopped, and it
+								will have no world to load until you create or switch to another one.
+							</p>
+						</div>
 					{/if}
 				</div>
 
@@ -1026,9 +1030,11 @@
 	}
 
 	.delete-warning-strong {
-		color: var(--warning);
-		border-left: 3px solid var(--warning-border);
-		padding-left: var(--space-3);
+		color: var(--accent-orange-text);
+		background-color: var(--accent-orange-bg);
+		border: 1px solid var(--accent-orange-border);
+		border-radius: var(--radius-sm);
+		padding: var(--space-2) var(--space-3);
 	}
 
 	.border-modal-body {
