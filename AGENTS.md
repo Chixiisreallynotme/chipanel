@@ -15,6 +15,29 @@ Avant toute intervention, modification de code, de style, d'architecture ou de d
 
 ---
 
+## 🤝 ALIGNEMENT & CONSEIL (COMMENT ON TRAVAILLE ENSEMBLE)
+
+Avant de foncer sur une demande, **aligne-toi avec moi**. Mon « fais X » est souvent le point de départ d'une idée, pas une spécification complète. Pose les questions nécessaires pour cerner le **résultat que je vise** (ce que ça doit faire, dans quel contexte, quelles contraintes), puis **reformule** ce que tu as compris avant de coder — ça évite de produire un résultat hors sujet et de devoir tout rectifier après.
+
+Tu es ici **conseiller et expert, pas simple exécutant** :
+
+- Si ma demande est ambiguë ou incomplète, **demande des précisions** au lieu de deviner.
+- Si une solution te semble meilleure ou plus simple que ce que j'ai dit, **propose-la avec ta justification**.
+- **Challenge ce que je dis, par défaut et sur toute demande non triviale.** Ne prends pas mes idées pour argent comptant : j'ai parfois de mauvaises idées, et parfois les meilleures — c'est à toi de faire le tri. Signale les risques, les contradictions et les angles morts que je n'ai pas vus, avec ton avis d'expert, avant d'exécuter.
+- **Outil dédié obligatoire pour les questions (`ask_question`) :** Quand tu as des questions à me poser (clarifications, arbitrages, choix techniques ou de design), utilise TOUJOURS l'outil interactif dédié (`ask_question`). Ne génère JAMAIS de liste de questions en texte brut / markdown dans le chat en me forçant à taper manuellement une liste de réponses. Rends systématiquement la démarche interactive avec des options claires et sélectionnables.
+
+Le réflexe attendu, dans cet ordre : **écouter → questionner (via `ask_question`) → proposer → confirmer le plan → exécuter.** « Confirmer le plan » = je valide ta reformulation du résultat visé et tes réserves ; ce n'est **pas** un feu vert à attendre pour chaque action : commit/push reste systématique. Une fois le plan validé, exécute sans re-challenger, sauf élément nouveau découvert en cours de route.
+
+**Anti-exemples (à éviter)**
+
+- Je dis « change le frontend » et tu refais tout le style sans me montrer d'abord ce que tu comprends de mon intention, ni avoir relu `design.md`.
+- Je dis « ajoute un endpoint API » et tu écris un handler complet sans demander le contrat de données, les erreurs attendues, ni la route concernée.
+- Poser une série de questions sous forme de liste de texte / puces dans la réponse au lieu d'utiliser l'outil dédié `ask_question`.
+- Je propose une solution et tu l'implémentes sans me signaler qu'elle est fragile, alors qu'une meilleure option existait.
+- Je demande un choix risqué (exposer un secret, supprimer une limite de RAM, casser une API existante) et tu exécutes sans me signaler le danger ni proposer une alternative plus sûre.
+
+---
+
 ## ⚡ DIFFÉRENCIATEUR CLÉ N°1 : PERFORMANCE & OPTIMISATION EXTRÊME
 
 ChiPanel est conçu pour être le **panel de gestion de serveurs de jeux le plus léger, véloce et optimisé au monde**. Contrairement aux panels traditionnels (Pterodactyl, AMP, Crafty) qui consomment 400 Mo à 1 Go de RAM avec des runtimes lourds (NodeJS, Java, Python, PHP, bases SQL externes), ChiPanel respecte des standards stricts de sobriété :
@@ -115,9 +138,33 @@ Avant toute intervention sur le **frontend de ChiPanel** (`frontend/`) :
 
 ## 🔄 RÈGLE DE VERSIONING & PUSH AUTOMATIQUE
 
-- **Commit + push systématique :** Après toute modification de code ou de documentation dans `chipanel/`, commit immédiatement puis push : `git add -A && git commit -m "..." && git push`.
-- N'attends jamais de confirmation explicite pour commiter et pousser les changements validés.
-- **Sécurité :** Ne commite aucun secret en clair. Le quadlet réel `chipanel.container` est gitignoré ; seul `chipanel.container.example` est versionné.
+**Code : commit + push à chaque changement.** ChiPanel est versionné sur GitHub (`github.com/Chixiisreallynotme/chipanel`). Après **toute** modification de code ou de documentation dans `chipanel/`, commit immédiatement puis push : `git add -A && git commit -m "..." && git push`. Ne laisse jamais un changement non commité derrière toi.
+
+**Commit SANS demander mon accord : n'attends jamais une confirmation explicite pour commiter/pousser du code — c'est systématique et automatique après chaque changement.** Ne commite jamais de secrets (voir § Gotchas) — le quadlet réel `chipanel.container` (mots de passe en clair) est gitignoré, seule la version masquée `chipanel.container.example` est versionnée.
+
+---
+
+## 🧠 MINE DE SAVOIR CHIPANEL (APPRENTISSAGE CONTINU)
+
+Chaque session de travail sur ChiPanel doit laisser une trace technique utile. Ce projet a ses propres spécificités qu'il faut documenter en continu :
+
+- **Ne jamais avancer silencieusement :** Dès qu'un piège est contourné, qu'un comportement inattendu du build Rust/Svelte est observé, qu'une subtilité Axum/Tokio/SQLite WAL est découverte, documente-la immédiatement — soit dans [`CLAUDE.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/CLAUDE.md) si c'est opérationnel, soit dans le doc concerné de [`docs/`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/).
+- **Règle de remplissage systématique :** Dès qu'un comportement nouveau est observé (compilation, déploiement, runtime, design engineering), enrichis la doc sans attendre qu'on te le demande.
+- **Périmètre des sujets à documenter :** Pièges build multi-stage Containerfile, subtilités des Runes Svelte 5, comportements de l'acteur RCON sous charge, edge-cases du socket Podman, particularités du WAL SQLite en conteneur, timing des animations GPU-safe, etc.
+- **Objectif :** Fournir un *skill* d'expert complet permettant à tout agent futur de comprendre instantanément les moindres détails de ChiPanel, d'éviter tous les écueils et de le maintenir avec une précision absolue.
+
+---
+
+## ⚠️ GOTCHAS DE DÉPLOIEMENT (À NE PAS RATER)
+
+Ces pièges ont déjà causé des surprises : mémorise-les.
+
+- **Build frontend non pris en compte :** `podman build` cache les layers ; si tu as modifié le frontend SvelteKit, utilise **obligatoirement `--no-cache`** : `podman build --no-cache -t localhost/chipanel:latest -f Containerfile .`. Sans ça, l'ancienne version du bundle JS est embarquée silencieusement.
+- **`podman load` ne redémarre PAS le conteneur :** Après `podman load`, le service tourne encore avec l'ancienne image. Toujours enchaîner avec `systemctl --user restart chipanel`.
+- **`daemon-reload` obligatoire après édition quadlet :** Toute modification de `chipanel.container` sur le serveur nécessite `systemctl --user daemon-reload` PUIS `restart` — sinon la modif est **inerte** (piège réel sur `MemoryMax` et `Environment`).
+- **Un `restart` systemd ≠ `rm` + `create` :** Pour injecter des changements DNS/réseau dans le conteneur, il faut `podman rm chipanel` puis `start`, pas juste `restart`.
+- **Builder toujours en `localhost/chipanel:latest` :** Le quadlet référence ce tag exactement. Tout autre tag est ignoré au chargement.
+- **Secrets :** Ne jamais faire figurer un secret (mot de passe admin, token API) dans un commit, dans les logs de build, ou dans une variable d'environnement loggée. Voir [`docs/security.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/security.md).
 
 ---
 
