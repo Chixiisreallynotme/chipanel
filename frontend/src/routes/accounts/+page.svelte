@@ -798,18 +798,21 @@
 		font-size: var(--font-size-2xl);
 		font-weight: var(--font-weight-bold);
 		color: var(--text-primary);
-		line-height: 1.2;
+		line-height: var(--line-height-tight);
+		text-wrap: balance;
+		letter-spacing: -0.02em;
 	}
 
 	.page-description {
 		font-size: var(--font-size-sm);
-		color: var(--text-muted);
+		color: var(--text-secondary);
 		margin-top: 2px;
+		max-width: 70ch;
 	}
 
 	.info-banner-card {
-		background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(59, 130, 246, 0.05) 100%);
-		border: 1px solid var(--accent-blue-border);
+		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
 	}
 
 	.banner-body {
@@ -866,12 +869,13 @@
 
 	.table th {
 		padding: var(--space-3) var(--space-4);
-		font-size: 11px;
-		font-weight: var(--font-weight-bold);
-		color: var(--text-muted);
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-secondary);
 		border-bottom: 1px solid var(--border);
 		background-color: var(--bg-base);
-		letter-spacing: 0.05em;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 
 	.table td {
@@ -917,9 +921,9 @@
 	}
 
 	.badge-purple {
-		background-color: rgba(139, 92, 246, 0.12);
+		background-color: var(--accent-purple-bg);
 		color: var(--accent-purple-text);
-		border: 1px solid rgba(139, 92, 246, 0.3);
+		border: 1px solid var(--accent-purple-border);
 	}
 
 	.badge-danger {
@@ -970,7 +974,7 @@
 
 	.section-divider h4 {
 		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-semibold);
 		color: var(--text-primary);
 	}
 
@@ -1006,7 +1010,7 @@
 		padding: var(--space-3) var(--space-4);
 		text-align: left;
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
@@ -1019,9 +1023,9 @@
 	}
 
 	.preset-card.selected {
-		border-color: var(--accent-purple);
-		background-color: rgba(139, 92, 246, 0.08);
-		box-shadow: 0 0 0 1px var(--accent-purple);
+		border-color: var(--accent-purple-border);
+		background-color: var(--accent-purple-bg);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
 	.preset-header {
@@ -1035,9 +1039,9 @@
 	}
 
 	.preset-desc {
-		font-size: 11px;
+		font-size: var(--font-size-xs);
 		color: var(--text-muted);
-		line-height: 1.3;
+		line-height: var(--line-height-normal);
 	}
 
 	/* Custom Permissions Category Blocks */
@@ -1067,7 +1071,7 @@
 
 	.category-header h5 {
 		font-size: var(--font-size-xs);
-		font-weight: var(--font-weight-bold);
+		font-weight: var(--font-weight-semibold);
 		color: var(--text-primary);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
@@ -1088,7 +1092,7 @@
 		border-radius: var(--radius-sm);
 		padding: var(--space-2) var(--space-3);
 		cursor: pointer;
-		transition: border-color var(--transition-fast);
+		transition: border-color var(--transition-fast), background-color var(--transition-fast);
 	}
 
 	.permission-item-label:hover {
@@ -1096,8 +1100,8 @@
 	}
 
 	.permission-item-label.checked {
-		border-color: var(--accent-purple);
-		background-color: rgba(139, 92, 246, 0.06);
+		border-color: var(--accent-purple-border);
+		background-color: var(--accent-purple-bg);
 	}
 
 	.permission-item-label input[type='checkbox'] {
@@ -1117,7 +1121,7 @@
 	}
 
 	.perm-desc {
-		font-size: 10px;
+		font-size: var(--font-size-xs);
 		color: var(--text-muted);
 		margin-top: 1px;
 	}
@@ -1159,7 +1163,7 @@
 
 	.toast-item {
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border-focus);
+		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
 		padding: var(--space-4);
 		display: flex;

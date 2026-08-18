@@ -505,7 +505,7 @@
 	}
 
 	.filter-warn.active {
-		color: var(--warning);
+		color: var(--accent-orange-text);
 	}
 
 	.filter-error.active {
@@ -543,7 +543,8 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-		background-color: #07070B;
+		background-color: #0c0e14;
+		box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
 	}
 
 	.console-output {
@@ -553,7 +554,7 @@
 		font-family: var(--font-mono);
 		font-size: 13px;
 		line-height: 1.55;
-		color: #D1D5DB;
+		color: var(--text-primary);
 		word-break: break-word;
 	}
 
@@ -615,9 +616,9 @@
 	}
 
 	.badge-level-warn {
-		background-color: var(--warning-bg);
-		color: var(--warning);
-		border: 1px solid var(--warning-border);
+		background-color: var(--accent-orange-bg);
+		color: var(--accent-orange-text);
+		border: 1px solid var(--accent-orange-border);
 	}
 
 	.badge-level-error {
@@ -627,11 +628,11 @@
 	}
 
 	.log-level-warn .log-message {
-		color: #FCD34D;
+		color: var(--accent-orange-text);
 	}
 
 	.log-level-error .log-message {
-		color: #FCA5A5;
+		color: var(--danger-text);
 	}
 
 	.log-message {
@@ -654,14 +655,16 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: var(--space-2) var(--space-4);
-		background-color: rgba(16, 185, 129, 0.1);
-		border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+		background-color: var(--accent-green-bg);
+		border-bottom: 1px solid var(--accent-green-border);
+		color: var(--accent-green-text);
 		font-size: var(--font-size-sm);
 	}
 
 	.mclogs-alert.alert-error {
-		background-color: rgba(239, 68, 68, 0.1);
-		border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+		background-color: var(--danger-bg);
+		border-bottom: 1px solid var(--danger-border);
+		color: var(--danger-text);
 	}
 
 	.mclogs-alert-content {

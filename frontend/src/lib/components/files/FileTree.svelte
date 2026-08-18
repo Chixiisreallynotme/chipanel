@@ -567,7 +567,7 @@
 		background-color: var(--accent-blue-bg);
 		color: var(--accent-blue-text);
 		font-weight: var(--font-weight-medium);
-		border-left: 2px solid var(--accent-blue);
+		box-shadow: inset 0 0 0 1px var(--accent-blue-border);
 	}
 
 	.tree-node-item.focused {

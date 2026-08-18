@@ -117,7 +117,7 @@
 		background-color: var(--bg-surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
-		box-shadow: var(--card-shadow);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--card-shadow);
 		flex-shrink: 0;
 	}
 
@@ -156,6 +156,8 @@
 		font-weight: var(--font-weight-bold);
 		color: var(--text-primary);
 		line-height: 1.2;
+		text-wrap: balance;
+		letter-spacing: -0.02em;
 	}
 
 	.status-indicator-badge {
@@ -197,6 +199,7 @@
 	.stat-val {
 		color: var(--text-primary);
 		font-weight: var(--font-weight-semibold);
+		font-variant-numeric: tabular-nums;
 	}
 
 	/* Was var(--border-focus) — 1.84:1 against --bg-base, i.e. invisible. Same
