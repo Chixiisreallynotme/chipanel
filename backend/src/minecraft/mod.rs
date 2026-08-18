@@ -1,6 +1,6 @@
-#![allow(unused_imports)]
-
+pub mod autotune;
 pub mod command_queue;
+pub mod diagnostics;
 pub mod effects;
 pub mod files;
 pub mod inventory;

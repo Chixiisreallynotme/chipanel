@@ -1,7 +1,9 @@
 pub mod audit;
 pub mod auth;
+pub mod autotune;
 pub mod backups;
 pub mod database;
+pub mod diagnostics;
 pub mod diff;
 pub mod engine_catalog;
 pub mod files;
@@ -22,8 +24,10 @@ pub mod worlds;
 // shadows the real one (that is how /api/auth/users and /api/auth/tokens went missing).
 pub use audit::audit_router;
 pub use auth::auth_router;
+pub use autotune::autotune_router;
 pub use backups::backups_router;
 pub use database::database_router;
+pub use diagnostics::diagnostics_router;
 pub use diff::diff_router;
 pub use files::files_router;
 pub use geyser::geyser_router;

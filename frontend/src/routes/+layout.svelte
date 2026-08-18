@@ -33,7 +33,8 @@
 		CalendarClock,
 		KeyRound,
 		Layers,
-		Sparkles
+		Sparkles,
+		Zap
 	} from 'lucide-svelte';
 	import ModeSwitch from '$lib/components/onboarding/ModeSwitch.svelte';
 
@@ -58,6 +59,7 @@
 		{
 			title: 'CONFIGURATION',
 			items: [
+				{ label: 'Diagnostics & Auto-Tuner', path: '/diagnostics', icon: Zap },
 				{ label: 'Planificateur & Télémétrie', path: '/metrics', icon: CalendarClock },
 				{ label: 'Base de Données & Purge', path: '/database', icon: Database },
 				{ label: 'Cross-Play & Réseau', path: '/network', icon: Network },
