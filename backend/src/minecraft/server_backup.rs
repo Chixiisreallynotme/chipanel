@@ -19,8 +19,9 @@ pub struct ServerBackupMetadata {
     pub created_at_secs: u64,
     pub scope: String, // "full" | "world_only" | "configs_only"
     pub sha256: String,
-    pub format: String, // "zip"
+    pub format: String, // "zip" | "zstd"
     pub file_count: usize,
+    pub is_locked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +41,7 @@ pub struct ServerBackupSettings {
     pub default_exclusions: Vec<String>,
     pub compression_level: i32,
     pub s3_config: Option<S3BackupConfig>,
+    pub locked_backups: Vec<String>,
 }
 
 impl Default for ServerBackupSettings {
@@ -58,6 +60,40 @@ impl Default for ServerBackupSettings {
             ],
             compression_level: 3,
             s3_config: None,
+            locked_backups: Vec::new(),
+        }
+    }
+}
+
+/// RAII Guard that pauses in-memory world writes, triggers a flush, and automatically reenables them
+pub struct RconSaveGuard {
+    rcon: Option<crate::rcon::RconActorHandle>,
+}
+
+impl RconSaveGuard {
+    pub async fn acquire(rcon: Option<crate::rcon::RconActorHandle>) -> Self {
+        if let Some(ref r) = rcon {
+            info!("RconSaveGuard: Disabling world auto-save and flushing chunks...");
+            let _ = r.exec("save-off").await;
+            let _ = r.exec("save-all flush").await;
+        }
+        Self { rcon }
+    }
+
+    pub async fn release(mut self) {
+        if let Some(r) = self.rcon.take() {
+            info!("RconSaveGuard: Re-enabling world auto-save...");
+            let _ = r.exec("save-on").await;
+        }
+    }
+}
+
+impl Drop for RconSaveGuard {
+    fn drop(&mut self) {
+        if let Some(r) = self.rcon.take() {
+            tokio::spawn(async move {
+                let _ = r.exec("save-on").await;
+            });
         }
     }
 }
@@ -124,12 +160,14 @@ pub fn is_path_excluded(rel_path: &str, exclusions: &[String]) -> bool {
 pub struct CreateBackupOptions {
     pub name: Option<String>,
     pub scope: Option<String>, // "full" | "world_only" | "configs_only"
+    pub format: Option<String>, // "zip" | "zstd"
     pub extra_exclusions: Option<Vec<String>>,
 }
 
 /// Creates a high-performance compressed backup of the Minecraft server
 pub async fn create_server_backup(
     config: &AppConfig,
+    rcon: Option<crate::rcon::RconActorHandle>,
     options: CreateBackupOptions,
 ) -> Result<ServerBackupMetadata, AppError> {
     let settings = load_backup_settings(config).await;
@@ -139,6 +177,7 @@ pub async fn create_server_backup(
         .map_err(|e| AppError::InternalError(format!("Failed to create backups directory: {}", e)))?;
 
     let scope = options.scope.unwrap_or_else(|| "full".to_string());
+    let format_choice = options.format.unwrap_or_else(|| "zstd".to_string());
     let timestamp_secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -169,15 +208,25 @@ pub async fn create_server_backup(
 
     let scope_clone = scope.clone();
     let target_path_clone = target_path.clone();
+    let format_choice_clone = format_choice.clone();
+
+    // Acquire RCON save-off & flush guard
+    let guard = RconSaveGuard::acquire(rcon).await;
 
     // Perform heavy file scanning, hashing and compression in a blocking thread
     let (file_count, file_size_bytes, sha256_hex) = tokio::task::spawn_blocking(move || -> Result<(usize, u64, String), AppError> {
         let file = File::create(&target_path_clone)
             .map_err(|e| AppError::InternalError(format!("Failed to create backup target file: {}", e)))?;
-        
+
         let mut zip = ZipWriter::new(file);
+        let compression = if format_choice_clone == "zstd" {
+            CompressionMethod::Zstd
+        } else {
+            CompressionMethod::Deflated
+        };
+
         let zip_options = SimpleFileOptions::default()
-            .compression_method(CompressionMethod::Deflated)
+            .compression_method(compression)
             .unix_permissions(0o644);
 
         let mut count = 0;
@@ -198,30 +247,22 @@ pub async fn create_server_backup(
                 continue;
             }
 
-            // Apply scope filters
-            match scope_clone.as_str() {
-                "world_only" => {
-                    // Include worlds (folders containing level.dat or region files)
-                    let first_segment = rel_path.split('/').next().unwrap_or("");
-                    let is_world_related = first_segment == "world" 
-                        || first_segment == "world_nether" 
-                        || first_segment == "world_the_end"
-                        || rel_path.contains("region/")
-                        || rel_path.contains("entities/")
-                        || rel_path.contains("poi/")
-                        || rel_path.ends_with("level.dat");
-                    if !is_world_related {
-                        continue;
-                    }
+            if scope_clone == "world_only" {
+                let first_segment = rel_path.split('/').next().unwrap_or("");
+                let is_world_related = first_segment == "world" 
+                    || first_segment == "world_nether" 
+                    || first_segment == "world_the_end"
+                    || rel_path.contains("region/")
+                    || rel_path.contains("entities/")
+                    || rel_path.contains("poi/")
+                    || rel_path.ends_with("level.dat");
+                if !is_world_related {
+                    continue;
                 }
-                "configs_only" => {
-                    // Include configs, plugins configs, server.properties, whitelist, ops, etc.
-                    let is_world_region = rel_path.contains("/region/") || rel_path.contains("/entities/");
-                    if is_world_region {
-                        continue;
-                    }
+            } else if scope_clone == "configs_only" {
+                if rel_path.contains("/region/") || rel_path.contains("/entities/") {
+                    continue;
                 }
-                _ => {} // "full"
             }
 
             if path.is_file() {
@@ -273,16 +314,20 @@ pub async fn create_server_backup(
     .await
     .map_err(|e| AppError::InternalError(format!("Backup worker join error: {}", e)))??;
 
+    // Release RCON guard
+    guard.release().await;
+
     info!(
         "Server backup successfully created: {} ({} files, {} bytes, sha256: {})",
         filename, file_count, file_size_bytes, sha256_hex
     );
 
-    // Apply retention policy: delete oldest backups exceeding max_retention_count
+    // Apply retention policy: delete oldest un-locked backups exceeding max_retention_count
     if settings.max_retention_count > 0 {
         let existing = list_server_backups(config).await?;
-        if existing.len() > settings.max_retention_count {
-            for old in existing.iter().skip(settings.max_retention_count) {
+        let unlocked: Vec<_> = existing.iter().filter(|b| !b.is_locked).collect();
+        if unlocked.len() > settings.max_retention_count {
+            for old in unlocked.iter().skip(settings.max_retention_count) {
                 warn!("Pruning old backup to enforce retention policy: {}", old.filename);
                 let _ = delete_server_backup(config, &old.filename).await;
             }
@@ -295,9 +340,30 @@ pub async fn create_server_backup(
         created_at_secs: timestamp_secs,
         scope,
         sha256: sha256_hex,
-        format: "zip".to_string(),
+        format: format_choice,
         file_count,
+        is_locked: false,
     })
+}
+
+/// Toggles the lock status on a backup archive
+pub async fn toggle_backup_lock(config: &AppConfig, filename: &str) -> Result<bool, AppError> {
+    if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
+        return Err(AppError::BadRequest("Invalid backup filename".to_string()));
+    }
+
+    let mut settings = load_backup_settings(config).await;
+    let is_locked = if settings.locked_backups.contains(&filename.to_string()) {
+        settings.locked_backups.retain(|f| f != filename);
+        false
+    } else {
+        settings.locked_backups.push(filename.to_string());
+        true
+    };
+
+    save_backup_settings(config, &settings).await?;
+    info!("Backup '{}' lock state changed to: {}", filename, is_locked);
+    Ok(is_locked)
 }
 
 /// Lists all server backups with metadata sorted newest first
@@ -306,6 +372,8 @@ pub async fn list_server_backups(config: &AppConfig) -> Result<Vec<ServerBackupM
     if !backups_dir.exists() {
         return Ok(Vec::new());
     }
+
+    let settings = load_backup_settings(config).await;
 
     let mut entries = tokio::fs::read_dir(&backups_dir)
         .await
@@ -345,14 +413,17 @@ pub async fn list_server_backups(config: &AppConfig) -> Result<Vec<ServerBackupM
             "full".to_string()
         };
 
+        let is_locked = settings.locked_backups.contains(&filename);
+
         backups.push(ServerBackupMetadata {
             filename,
             file_size_bytes,
             created_at_secs,
             scope,
-            sha256: "".to_string(), // computed on demand or during creation
+            sha256: "".to_string(),
             format: "zip".to_string(),
             file_count: 0,
+            is_locked,
         });
     }
 
@@ -390,7 +461,7 @@ pub async fn restore_server_backup(config: &AppConfig, filename: &str) -> Result
 
             let enclosed_name = match file.enclosed_name() {
                 Some(path) => path.to_owned(),
-                None => continue, // Ignore insecure paths with '..' or absolute prefixes
+                None => continue,
             };
 
             let outpath = dest_dir.join(&enclosed_name);
@@ -425,6 +496,11 @@ pub async fn restore_server_backup(config: &AppConfig, filename: &str) -> Result
 pub async fn delete_server_backup(config: &AppConfig, filename: &str) -> Result<(), AppError> {
     if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
         return Err(AppError::BadRequest("Invalid backup filename".to_string()));
+    }
+
+    let settings = load_backup_settings(config).await;
+    if settings.locked_backups.contains(&filename.to_string()) {
+        return Err(AppError::BadRequest("Impossible de supprimer une sauvegarde verrouillée".to_string()));
     }
 
     let backups_dir = get_backups_dir(config);

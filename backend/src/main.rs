@@ -76,12 +76,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let profile_store = Arc::new(crate::auth::profiles::ProfileStore::load_or_create(&config.data_dir).await);
 
     let metrics_store = Arc::new(crate::minecraft::metrics::MetricsStore::new());
+    let tsdb_engine = Arc::new(crate::minecraft::tsdb::TsdbEngine::new(&config.data_dir)?);
+    crate::minecraft::tsdb::start_tsdb_maintenance_loop(tsdb_engine.clone());
+
     let alert_config = Arc::new(tokio::sync::RwLock::new(
         crate::minecraft::metrics::AlertConfig::load_or_create(&config.data_dir).await,
     ));
 
     crate::minecraft::metrics::start_telemetry_sampler(
         metrics_store.clone(),
+        tsdb_engine.clone(),
         alert_config.clone(),
         (*config).clone(),
         ws_hub.clone(),
@@ -144,6 +148,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(Extension(ws_hub))
         .layer(Extension(rcon_handle))
         .layer(Extension(metrics_store))
+        .layer(Extension(tsdb_engine))
         .layer(Extension(alert_config))
         .layer(Extension(token_store))
         .layer(Extension(user_store))

@@ -497,6 +497,7 @@ pub async fn send_test_discord_webhook(url: &str) -> Result<(), AppError> {
 
 pub fn start_telemetry_sampler(
     store: Arc<MetricsStore>,
+    tsdb: Arc<crate::minecraft::tsdb::TsdbEngine>,
     alert_config: Arc<RwLock<AlertConfig>>,
     config: AppConfig,
     ws_hub: crate::websocket::WsHub,
@@ -547,6 +548,21 @@ pub fn start_telemetry_sampler(
             };
 
             store.push(sample.clone());
+
+            let tsdb_sample = crate::minecraft::tsdb::TsdbSample {
+                timestamp,
+                server_id: "default".to_string(),
+                cpu_percent: cpu_percent.unwrap_or(0.0),
+                memory_bytes: ram_used_mb.unwrap_or(0) * 1024 * 1024,
+                memory_limit_bytes: ram_total_mb.unwrap_or(0) * 1024 * 1024,
+                disk_read_bytes: 0,
+                disk_write_bytes: disk_used_mb.unwrap_or(0) * 1024 * 1024,
+                net_rx_bytes: 0,
+                net_tx_bytes: 0,
+                tps,
+                player_count,
+            };
+            let _ = tsdb.insert_sample(&tsdb_sample);
 
             let alerts = alert_config.read().await.clone();
             check_and_send_discord_alerts(&sample, &alerts).await;

@@ -15,9 +15,10 @@ use crate::{
     error::AppError,
     minecraft::server_backup::{
         create_server_backup, delete_server_backup, get_backups_dir, list_server_backups,
-        load_backup_settings, restore_server_backup, save_backup_settings, CreateBackupOptions,
-        ServerBackupMetadata, ServerBackupSettings,
+        load_backup_settings, restore_server_backup, save_backup_settings, toggle_backup_lock,
+        CreateBackupOptions, ServerBackupMetadata, ServerBackupSettings,
     },
+    rcon::RconActorHandle,
 };
 
 pub fn backups_router() -> Router {
@@ -26,6 +27,7 @@ pub fn backups_router() -> Router {
         .route("/create", post(create_backup_handler))
         .route("/restore", post(restore_backup_handler))
         .route("/:filename", delete(delete_backup_handler))
+        .route("/:filename/lock", post(toggle_lock_handler))
         .route("/settings", get(get_settings_handler).post(update_settings_handler))
         .route("/export/s3", post(export_s3_handler))
 }
@@ -39,14 +41,40 @@ pub async fn list_backups_handler(
     Ok(Json(backups))
 }
 
+#[derive(Debug, Serialize)]
+pub struct LockToggleResponse {
+    pub filename: String,
+    pub is_locked: bool,
+    pub message: String,
+}
+
+/// POST /api/backups/:filename/lock — toggles retention lock
+pub async fn toggle_lock_handler(
+    _admin: RequireAdmin,
+    Extension(config): Extension<Arc<AppConfig>>,
+    Path(filename): Path<String>,
+) -> Result<Json<LockToggleResponse>, AppError> {
+    let is_locked = toggle_backup_lock(&config, &filename).await?;
+    Ok(Json(LockToggleResponse {
+        filename: filename.clone(),
+        is_locked,
+        message: if is_locked {
+            format!("Sauvegarde '{}' verrouillée contre la suppression automatique.", filename)
+        } else {
+            format!("Sauvegarde '{}' déverrouillée.", filename)
+        },
+    }))
+}
+
 /// POST /api/backups/create — triggers a new backup creation
 pub async fn create_backup_handler(
     admin: RequireAdmin,
     Extension(config): Extension<Arc<AppConfig>>,
+    Extension(rcon): Extension<RconActorHandle>,
     Json(payload): Json<CreateBackupOptions>,
 ) -> Result<Json<ServerBackupMetadata>, AppError> {
     let scope = payload.scope.clone().unwrap_or_else(|| "full".to_string());
-    match create_server_backup(&config, payload).await {
+    match create_server_backup(&config, Some(rcon), payload).await {
         Ok(metadata) => {
             record_audit_event(
                 &config,
@@ -54,7 +82,7 @@ pub async fn create_backup_handler(
                 "BACKUP_CREATE",
                 AuditCategory::Backups,
                 "SUCCESS",
-                serde_json::json!({ "filename": metadata.filename, "scope": scope, "size_bytes": metadata.file_size_bytes }),
+                serde_json::json!({ "filename": metadata.filename, "scope": scope, "size_bytes": metadata.file_size_bytes, "format": metadata.format }),
                 None,
             ).await;
             Ok(Json(metadata))

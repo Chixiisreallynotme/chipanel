@@ -13,8 +13,9 @@ use crate::{
     error::AppError,
     minecraft::files::{
         create_file_or_dir, delete_file_or_dir, get_file_tree_with_base,
-        read_file_content_with_base, save_file_content_with_base, FileActionResponse,
-        FileContentResponse, FileCreateRequest, FileSaveRequest, FileTreeNode,
+        handle_chunk_upload, read_file_content_with_base, save_file_content_with_base,
+        ChunkUploadPayload, ChunkUploadResponse, FileActionResponse, FileContentResponse,
+        FileCreateRequest, FileSaveRequest, FileTreeNode,
     },
 };
 
@@ -40,6 +41,18 @@ pub fn files_router() -> Router {
         .route("/save", post(save_handler))
         .route("/create", post(create_handler))
         .route("/delete", delete(delete_handler))
+        .route("/upload/chunk", post(upload_chunk_handler))
+}
+
+/// POST /api/files/upload/chunk
+/// Handles chunked file uploads with automatic reassembly
+pub async fn upload_chunk_handler(
+    _auth: RequireAdmin,
+    Extension(config): Extension<Arc<AppConfig>>,
+    Json(payload): Json<ChunkUploadPayload>,
+) -> Result<Json<ChunkUploadResponse>, AppError> {
+    let res = handle_chunk_upload(payload, &config).await?;
+    Ok(Json(res))
 }
 
 /// GET /api/files/tree?path=...

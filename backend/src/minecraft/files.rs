@@ -56,6 +56,24 @@ pub struct FileActionResponse {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkUploadPayload {
+    pub upload_id: String,
+    pub chunk_index: usize,
+    pub total_chunks: usize,
+    pub target_dir: String,
+    pub file_name: String,
+    pub chunk_data_base64: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChunkUploadResponse {
+    pub success: bool,
+    pub completed: bool,
+    pub file_path: Option<String>,
+    pub message: String,
+}
+
 /// Maximum items listed per directory.
 const MAX_ITEMS_PER_DIR: usize = 500;
 
@@ -612,4 +630,79 @@ pub async fn delete_file_or_dir(subpath: &str, base_dir: &Path) -> Result<String
         info!("Deleted file: {:?}", target_path);
         Ok(format!("File '{}' deleted successfully", subpath))
     }
+}
+
+/// Handles a chunk of a large file upload and stitches all chunks when complete.
+pub async fn handle_chunk_upload(
+    payload: ChunkUploadPayload,
+    config: &AppConfig,
+) -> Result<ChunkUploadResponse, AppError> {
+    use base64::Engine;
+
+    if payload.upload_id.contains("..") || payload.upload_id.contains('/') || payload.upload_id.contains('\\') {
+        return Err(AppError::BadRequest("Invalid upload ID".to_string()));
+    }
+    if payload.file_name.contains("..") || payload.file_name.contains('/') || payload.file_name.contains('\\') {
+        return Err(AppError::BadRequest("Invalid file name".to_string()));
+    }
+
+    let chunk_bytes = base64::engine::general_purpose::STANDARD
+        .decode(&payload.chunk_data_base64)
+        .map_err(|e| AppError::BadRequest(format!("Base64 decoding failed: {}", e)))?;
+
+    let tmp_upload_dir = config.data_dir.join("tmp_uploads").join(&payload.upload_id);
+    fs::create_dir_all(&tmp_upload_dir)
+        .await
+        .map_err(|e| AppError::InternalError(format!("Failed creating temp upload directory: {}", e)))?;
+
+    let chunk_file = tmp_upload_dir.join(format!("chunk_{:06}", payload.chunk_index));
+    fs::write(&chunk_file, &chunk_bytes)
+        .await
+        .map_err(|e| AppError::InternalError(format!("Failed writing chunk: {}", e)))?;
+
+    // Check if all chunks are present
+    let mut all_present = true;
+    for i in 0..payload.total_chunks {
+        let path = tmp_upload_dir.join(format!("chunk_{:06}", i));
+        if !fs::try_exists(&path).await.unwrap_or(false) {
+            all_present = false;
+            break;
+        }
+    }
+
+    if !all_present {
+        return Ok(ChunkUploadResponse {
+            success: true,
+            completed: false,
+            file_path: None,
+            message: format!("Chunk {}/{} received", payload.chunk_index + 1, payload.total_chunks),
+        });
+    }
+
+    // Stitch chunks together
+    let target_dir_path = canonicalize_and_validate_path_with_base(&payload.target_dir, &config.minecraft_data_dir).await?;
+    let final_dest = target_dir_path.join(&payload.file_name);
+
+    let mut final_data = Vec::new();
+    for i in 0..payload.total_chunks {
+        let path = tmp_upload_dir.join(format!("chunk_{:06}", i));
+        let chunk = fs::read(&path)
+            .await
+            .map_err(|e| AppError::InternalError(format!("Failed reading chunk {}: {}", i, e)))?;
+        final_data.extend_from_slice(&chunk);
+    }
+
+    fs::write(&final_dest, final_data)
+        .await
+        .map_err(|e| AppError::InternalError(format!("Failed writing final assembled file: {}", e)))?;
+
+    let _ = fs::remove_dir_all(&tmp_upload_dir).await;
+
+    info!("Chunked upload successfully assembled: {:?}", final_dest);
+    Ok(ChunkUploadResponse {
+        success: true,
+        completed: true,
+        file_path: Some(final_dest.to_string_lossy().to_string()),
+        message: format!("File '{}' uploaded successfully", payload.file_name),
+    })
 }

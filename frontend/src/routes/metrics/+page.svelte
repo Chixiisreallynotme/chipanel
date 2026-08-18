@@ -15,11 +15,13 @@
 		Info
 	} from 'lucide-svelte';
 
-	// Range Selector Presets
+	// Range Selector Presets (TSDB Multi-Tier Retention)
 	const rangePresets = [
 		{ label: '1h', value: '1h' },
 		{ label: '6h', value: '6h' },
-		{ label: '24h', value: '24h' }
+		{ label: '24h', value: '24h' },
+		{ label: '7j', value: '7d' },
+		{ label: '30j', value: '30d' }
 	];
 
 	let selectedRange = $state('1h');

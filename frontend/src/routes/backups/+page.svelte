@@ -21,7 +21,9 @@
 		Layers,
 		FileCode,
 		Globe,
-		Server
+		Server,
+		Lock,
+		Unlock
 	} from 'lucide-svelte';
 
 	/** @type {Array<{ filename: string, file_size_bytes: number, created_at_secs: number, scope: string, sha256: string, format: string, file_count: number }>} */
@@ -49,6 +51,7 @@
 	// Create backup form
 	let newBackupName = $state('');
 	let newBackupScope = $state('full');
+	let newBackupFormat = $state('zstd'); // 'zstd' | 'zip'
 	let isCreating = $state(false);
 
 	// Restore in flight
@@ -95,12 +98,23 @@
 		}
 	}
 
+	async function handleToggleLock(filename) {
+		try {
+			const res = await apiPost(`/api/backups/${encodeURIComponent(filename)}/lock`, {});
+			addToast('success', res?.is_locked ? 'Sauvegarde verrouillée' : 'Sauvegarde déverrouillée', res?.message || '');
+			await loadBackups();
+		} catch (err) {
+			addToast('danger', 'Erreur de verrouillage', err.message || 'Action impossible');
+		}
+	}
+
 	async function handleCreateBackup() {
 		isCreating = true;
 		try {
 			const res = await apiPost('/api/backups/create', {
 				name: newBackupName.trim() || undefined,
-				scope: newBackupScope
+				scope: newBackupScope,
+				format: newBackupFormat
 			});
 			addToast('success', 'Sauvegarde créée', `L'archive "${res.filename}" a été générée avec succès.`);
 			showCreateModal = false;
@@ -327,21 +341,39 @@
 									<div class="backup-name-cell">
 										<Archive size={16} class="text-muted flex-shrink-0" />
 										<span class="backup-filename font-mono">{backup.filename}</span>
+										{#if backup.is_locked}
+											<Lock size={13} class="text-warning flex-shrink-0" title="Verrouillé contre la purge" />
+										{/if}
 									</div>
 								</td>
 								<td>
-									{#if backup.scope === 'full'}
-										<span class="badge badge-primary">Complète</span>
-									{:else if backup.scope === 'world_only'}
-										<span class="badge badge-success">Monde seul</span>
-									{:else}
-										<span class="badge badge-warning">Configs & Plugins</span>
-									{/if}
+									<div class="flex items-center gap-1.5">
+										{#if backup.scope === 'full'}
+											<span class="badge badge-primary">Complète</span>
+										{:else if backup.scope === 'world_only'}
+											<span class="badge badge-success">Monde seul</span>
+										{:else}
+											<span class="badge badge-warning">Configs</span>
+										{/if}
+										<span class="badge badge-secondary font-mono">{backup.format || 'zip'}</span>
+									</div>
 								</td>
-								<td class="font-mono text-sm">{formatBytes(backup.file_size_bytes)}</td>
+								<td class="font-mono text-sm tabular-nums">{formatBytes(backup.file_size_bytes)}</td>
 								<td class="text-sm text-muted">{formatDate(backup.created_at_secs)}</td>
 								<td>
 									<div class="actions-cell">
+										<button
+											class="btn btn-ghost btn-sm btn-icon"
+											onclick={() => handleToggleLock(backup.filename)}
+											title={backup.is_locked ? "Déverrouiller la sauvegarde" : "Verrouiller contre la suppression automatique"}
+										>
+											{#if backup.is_locked}
+												<Lock size={15} class="text-warning" />
+											{:else}
+												<Unlock size={15} class="text-muted" />
+											{/if}
+										</button>
+
 										{#if settings.s3_config?.enabled}
 											<button
 												class="btn btn-ghost btn-sm btn-icon"
@@ -369,6 +401,7 @@
 											class="btn btn-danger-ghost btn-sm btn-icon"
 											onclick={() => handleDeleteBackup(backup.filename)}
 											title="Supprimer"
+											disabled={backup.is_locked}
 										>
 											<Trash2 size={15} />
 										</button>
@@ -430,6 +463,26 @@
 							<div class="scope-text">
 								<strong>Configs & Plugins</strong>
 								<span>Configurations, plugins et métadonnées sans les lourdes régions.</span>
+							</div>
+						</label>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<span class="form-label">Format de Compression :</span>
+					<div class="grid-2">
+						<label class="scope-option card {newBackupFormat === 'zstd' ? 'selected' : ''}">
+							<input type="radio" name="format" value="zstd" bind:group={newBackupFormat} />
+							<div class="scope-text">
+								<strong>zstd Multi-thread</strong>
+								<span>Ultra-rapide (3x) & ratio maximal</span>
+							</div>
+						</label>
+						<label class="scope-option card {newBackupFormat === 'zip' ? 'selected' : ''}">
+							<input type="radio" name="format" value="zip" bind:group={newBackupFormat} />
+							<div class="scope-text">
+								<strong>ZIP Standard (Deflate)</strong>
+								<span>Compatibilité universelle</span>
 							</div>
 						</label>
 					</div>
