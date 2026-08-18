@@ -1,50 +1,21 @@
-# ChiPanel Technical Documentation
+# Documentation ChiPanel
 
-Welcome to the technical documentation for **ChiPanel**, a management console for Minecraft servers running on rootless Podman and systemd Quadlets.
+Bienvenue dans la documentation officielle de **ChiPanel**, la console de gestion de serveurs de jeux vidéo et d'infrastructure homelab de nouvelle génération.
 
 ---
 
-## Documentation Index
+## 🗺️ Feuilles de Route Stratégiques & Matrices Produit
 
-The documentation is organized into 5 guides:
+- [**Feuille de Route Stratégique & Matrice Produit (Français)**](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/ROADMAP_STRATEGIQUE_CHIPANEL.md) : Spécification d'ingénierie exhaustive, MoSCoW, 6 blocs thématiques, 14 fiches techniques (Phases 1 à 4), moteur d'auto-tuning matériel et audit mémoire < 25 Mo.
+- [**Strategic Product Matrix & Technical Engineering Roadmap (English)**](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/CHIPANEL_STRATEGIC_ROADMAP.md) : Full unabridged technical engineering roadmap and competitive strategy.
 
-1. [**Architecture & Internal Mechanisms** (`architecture.md`)](./architecture.md)
-   - Rust async runtime (Axum 0.7 + Tokio) with under 25 MB RAM idle footprint.
-   - Single-threaded Tokio actor pattern for RCON communication with automatic reconnection.
-   - Reactive Svelte 5 frontend using Runes (`$state`, `$derived`, `$props`, `$effect`, `$bindable`, `untrack`).
-   - System supervision via D-Bus session bus (`zbus`) and rootless Podman 5.4 Unix domain sockets.
-   - Three-tier server lifecycle and `lazymc` auto-hibernation proxy integration.
-   - Background engines: Mojang Version Watcher, Tools Synchronizer, Telemetry Sampler, and Deferred Command Queue.
+---
 
-2. [**REST API & WebSocket Reference** (`api-reference.md`)](./api-reference.md)
-   - Authentication via Argon2id, JWT session tokens, and persistent SHA-256 API keys.
-   - Complete reference for all 77 API endpoints across 18 route modules.
-   - Bidirectional WebSocket protocol specification (`/ws`).
+## 📚 Guides & Spécifications Techniques
 
-3. [**Functional Modules Guide** (`modules-guide.md`)](./modules-guide.md)
-   - **Multiplexed RCON Actor**: Source protocol packet framing with dummy packet stream termination.
-   - **Console & Log Redaction**: Memory ring buffer with automated regex redaction and one-click `mclo.gs` export.
-   - **NBT Inspector & Player Inventory**: In-memory NBT parsing (`fastnbt`), 2D inventory visualizer, active potion effects, and LuckPerms groups.
-   - **Addons & Modpack Catalog**: Modrinth v2 and CurseForge search, concurrent downloads, and profile manager.
-   - **World Lifecycle & Chunky**: Dimension discovery, gamerules, worldborder, zip import/export, and real-time chunk pregeneration tracking.
-   - **Visual Config Diff**: In-browser Myers difference algorithm (`similar` crate) before committing file edits.
-   - **Database Maintenance**: Non-locking SQLite disk footprint inspection for CoreProtect and LuckPerms.
-   - **Bedrock Cross-Play**: UDP 19132 port verification, encryption key validation, and automated Geyser config generator.
-   - **Spark Profiling**: RCON sampler triggers and automated Flamegraph viewer URL extraction.
-   - **Scoped Backups**: Selectable scopes (`full`, `world_only`, `configs_only`), SHA-256 hashing, retention quotas, and direct S3 streaming.
-   - **Audit Trail**: Append-only event logging (`audit_log.jsonl`) with search, filtering, and RFC 4180 CSV export.
-
-4. [**Deployment & Operations Runbook** (`deployment-and-operations.md`)](./deployment-and-operations.md)
-   - Multi-stage container build process (`Containerfile`).
-   - Production systemd user Quadlet configuration (`chipanel.container`).
-   - Full dictionary of all 18 environment variables and defaults.
-   - Homelab deployment workflow (local build, `podman save`, SCP transfer, `podman load`, systemd restart).
-   - Operations runbook: health checks, journal logging, and `daemon-reload` requirements.
-
-5. [**Security Architecture & Threat Model** (`security.md`)](./security.md)
-   - Argon2id password hashing with async reactor offloading and rate limiting.
-   - Role-Based Access Control (`admin`, `viewer`, `operator`).
-   - Path canonicalization, prefix boundary enforcement, and Zip-Slip protection.
-   - Discord alert SSRF filters (HTTPS enforcement, domain whitelisting, redirect blocking).
-   - Credential and PII sanitization for log exports.
-   - Rootless Podman container isolation and Linux user namespaces (`subuid` / `subgid`).
+- [`onboarding-spec.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/onboarding-spec.md) : Spécification détaillée de l'onboarding 1-Click débutant, jauge RAM assistée et architecture desktop.
+- [`architecture.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/architecture.md) : Architecture interne approfondie, runtime Tokio, acteur RCON et cycle de vie `lazymc`.
+- [`api-reference.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/api-reference.md) : Référence exhaustive des endpoints REST et des événements WebSocket.
+- [`modules-guide.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/modules-guide.md) : Guide exhaustif des modules métier (NBT, diff Myers, backups S3, audit log).
+- [`deployment-and-operations.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/deployment-and-operations.md) : Guide de déploiement conteneurisé, variables d'environnement et runbook d'exploitation.
+- [`security.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/security.md) : Modèle de sécurité, RBAC, hash Argon2id, mitigation SSRF et isolation rootless.
