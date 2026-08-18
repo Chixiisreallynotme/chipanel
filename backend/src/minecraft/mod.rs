@@ -11,12 +11,14 @@ pub mod modpacks;
 pub mod permissions;
 pub mod player;
 pub mod plugins;
+pub mod scheduler;
 pub mod server_backup;
 pub mod server_properties;
 pub mod tools;
 pub mod tsdb;
 pub mod version_meta;
 pub mod version_watch;
+pub mod webhook;
 pub mod worlds;
 
 pub use command_queue::*;

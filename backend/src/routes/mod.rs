@@ -15,8 +15,10 @@ pub mod permissions;
 pub mod players;
 pub mod plugins;
 pub mod profiles;
+pub mod scheduler;
 pub mod server;
 pub mod tools;
+pub mod webhooks;
 pub mod websocket;
 pub mod worlds;
 
@@ -37,8 +39,10 @@ pub use modpacks::modpacks_router;
 pub use permissions::permissions_router;
 pub use plugins::plugins_router;
 pub use profiles::profiles_router;
+pub use scheduler::scheduler_router;
 pub use server::server_router;
 pub use tools::tools_router;
+pub use webhooks::webhooks_router;
 pub use worlds::worlds_router;
 
 use axum::{

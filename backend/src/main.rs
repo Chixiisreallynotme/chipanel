@@ -95,6 +95,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     crate::minecraft::tools::start_tools_sync_loop(config.clone());
 
+    let scheduler_engine = Arc::new(
+        crate::minecraft::scheduler::SchedulerEngine::new(config.clone(), Some(rcon_handle.clone())).await,
+    );
+    crate::minecraft::scheduler::start_scheduler_loop((*scheduler_engine).clone());
+
+    let webhook_dispatcher = Arc::new(
+        crate::minecraft::webhook::WebhookDispatcher::new(config.clone()).await,
+    );
+
     let cors = if config.allowed_origins.iter().any(|o| o == "*") {
         CorsLayer::new()
             .allow_origin(Any)
@@ -136,6 +145,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest("/api/audit", routes::audit_router())
         .nest("/api/diagnostics", routes::diagnostics_router())
         .nest("/api/autotune", routes::autotune_router())
+        .nest("/api/scheduler", routes::scheduler_router())
+        .nest("/api/webhooks", routes::webhooks_router())
         .route("/api/public/resourcepack/:filename", get(routes::server::public_resourcepack_handler))
         .route("/api/health", get(health_handler))
         .route("/ws", get(routes::websocket::websocket_handler))
@@ -151,6 +162,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(Extension(rcon_handle))
         .layer(Extension(metrics_store))
         .layer(Extension(tsdb_engine))
+        .layer(Extension(scheduler_engine))
+        .layer(Extension(webhook_dispatcher))
         .layer(Extension(alert_config))
         .layer(Extension(token_store))
         .layer(Extension(user_store))

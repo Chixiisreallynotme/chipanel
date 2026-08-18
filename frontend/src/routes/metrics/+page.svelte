@@ -12,7 +12,14 @@
 		CheckCircle2,
 		AlertCircle,
 		AlertTriangle,
-		Info
+		Info,
+		CalendarClock,
+		Play,
+		Check,
+		Plus,
+		Trash2,
+		Webhook,
+		Power
 	} from 'lucide-svelte';
 
 	// Range Selector Presets (TSDB Multi-Tier Retention)
@@ -137,9 +144,70 @@
 		}
 	}
 
+	// Cron Scheduler & Webhooks State
+	let schedulerJobs = $state([]);
+	let webhooks = $state([]);
+	let runningJobId = $state(null);
+
+	async function loadSchedulerJobs() {
+		try {
+			const res = await apiGet('/api/scheduler/jobs').catch(() => []);
+			schedulerJobs = res || [];
+		} catch (err) {
+			console.error('Failed to load scheduler jobs:', err);
+		}
+	}
+
+	async function handleRunJob(id) {
+		runningJobId = id;
+		try {
+			const res = await apiPost(`/api/scheduler/jobs/${encodeURIComponent(id)}/run`, {});
+			addToast('success', 'Tâche Exécutée', res.message);
+			await loadSchedulerJobs();
+		} catch (err) {
+			addToast('danger', 'Échec de la tâche', err.message || 'Erreur lors de l\'exécution.');
+		} finally {
+			runningJobId = null;
+		}
+	}
+
+	async function handleToggleJob(id) {
+		try {
+			const res = await apiPost(`/api/scheduler/jobs/${encodeURIComponent(id)}/toggle`, {});
+			addToast('success', res.enabled ? 'Tâche activée' : 'Tâche désactivée', res.message);
+			await loadSchedulerJobs();
+		} catch (err) {
+			addToast('danger', 'Erreur de basculement', err.message || 'Action impossible');
+		}
+	}
+
+	async function loadWebhooks() {
+		try {
+			const res = await apiGet('/api/webhooks').catch(() => []);
+			webhooks = res || [];
+		} catch (err) {
+			console.error('Failed to load webhooks:', err);
+		}
+	}
+
+	async function handleTestPing() {
+		try {
+			const res = await apiPost('/api/webhooks/test', {
+				url: '',
+				channel_type: 'discord',
+				secret: null
+			});
+			addToast('success', 'Notification expédiée', res.message);
+		} catch (err) {
+			addToast('danger', 'Échec du test', err.message || 'Erreur lors du test.');
+		}
+	}
+
 	onMount(() => {
 		loadMetricsHistory();
 		loadAlertConfig();
+		loadSchedulerJobs();
+		loadWebhooks();
 
 		// Re-read the authoritative history instead of extrapolating locally: the
 		// live /ws frame measures the *container*, /api/metrics/history measures
@@ -253,6 +321,81 @@
 				onTriggerSpark={handleTriggerSpark}
 				onToast={addToast}
 			/>
+		</div>
+
+		<!-- 5. Tokio Cron Automation Scheduler -->
+		<div class="grid-column-2 card cron-scheduler-card">
+			<div class="cron-header">
+				<div class="flex items-center gap-2">
+					<CalendarClock size={18} class="text-primary" />
+					<h2 class="card-title">Planificateur Cron (Tokio Scheduler)</h2>
+				</div>
+				<span class="badge badge-secondary">{schedulerJobs.length} tâche(s)</span>
+			</div>
+
+			<div class="cron-job-list">
+				{#each schedulerJobs as job}
+					<div class="cron-job-item card">
+						<div class="cron-job-main">
+							<div class="flex items-center gap-2">
+								<button
+									class="btn btn-ghost btn-sm btn-icon"
+									onclick={() => handleToggleJob(job.id)}
+									title={job.enabled ? "Désactiver la tâche" : "Activer la tâche"}
+								>
+									<Power size={14} class={job.enabled ? 'text-success' : 'text-muted'} />
+								</button>
+								<div>
+									<strong class="text-sm block">{job.name}</strong>
+									<span class="font-mono text-xs text-muted">{job.cron_expression} ({job.action_type})</span>
+								</div>
+							</div>
+							<div class="flex items-center gap-2">
+								{#if job.last_status === 'SUCCESS'}
+									<span class="badge badge-success text-xs">Succès</span>
+								{:else if job.last_status === 'FAILED'}
+									<span class="badge badge-danger text-xs">Échec</span>
+								{/if}
+								<button
+									class="btn btn-secondary btn-sm"
+									onclick={() => handleRunJob(job.id)}
+									disabled={runningJobId === job.id}
+									title="Exécuter immédiatement"
+								>
+									<Play size={12} class={runningJobId === job.id ? 'spin' : ''} />
+									<span>Lancer</span>
+								</button>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+
+		<!-- 6. Multi-Channel Webhook Dispatcher -->
+		<div class="grid-column-2 card webhook-card">
+			<div class="cron-header">
+				<div class="flex items-center gap-2">
+					<Webhook size={18} class="text-primary" />
+					<h2 class="card-title">Notifications Multi-Canaux (Discord & HMAC)</h2>
+				</div>
+				<span class="badge badge-secondary">{webhooks.length} actif(s)</span>
+			</div>
+
+			<p class="text-xs text-muted">
+				Diffusion automatisée des alertes TPS, crashs, arrêts serveur et sauvegardes avec signature cryptographique SHA-256.
+			</p>
+
+			<div class="webhook-actions">
+				<button class="btn btn-secondary btn-sm" onclick={handleTestPing}>
+					<Webhook size={14} />
+					<span>Envoyer un Ping de Test</span>
+				</button>
+				<button class="btn btn-primary btn-sm" onclick={() => (isAlertModalOpen = true)}>
+					<Sliders size={14} />
+					<span>Configurer les Seuils</span>
+				</button>
+			</div>
 		</div>
 	</div>
 
@@ -501,6 +644,51 @@
 
 	.text-danger {
 		color: var(--danger-text);
+	}
+
+	.cron-scheduler-card,
+	.webhook-card {
+		padding: var(--space-5);
+		background-color: var(--bg-surface);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	.cron-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.card-title {
+		font-size: var(--font-size-base);
+		font-weight: var(--font-weight-semibold);
+		margin: 0;
+	}
+
+	.cron-job-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.cron-job-item {
+		padding: var(--space-3) var(--space-4);
+		background-color: var(--bg-card);
+	}
+
+	.cron-job-main {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.webhook-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		margin-top: auto;
 	}
 
 	@media (max-width: 992px) {
