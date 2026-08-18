@@ -577,7 +577,7 @@
 			aria-labelledby="border-modal-title"
 			tabindex="-1"
 		>
-			<div class="modal border-modal" onclick={(e) => e.stopPropagation()}>
+			<div class="modal border-modal" role="presentation" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
 				<div class="modal-header">
 					<div class="title-with-icon">
 						<Maximize2 size={20} class="icon-blue" />
@@ -719,12 +719,13 @@
 		<div
 			class="modal-backdrop"
 			onclick={() => (deleteInFlight ? null : (deleteTarget = null))}
+			onkeydown={(e) => e.key === 'Escape' && !deleteInFlight && (deleteTarget = null)}
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="delete-modal-title"
 			tabindex="-1"
 		>
-			<div class="modal border-modal" onclick={(e) => e.stopPropagation()}>
+			<div class="modal border-modal" role="presentation" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
 				<div class="modal-header">
 					<div class="title-with-icon">
 						<AlertCircle size={20} class="text-danger" />

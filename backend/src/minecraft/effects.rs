@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
 };
 use flate2::read::GzDecoder;
 

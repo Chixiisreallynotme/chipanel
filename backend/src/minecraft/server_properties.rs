@@ -88,8 +88,6 @@ pub async fn set_properties(path: &Path, updates: &[(String, String)]) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn parses_and_rewrites_properties() {
         let content = "# comment\nlevel-name=world\nlevel-seed=123\n\nmotd=hello\n";

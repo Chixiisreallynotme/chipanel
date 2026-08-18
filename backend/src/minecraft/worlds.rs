@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
     time::SystemTime,
 };

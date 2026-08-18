@@ -1,12 +1,12 @@
 use std::{
     collections::HashMap,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
     sync::Arc,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::Semaphore;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{
     curseforge::client::{CurseForgeClient, CurseForgeFile},

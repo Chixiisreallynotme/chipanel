@@ -1,11 +1,10 @@
 use std::{
     fs::File,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
 };
 use serde::{Deserialize, Serialize};
 use sha1::Digest as Sha1Digest;
-use sha2::Digest as Sha2Digest;
 use tracing::{info, warn};
 use zip::ZipArchive;
 

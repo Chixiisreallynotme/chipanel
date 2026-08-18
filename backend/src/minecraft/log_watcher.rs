@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::io::SeekFrom;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, AsyncSeekExt, BufReader};
 use tokio::sync::broadcast;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 
 use crate::config::AppConfig;
 use crate::models::websocket::WsServerMessage;

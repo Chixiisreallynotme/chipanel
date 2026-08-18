@@ -112,9 +112,15 @@ pub async fn delete_webhook_handler(
 
 #[derive(Deserialize)]
 pub struct TestWebhookRequest {
-    pub url: String,
+    #[serde(default)]
+    pub url: Option<String>,
+    #[serde(default = "default_channel")]
     pub channel_type: String, // "discord" | "generic_json"
     pub secret: Option<String>,
+}
+
+fn default_channel() -> String {
+    "discord".to_string()
 }
 
 #[derive(Serialize)]
@@ -133,7 +139,12 @@ pub async fn test_webhook_handler(
         "TEST_PING",
         "Test de Notification ChiPanel",
         "Ceci est un message de test envoyé depuis le tableau de bord ChiPanel.",
-        serde_json::json!({ "ping": "pong", "channel": payload.channel_type }),
+        serde_json::json!({
+            "ping": "pong",
+            "channel": payload.channel_type,
+            "target_url": payload.url,
+            "has_secret": payload.secret.is_some(),
+        }),
     ).await;
 
     Ok(Json(TestWebhookResponse {

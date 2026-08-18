@@ -4,7 +4,7 @@ use std::{
     fmt::Write as _,
     fs,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
 };
 use flate2::read::GzDecoder;
 
