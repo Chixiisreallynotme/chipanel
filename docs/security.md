@@ -97,8 +97,14 @@ Before exporting console logs to external diagnostic services like `mclo.gs`:
 
 ---
 
-## 6. Rootless Podman & Namespace Isolation
+## 6. Container Runtime Isolation & Least Privilege
 
+### Podman Rootless & Namespace Isolation
 - **Non-Root Execution**: ChiPanel runs as non-privileged user `USER 1000:1000` (`chiserv`) inside a rootless container.
 - **Linux User Namespaces (`subuid` / `subgid`)**: In the unlikely event of a container breakout, the process is confined to an unprivileged subordinate UID on the host without root capabilities.
 - **Read-Only System Sockets (`:ro`)**: System control sockets (`/run/user/1000/podman/podman.sock` and `/run/user/1000/bus`) are mounted in read-only mode to prevent descriptor corruption or unauthorized permission escalation.
+
+### Docker Socket Security Guidelines
+- **Read-Only Daemon Mounting**: When deployed against standard Docker, mount `/var/run/docker.sock:ro` to prevent container hijacking or arbitrary container injection.
+- **Restricted Volume Scopes**: Bind-mount only necessary target data directories (`/app/data` and `/app/minecraft-data`), avoiding parent directory mounts.
+

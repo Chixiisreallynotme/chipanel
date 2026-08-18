@@ -13,9 +13,10 @@ Bienvenue dans la documentation officielle de **ChiPanel**, la console de gestio
 
 ## 📚 Guides & Spécifications Techniques
 
-- [`onboarding-spec.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/onboarding-spec.md) : Spécification détaillée de l'onboarding 1-Click débutant, jauge RAM assistée et architecture desktop.
-- [`architecture.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/architecture.md) : Architecture interne approfondie, runtime Tokio, acteur RCON et cycle de vie `lazymc`.
-- [`api-reference.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/api-reference.md) : Référence exhaustive des endpoints REST et des événements WebSocket.
-- [`modules-guide.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/modules-guide.md) : Guide exhaustif des modules métier (NBT, diff Myers, backups S3, audit log).
-- [`deployment-and-operations.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/deployment-and-operations.md) : Guide de déploiement conteneurisé, variables d'environnement et runbook d'exploitation.
-- [`security.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/security.md) : Modèle de sécurité, RBAC, hash Argon2id, mitigation SSRF et isolation rootless.
+- [`onboarding-spec.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/onboarding-spec.md) : Spécification détaillée de l'onboarding 1-Click débutant, jauge RAM assistée, Dual-Mode UX (`Alt+M`) et architecture desktop.
+- [`architecture.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/architecture.md) : Architecture interne approfondie, multi-runtimes (Podman/Docker), Game Drivers unifiés, runtime Tokio, acteur RCON et cycle de vie `lazymc`.
+- [`api-reference.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/api-reference.md) : Référence exhaustive des 77 endpoints REST et des événements WebSocket.
+- [`modules-guide.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/modules-guide.md) : Guide exhaustif des modules métier (NBT, diff Myers, backups S3, audit log, runtime container engines, game drivers).
+- [`deployment-and-operations.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/deployment-and-operations.md) : Guide de déploiement conteneurisé (Quadlets Podman et Docker), variables d'environnement, preview locale et runbook d'exploitation.
+- [`security.md`](file:///home/chixi/Documents/Projects%20/chiserv/chipanel/docs/security.md) : Modèle de sécurité, RBAC, hash Argon2id, mitigation SSRF et isolation rootless multi-runtimes.
+

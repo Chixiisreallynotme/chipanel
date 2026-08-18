@@ -4,7 +4,37 @@ This document provides an in-depth technical breakdown of the architecture, algo
 
 ---
 
-## 1. Multiplexed RCON Actor (`src/rcon/`)
+## 1. Multi-Container Runtime Engine (`src/container/`)
+
+ChiPanel abstracts container management behind the `ContainerEngine` trait, making the panel completely portable across runtimes:
+- **`PodmanEngine` (`podman.rs`)**:
+  - Targets rootless Podman over `/run/user/<uid>/podman/podman.sock`.
+  - Interfaces directly with `systemd --user` via D-Bus (`zbus`) for managing `.container` Quadlets.
+  - Automatically handles cgroup v2 metrics collection for non-root containers.
+- **`DockerEngine` (`docker.rs`)**:
+  - Connects to standard Docker daemon sockets (`/var/run/docker.sock`, `/run/user/<uid>/docker.sock` or `DOCKER_HOST`).
+  - Demultiplexes standard 8-byte frame headers (stdout/stderr channel indicators) for logs and streams.
+- **`AutoDetector` (`detector.rs`)**:
+  - Evaluates socket availability at startup and selects the optimal engine (`CONTAINER_ENGINE=auto|podman|docker`).
+- **Container Profiles & Presets (`profiles.rs`)**:
+  - Built-in profiles for `LazymcCustom`, `ItzgMinecraft` (`itzg/minecraft-server` standard variables: `EULA`, `TYPE`, `VERSION`, `MEMORY`, `JVM_OPTS`), and `GenericOci`.
+
+---
+
+## 2. Modular Game Drivers & Registry (`src/engine/`)
+
+The core server management loop is decoupled from game-specific mechanics through the `GameDriver` trait and dynamic registry:
+- **`MinecraftDriver` (`minecraft.rs`)**:
+  - Manages Java & Bedrock editions.
+  - Implements RCON actor protocol, NBT player data decoding, Modrinth/CurseForge addons, Chunky pregeneration, LuckPerms permissions, and lazymc hibernation.
+- **`PalworldDriver` (`palworld.rs`) & `ValheimDriver` (`valheim.rs`)**:
+  - Ready-to-use drivers managing dedicated server instances, lifecycle states, process telemetry, and player queries.
+- **`GameEngineRegistry` (`registry.rs`)**:
+  - Thread-safe registry (`Arc<RwLock<HashMap<String, Box<dyn GameDriver>>>>`) enabling multi-game hosting from a single ChiPanel instance.
+
+---
+
+## 3. Multiplexed RCON Actor (`src/rcon/`)
 
 ### Architecture & Connection Resilience
 The RCON subsystem isolates all TCP communication with the Minecraft JVM within a single Tokio actor loop:
@@ -15,7 +45,7 @@ The RCON subsystem isolates all TCP communication with the Minecraft JVM within 
 
 ---
 
-## 2. Live Console & Log Redaction with mclo.gs (`src/routes/logs.rs`)
+## 4. Live Console & Log Redaction with mclo.gs (`src/routes/logs.rs`)
 
 ### Real-Time Log Pipeline
 - **Memory Ring Buffer**: The frontend maintains a 5,000-line circular buffer optimized for virtualized DOM rendering.
@@ -27,7 +57,7 @@ The RCON subsystem isolates all TCP communication with the Minecraft JVM within 
 
 ---
 
-## 3. Visual Config Diff Engine (`src/routes/diff.rs`)
+## 5. Visual Config Diff Engine (`src/routes/diff.rs`)
 
 ### In-Browser Myers Difference Analysis
 ChiPanel integrates the Rust `similar` crate to compare unsaved in-memory text with the existing configuration file on disk (`server.properties`, `paper-global.yml`, `purpur.yml`):
@@ -37,7 +67,7 @@ ChiPanel integrates the Rust `similar` crate to compare unsaved in-memory text w
 
 ---
 
-## 4. Player NBT Inspector & Inventory Visualizer (`src/minecraft/`)
+## 6. Player NBT Inspector & Inventory Visualizer (`src/minecraft/`)
 
 ### Binary NBT Parsing via `fastnbt`
 ChiPanel directly decompresses and decodes player `.dat` files (`world/playerdata/{uuid}.dat`):
@@ -48,16 +78,17 @@ ChiPanel directly decompresses and decodes player `.dat` files (`world/playerdat
 
 ---
 
-## 5. Deferred Offline Command Queue (`src/minecraft/command_queue.rs`)
+## 7. Deferred Offline Command Queue & Fast-Path Log Watcher (`src/minecraft/command_queue.rs`)
 
 ### Automated Reconnection Execution
 When an administrator executes an action on an offline player (e.g. giving items, changing gamemodes, modifying LuckPerms groups):
 - **In-Memory Store**: Queues commands in `pending_commands.json` wrapped in an atomic write lock.
-- **Reconnection Detection**: The background processing loop watches the online player list from RCON/WebSocket. When the player connects, queued commands are executed in FIFO sequence, recorded in the history log (capped at 150 entries), and broadcast to the web UI via WebSocket event `pending_commands_executed`.
+- **Fast-Path Instant Join Log Watcher (<50ms)**: Rather than waiting for the periodic 2-second telemetry tick, ChiPanel actively watches the live log stream. When a player join regex is detected, pending commands for that UUID are executed immediately via the RCON actor.
+- **History Audit**: Executed commands are recorded in the history log (capped at 150 entries) and broadcast to connected clients via WebSocket event `pending_commands_executed`.
 
 ---
 
-## 6. Addons & Modpack Catalog Manager (`src/routes/plugins.rs`, `src/routes/modpacks.rs`)
+## 8. Addons & Modpack Catalog Manager (`src/routes/plugins.rs`, `src/routes/modpacks.rs`)
 
 ### Multi-Loader Addons Engine
 - **Deep JAR Inspection**: Reads internal archive manifests (`plugin.yml`, `paper-plugin.yml`, `fabric.mod.json`, `mods.toml`, `neoforge.mods.toml`, `pack.mcmeta`) to discover addon metadata, versions, main classes, and loader types.
@@ -67,7 +98,7 @@ When an administrator executes an action on an offline player (e.g. giving items
 
 ---
 
-## 7. Engine & Version Switcher (`src/routes/engine_catalog.rs`)
+## 9. Engine & Version Switcher (`src/routes/engine_catalog.rs`)
 
 ### Dynamic Multi-Engine Support
 Supports 11 server engines: *Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quilt, Mohist, Arclight, Spigot, Vanilla*.
@@ -77,7 +108,7 @@ Supports 11 server engines: *Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quil
 
 ---
 
-## 8. World Lifecycle & Chunky Pregeneration (`src/minecraft/worlds.rs`, `src/routes/worlds.rs`)
+## 10. World Lifecycle & Chunky Pregeneration (`src/minecraft/worlds.rs`, `src/routes/worlds.rs`)
 
 ### Dimension & World Management
 - **NBT Discovery**: Scans world directories, decodes `level.dat` to extract seeds, generator types, spawn coordinates, and data versions.
@@ -87,7 +118,7 @@ Supports 11 server engines: *Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quil
 
 ---
 
-## 9. Database Maintenance & Storage Inspector (`src/routes/database.rs`)
+## 11. Database Maintenance & Storage Inspector (`src/routes/database.rs`)
 
 ### Disk Footprint Analysis
 - **Non-Locking SQLite Inspection**: Reads SQLite header and table metadata from `plugins/CoreProtect/database.db` and `LuckPerms` without locking active databases.
@@ -96,7 +127,7 @@ Supports 11 server engines: *Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quil
 
 ---
 
-## 10. Cross-Play Bedrock & Geyser Assistant (`src/routes/geyser.rs`)
+## 12. Cross-Play Bedrock & Geyser Assistant (`src/routes/geyser.rs`)
 
 ### Java / Bedrock Bridge Management
 - **Integrity Validation**: Verifies installation of `Geyser-Spigot.jar`, `Floodgate.jar`, and presence of shared cryptographic key `key.pem`.
@@ -105,7 +136,7 @@ Supports 11 server engines: *Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quil
 
 ---
 
-## 11. Spark JVM Profiling (`src/routes/tools.rs`)
+## 13. Spark JVM Profiling (`src/routes/tools.rs`)
 
 ### JVM Performance Profiling
 - **Sampler Trigger**: Starts the Spark CPU profiler via RCON (`/spark sampler --viewer`) for configured durations (5 to 300 seconds).
@@ -114,7 +145,7 @@ Supports 11 server engines: *Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quil
 
 ---
 
-## 12. Scoped Backup Engine (`src/minecraft/server_backup.rs`)
+## 14. Scoped Backup Engine (`src/minecraft/server_backup.rs`)
 
 ### High-Performance Archival
 - **Selectable Scopes**:
@@ -126,9 +157,18 @@ Supports 11 server engines: *Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quil
 
 ---
 
-## 13. Immutable Audit Trail (`src/audit/`)
+## 15. Immutable Audit Trail (`src/audit/`)
 
 ### Append-Only Security Logging
 - **Structured Storage**: Records administrative events (power state, config changes, RCON commands, backups, permissions) in `data/audit_log.jsonl`.
 - **Query & Filters**: Supports searching by action category, username, timestamp range, and execution status (`SUCCESS` / `FAILED`).
 - **CSV Export**: Generates compliant RFC 4180 CSV exports for security reviews.
+
+---
+
+## 16. Dual-Mode Preferences & Hardware Probe (`stores/preferences.svelte.js`)
+
+### Svelte 5 Reactive Client State
+- **Mode Switching**: Toggles between `novice` (1-Click setup) and `expert` (Power-User DevOps) modes via `$state` rune and `localStorage.chipanel_user_mode`.
+- **Host Hardware Sonde**: Queries `/api/metrics/current` to detect total host RAM and active CPU topology for the smart RAM recommendation algorithm in the setup wizard.
+

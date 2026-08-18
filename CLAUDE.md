@@ -48,10 +48,22 @@ Then open **http://localhost:25501** (login `admin` / `preview`). Port `25501` o
 
 **Auth.** JWT bearer tokens (`auth::jwt`), verified per request by the `AuthUser` Axum extractor (`auth/middleware.rs`, implements `FromRequestParts`) — protected handlers just take `_auth: AuthUser` as a parameter and rejection happens before the handler body runs. Exception: `/ws` accepts the token as a `?token=` query param (browsers can't set custom headers during the WS handshake); everywhere else it must be an `Authorization: Bearer` header. `AppConfig` is injected via `Extension<Arc<AppConfig>>`, not app state — extract it the same way in new handlers.
 
-**Two data paths to the real Minecraft server — route new telemetry through the existing hub rather than adding a third poller.**
-- `podman::PodmanClient` talks to the rootless Podman socket over HTTP (`hyper` + `UnixStream`) for container lifecycle (`start_container`/`stop_container`/`restart_container`) and resource stats, against libpod's `/v4.0.0/libpod/...` API. Podman's non-streaming per-container `/stats` endpoint returns Docker cgroup-stats-compat JSON (`cpu_stats`/`memory_stats`), not the libpod-native flat shape — `get_container_metrics` takes two snapshots 500ms apart and computes the CPU delta itself (see `parse_stats_snapshot` for the shape-detection/fallback logic).
-- `rcon::RconClient` talks directly to the Minecraft server's RCON port for everything gameplay-related (commands, `tps`, `list`, moderation).
-- Both are polled every 2 seconds by `websocket::WsHub`'s background loop (`spawn_telemetry_loop`, spawned from `WsHub::new`), which owns the canonical live telemetry (container CPU/RAM + RCON tps/players) broadcast to WebSocket clients. `minecraft::metrics::start_telemetry_sampler` (a separate task feeding `/api/metrics/history` and the Discord alert thresholds) reads its own host-level `/proc/stat` + `/proc/meminfo` stats but pulls tps/player-count from `WsHub::get_latest_telemetry()` rather than opening a second RCON connection — the two loops previously reconnected to RCON independently every 2s each, which showed up as near-continuous RCON churn in the Minecraft server's own logs.
+**Multi-Container Engine Layer (`src/container/`).**
+- `ContainerEngine` trait defines container lifecycle and metrics collection across runtimes.
+- `PodmanEngine` talks to rootless Podman socket over HTTP (`hyper` + `UnixStream`) and orchestrates user Quadlets via D-Bus (`zbus`).
+- `DockerEngine` connects to standard Docker sockets (`/var/run/docker.sock`, `/run/user/<uid>/docker.sock`) with 8-byte frame header demultiplexing.
+- `AutoDetector` inspects available sockets on startup (`CONTAINER_ENGINE=auto|podman|docker`).
+
+**Modular Game Drivers Layer (`src/engine/`).**
+- `GameDriver` trait standardizes server lifecycle, command dispatch, telemetry, and moderation across game titles.
+- `MinecraftDriver` implements complete Java & Bedrock support (RCON actor, 11 loaders, NBT parsing, Modrinth addons, Chunky, LuckPerms, lazymc).
+- `PalworldDriver` and `ValheimDriver` provide ready-to-use dedicated server support for modern survival games.
+- `GameEngineRegistry` is the thread-safe dynamic registry holding active driver instances.
+
+**Telemetry Hub & Fast-Path Log Watcher.**
+- Polled every 2 seconds by `websocket::WsHub`'s background loop (`spawn_telemetry_loop`), broadcasting container CPU/RAM and RCON tps/players to WebSocket clients.
+- `minecraft::metrics::start_telemetry_sampler` reads host `/proc/stat` + `/proc/meminfo` and feeds `/api/metrics/history` and Discord alert thresholds.
+- `minecraft::command_queue` pairs with a live log watcher for <50ms instant execution of deferred moderation commands upon player join detection.
 
 **Minecraft config file access is intentionally narrow.** `AppConfig.systemd_config_dir` is only ever joined with the literal filename `minecraft.container` (`routes/server.rs`, backing the engine/version switcher). The deployed quadlet bind-mounts that *single file* (`.../systemd/minecraft.container:/app/systemd-config/minecraft.container`), not the whole shared Podman Quadlet directory — ChiPanel has no visibility into any other service's config on the host. If a feature needs another host file, bind-mount that file specifically; don't widen this to a directory mount.
 
@@ -61,9 +73,9 @@ Then open **http://localhost:25501** (login `admin` / `preview`). Port `25501` o
 
 **A background watcher detects newly released versions.** `minecraft/version_watch.rs::start_version_watch` (spawned from `main.rs`, like the telemetry sampler) polls the same Mojang manifest hourly (15min retry on failure), refreshing the shared catalog cache from the same fetch — the watcher and the HTTP layer never double-fetch. When `latest.release` / `latest.snapshot` *changes* vs. the persisted baseline (`DATA_DIR/version_watch.json`), it raises a `new_release` / `new_snapshot` alert that survives restarts and is served as `version_watch` on `GET /api/server/engine` (the engine page renders the "new version" banner from it). The very first successful check only records a silent baseline, so fresh installs don't alert on weeks-old versions.
 
-**Frontend state is two Svelte 5 rune-based singleton stores**, not a framework store library: `lib/stores/auth.svelte.js` (JWT in `sessionStorage`, validated against `/api/auth/me` on boot) and `lib/stores/websocket.svelte.js` (the `/ws` connection, exponential-backoff reconnect, throttled telemetry, bounded 500-entry log buffer). `routes/+layout.svelte` is the only place that should own their connect/disconnect lifecycle and the login redirect (`$effect` blocks keyed on `auth.isAuthenticated`).
+**Frontend state is three Svelte 5 rune-based singleton stores**, not a framework store library: `lib/stores/auth.svelte.js` (JWT in `sessionStorage`, validated against `/api/auth/me` on boot), `lib/stores/websocket.svelte.js` (the `/ws` connection, exponential-backoff reconnect, throttled telemetry, bounded 500-entry log buffer), and `lib/stores/preferences.svelte.js` (Dual-Mode Novice/Expert toggle with host hardware detection). `routes/+layout.svelte` is the only place that should own their connect/disconnect lifecycle and the login redirect (`$effect` blocks keyed on `auth.isAuthenticated`).
 
-`frontend/src/routes/+page.svelte` is a thin re-export of `routes/dashboard/+page.svelte` (so `/` and `/dashboard` render the same component) — edit the dashboard route, not the root page.
+`frontend/src/routes/+page.svelte` is a thin re-export of `routes/dashboard/+page.svelte` (so `/` and `/dashboard` render the same component) — edit the dashboard route, not the root page. Novice onboarding lives in `routes/setup/+page.svelte`.
 
 ## Environment variables (`backend/src/config.rs`)
 
@@ -72,12 +84,15 @@ Then open **http://localhost:25501** (login `admin` / `preview`). Port `25501` o
 | `HOST` / `PORT` | `127.0.0.1` / `25500` | bind address — the deployed quadlet overrides `HOST=0.0.0.0` |
 | `JWT_SECRET` | random per boot | set explicitly in production or every restart invalidates sessions |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` (or `ADMIN_PASSWORD_HASH`) | `admin` / random-generated, logged once | login credentials |
+| `CONTAINER_ENGINE` | `auto` | container engine to use: `podman`, `docker`, or `auto` |
+| `CONTAINER_SOCKET` (or `PODMAN_SOCKET` / `DOCKER_SOCKET`) | auto-detected | path to rootless Podman or Docker daemon socket |
+| `GAME_DRIVER` (or `GAME_ENGINE`) | `minecraft` | primary game driver: `minecraft`, `palworld`, `valheim` |
+| `CONTAINER_NAME` (or `PODMAN_CONTAINER_NAME` / `MINECRAFT_CONTAINER_NAME`) | `minecraft-server` | container name target for status and metrics |
 | `ALLOWED_ORIGINS` | `http://127.0.0.1:25500,http://localhost:25500` | CORS; `*` disables the allow-list |
-| `RCON_HOST` / `RCON_PORT` / `RCON_PASSWORD` | `127.0.0.1` / `25575` / empty | must match the Minecraft server's `server.properties` |
-| `PODMAN_CONTAINER_NAME` (or `MINECRAFT_CONTAINER_NAME`) | `minecraft-server` | the container `PodmanClient` targets |
-| `PODMAN_SOCKET` | auto-detected (`/run/user/<uid>/podman/podman.sock`, etc.) | rootless Podman API socket |
-| `DATA_DIR` / `MINECRAFT_DATA_DIR` / `SYSTEMD_CONFIG_DIR` | chiserv-specific host paths | ChiPanel's own data, the Minecraft world/plugin data, and the single-file quadlet mount described above |
+| `RCON_HOST` / `RCON_PORT` / `RCON_PASSWORD` | `127.0.0.1` / `25575` / empty | must match the game server's RCON configuration |
+| `DATA_DIR` / `MINECRAFT_DATA_DIR` / `SYSTEMD_CONFIG_DIR` | chiserv-specific host paths | ChiPanel's own data, game server data, and Quadlet config mount |
 | `TOOLS_SYNC_INTERVAL_SECS` | `86400` (24h) | background re-sync interval for the spark/chunky auto-installer (see below) |
+
 
 ## Tools auto-sync (spark + chunky + LuckPerms)
 

@@ -71,7 +71,7 @@ ChiPanel orchestrates the server across three lifecycle states:
 ## Architecture
 
 ```
-                          Tailscale / Reverse Proxy / HTTPS
+                          Tailscale / Reverse Proxy / HTTPS / Localhost
                                          │
                                          ▼ (Port 25500)
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -80,21 +80,22 @@ ChiPanel orchestrates the server across three lifecycle states:
 │  ┌─────────────────────────────────┐   ┌─────────────────────────────────────┐  │
 │  │ SvelteKit Static SPA            │   │ Axum 0.7 Async Backend              │  │
 │  │ - Svelte 5 Runes                │   │ - Tokio async runtime               │  │
-│  │ - CodeMirror 6 / uPlot          │<─>│ - Persistent RCON Actor Channel     │  │
-│  │ - Lucide vector icons           │   │ - WebSocket Hub (/ws)               │  │
-│  │ - Dark-mode design system       │   │ - FastNBT parser & metrics engine   │  │
+│  │ - Dual-Mode UX (Novice/Expert)  │<─>│ - Persistent RCON Actor Channel     │  │
+│  │ - CodeMirror 6 / uPlot          │   │ - WebSocket Hub (/ws)               │  │
+│  │ - 1-Click Setup Wizard (/setup) │   │ - ContainerEngine & GameDriver APIs │  │
 │  └─────────────────────────────────┘   └──────────────────┬──────────────────┘  │
 └───────────────────────────────────────────────────────────┼─────────────────────┘
                                                             │
                                   ┌─────────────────────────┴─────────────────────────┐
                                   ▼                                                   ▼
-                /run/user/1000/podman/podman.sock                  /run/user/1000/bus (D-Bus)
+                Container Socket (Podman / Docker)                  systemd --user / D-Bus (zbus)
                                   │                                                   │
                                   ▼                                                   ▼
                 ┌───────────────────────────────────┐               ┌───────────────────────────────────┐
-                │ Podman Rootless Service           │               │ systemd --user (Quadlets & Units) │
-                │ - Container stats & metrics       │               │ - minecraft.service               │
-                │ - Libpod REST API                 │               │ - lazymc.service (TCP proxy)      │
+                │ Container Runtime Engine          │               │ System Supervisor                 │
+                │ - PodmanEngine (rootless subuid)  │               │ - Quadlets (*.container)          │
+                │ - DockerEngine (socket + demux)   │               │ - lazymc.service (TCP proxy)      │
+                │ - AutoDetector & cgroups metrics  │               │ - Host resource monitor           │
                 └───────────────────────────────────┘               └───────────────────────────────────┘
 ```
 
@@ -103,11 +104,14 @@ ChiPanel orchestrates the server across three lifecycle states:
 ## Core Capabilities
 
 ### Systems & Process Management
+- **Multi-Runtime Container Abstraction** — Universal container driver support via `ContainerEngine` trait: rootless Podman with systemd Quadlets, standard Docker via socket, and automatic runtime detection.
+- **Modular Game Server Drivers** — Extensible `GameDriver` architecture powering Minecraft (Java & Bedrock), Palworld, and Valheim dedicated servers through a dynamic thread-safe registry.
 - **Persistent RCON Actor** — Single-threaded Tokio actor keeps one TCP connection open to `127.0.0.1:25575`. Commands are queued over `tokio::sync::mpsc::channel(128)` with 8-second execution timeouts and automatic reconnection. Uses empty dummy packets (`SERVERDATA_RESPONSE_VALUE`) to handle multi-packet output concatenation without socket hangs.
-- **Systemd & Podman Control** — Dispatches lifecycle actions through D-Bus (`org.freedesktop.systemd1.Manager`) with automatic fallback to Podman REST over Unix domain sockets.
-- **WebSocket Console** — Real-time log streaming with ANSI color parsing, auto-scroll, command history, and one-click sanitized export to [mclo.gs](https://mclo.gs) (automatic regex redaction of IPs, passwords, tokens, and host paths).
+- **Systemd & Podman Control** — Dispatches lifecycle actions through D-Bus (`org.freedesktop.systemd1.Manager` via `zbus`) with automatic fallback to container engine APIs.
+- **WebSocket Console & Fast-Path Watcher** — Real-time log streaming with ANSI color parsing, auto-scroll, command history, instant join log watcher (<50ms execution of queued moderation commands), and one-click sanitized export to [mclo.gs](https://mclo.gs) (automatic regex redaction of IPs, passwords, tokens, and host paths).
 
 ### Game & Content Management
+- **Dual-Mode UX (Novice 1-Click vs Power-User)** — Instant toggle via `Alt+M` or hardware switch (`ModeSwitch.svelte`). Beginners get a 4-step zero-code onboarding wizard (`/setup`) with automatic engine recommendations, hardware-aware RAM slider, and 1-click EULA; power users get direct Quadlet editing, raw RCON, Myers diff analysis, and cgroups tuning.
 - **11 Server Engines** — Switch between Paper, Purpur, Folia, Fabric, Forge, NeoForge, Quilt, Mohist, Arclight, Spigot, and Vanilla with automatic Mojang manifest polling (`piston-meta.mojang.com`) and Quadlet environment rewriting.
 - **LuckPerms Migration** — Automatically snapshots and moves LuckPerms configuration paths across engine switches (`plugins/LuckPerms`, `mods/luckperms`, `config/luckperms`).
 - **Binary NBT Inspector** — Decodes `playerdata/{uuid}.dat` files in-memory using `fastnbt`. Displays 2D inventory slots (hotbar, main, armor, offhand, Ender Chest), durability bars, enchantments, trims, active potion effects, and player coordinates.
@@ -218,14 +222,15 @@ All settings can be set via environment variables or Quadlet `Environment=` dire
 | `ADMIN_PASSWORD` | *(auto-generated)* | Bootstrap administrator password (hashed with Argon2id on startup) |
 | `ADMIN_PASSWORD_HASH` | *(none)* | Pre-computed Argon2id password hash for bootstrap admin |
 | `JWT_SECRET` | *(auto-generated)* | 256-bit CSPRNG secret key for HMAC-SHA256 JWT session signing |
+| `CONTAINER_ENGINE` | `auto` | Container runtime engine: `podman`, `docker`, or `auto` |
+| `CONTAINER_SOCKET` | *(auto-detected)* | Path to runtime socket (`PODMAN_SOCKET` or `DOCKER_SOCKET` aliases accepted) |
+| `GAME_DRIVER` | `minecraft` | Primary game driver to activate (`minecraft`, `palworld`, `valheim`) |
+| `CONTAINER_NAME` | `minecraft-server` | Target container name for status and telemetry |
 | `DATA_DIR` | `/app/data` | Path for persistent state files (`users.json`, `api_tokens.json`, `audit_log.jsonl`) |
 | `MINECRAFT_DATA_DIR` | `/app/minecraft-data` | Path to Minecraft server root directory (worlds, plugins, configs) |
 | `SYSTEMD_CONFIG_DIR` | `/app/systemd-config` | Directory containing systemd user Quadlet files (`*.container`) |
 | `LAZYMC_CONFIG_FILE` | `/app/lazymc-config/lazymc.toml` | Path to lazymc hibernation configuration |
-| `PODMAN_CONTAINER_NAME` | `minecraft-server` | Target container name for Podman inspection and metrics |
-| `PODMAN_SOCKET` | *(auto-detected)* | Path to rootless Podman Unix domain socket |
 | `DBUS_SESSION_BUS_ADDRESS` | `unix:path=/run/user/<UID>/bus` | D-Bus session bus address for systemd unit control |
-| `UID` | `1000` | User ID for user-level socket and bus resolution |
 | `ALLOWED_ORIGINS` | `http://127.0.0.1:25500, http://localhost:25500` | Allowed CORS origins (`*` permits any origin) |
 | `TOOLS_SYNC_INTERVAL_SECS` | `86400` | Interval in seconds for automatic Spark, Chunky, and LuckPerms sync |
 | `CURSEFORGE_API_KEY` | *(empty)* | Optional API key for CurseForge modpack and addon search |
@@ -249,11 +254,13 @@ All settings can be set via environment variables or Quadlet `Environment=` dire
 
 ## Documentation
 
-- [**Architecture & Internals**](docs/architecture.md) — Runtime model, Tokio actor pattern, Svelte 5 runes, and lazymc hibernation.
+- [**Architecture & Internals**](docs/architecture.md) — Multi-runtimes (Podman/Docker), modular Game Drivers, Tokio actor pattern, Svelte 5 runes, and lazymc hibernation.
+- [**Novice Onboarding & Dual-Mode UX**](docs/onboarding-spec.md) — 4-step 1-Click setup wizard, hardware RAM recommendation, and desktop architecture.
 - [**REST API & WebSocket Reference**](docs/api-reference.md) — Specifications for all 77 HTTP endpoints and WebSocket events.
-- [**Functional Modules Guide**](docs/modules-guide.md) — Subsystem breakdowns for NBT parsing, modpack deployment, and diff engines.
-- [**Deployment & Operations Runbook**](docs/deployment-and-operations.md) — Multi-stage builds, systemd Quadlets, and maintenance operations.
-- [**Security & Threat Model**](docs/security.md) — Argon2id, RBAC, path traversal prevention, and Discord SSRF protection.
+- [**Functional Modules Guide**](docs/modules-guide.md) — Subsystem breakdowns for container engines, game drivers, NBT parsing, and diff engines.
+- [**Deployment & Operations Runbook**](docs/deployment-and-operations.md) — Multi-stage builds, systemd Quadlets, Docker deployments, and local preview.
+- [**Security & Threat Model**](docs/security.md) — Argon2id, RBAC, path traversal prevention, and container namespace isolation.
+- [**Strategic Roadmap & Product Matrix**](docs/ROADMAP_STRATEGIQUE_CHIPANEL.md) — Full technical engineering roadmap, competitive matrix, and hardware auto-tuning specifications.
 
 ---
 

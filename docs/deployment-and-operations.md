@@ -1,6 +1,6 @@
 # Deployment & Operations Runbook for ChiPanel
 
-This runbook provides complete instructions for building, containerizing, deploying, and managing ChiPanel in production using rootless Podman and systemd Quadlets.
+This runbook provides complete instructions for building, containerizing, deploying, and managing ChiPanel across both rootless Podman (with systemd Quadlets) and standard Docker environments.
 
 ---
 
@@ -14,18 +14,21 @@ ChiPanel uses a 3-stage build process defined in [`Containerfile`](../Containerf
 
 ### Local Container Build Command
 ```bash
-podman build -t localhost/chipanel:latest -f Containerfile .
+# Note: Always use --no-cache if frontend source files have changed
+podman build --no-cache -t localhost/chipanel:latest -f Containerfile .
 ```
 
 ---
 
-## 2. Systemd User Quadlet Deployment
+## 2. Deployment Options
 
-In production, ChiPanel is deployed as a systemd user Quadlet in `~/.config/containers/systemd/chipanel.container`:
+### Option A: Systemd User Quadlet Deployment (Podman Rootless)
+
+In production homelab environments, ChiPanel is deployed as a systemd user Quadlet in `~/.config/containers/systemd/chipanel.container`:
 
 ```ini
 [Unit]
-Description=ChiPanel - Minecraft & Homelab Management Console
+Description=ChiPanel - Minecraft & Game Server Management Console
 After=network-online.target local-fs.target
 
 [Container]
@@ -52,6 +55,7 @@ Environment=ADMIN_PASSWORD=YOUR_SECURE_ADMIN_PASSWORD
 Environment=JWT_SECRET=YOUR_RANDOM_LONG_JWT_SECRET_KEY
 Environment=MINECRAFT_DATA_DIR=/app/minecraft-data
 Environment=CONTAINER_NAME=minecraft-server
+Environment=CONTAINER_ENGINE=podman
 Environment=RCON_HOST=127.0.0.1
 Environment=RCON_PORT=25575
 Environment=RCON_PASSWORD=YOUR_RCON_PASSWORD
@@ -69,48 +73,82 @@ MemoryMax=150M
 WantedBy=default.target
 ```
 
+### Option B: Docker Compose / Standard Docker Deployment
+
+For standard Docker hosts (Debian, Ubuntu, TrueNAS SCALE, Synology DSM):
+
+```yaml
+services:
+  chipanel:
+    image: localhost/chipanel:latest
+    container_name: chipanel
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data:/app/data
+      - ./minecraft-data:/app/minecraft-data
+    environment:
+      - PORT=25500
+      - HOST=0.0.0.0
+      - CONTAINER_ENGINE=docker
+      - CONTAINER_NAME=minecraft-server
+      - CONTAINER_SOCKET=/var/run/docker.sock
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=YOUR_SECURE_ADMIN_PASSWORD
+      - JWT_SECRET=YOUR_RANDOM_LONG_JWT_SECRET_KEY
+      - RCON_HOST=127.0.0.1
+      - RCON_PORT=25575
+      - RCON_PASSWORD=YOUR_RCON_PASSWORD
+```
+
 ---
 
 ## 3. Environment Variables Reference
 
 | Variable | Default Value | Description |
 | :--- | :--- | :--- |
-| `HOST` | `127.0.0.1` | Network interface to bind the HTTP / WebSocket server (`0.0.0.0` for all interfaces). |
+| `HOST` | `127.0.0.1` | Network interface to bind the HTTP / WebSocket server (`0.0.0.0` for external access). |
 | `PORT` | `25500` | HTTP and WebSocket listening port. |
 | `RUST_LOG` | `info` | Logging verbosity filter (`error`, `warn`, `info`, `debug`, `trace`). |
 | `ADMIN_USERNAME` | `admin` | Bootstrap administrator username. |
 | `ADMIN_PASSWORD` | *(auto-generated)* | Bootstrap administrator password (hashed with Argon2id on startup). |
 | `ADMIN_PASSWORD_HASH` | *(none)* | Pre-computed Argon2id password hash for bootstrap admin. |
 | `JWT_SECRET` | *(auto-generated)* | 256-bit CSPRNG secret key for HMAC-SHA256 JWT session signing. |
+| `CONTAINER_ENGINE` | `auto` | Container runtime to use: `podman`, `docker`, or `auto` (auto-detects socket). |
+| `CONTAINER_SOCKET` | *(auto-detected)* | Path to container socket (`PODMAN_SOCKET` or `DOCKER_SOCKET` aliases accepted). |
+| `GAME_DRIVER` | `minecraft` | Primary game driver to activate (`minecraft`, `palworld`, `valheim`). |
+| `CONTAINER_NAME` | `minecraft-server` | Target container name for status and metrics (`PODMAN_CONTAINER_NAME` and `MINECRAFT_CONTAINER_NAME` accepted as aliases). |
 | `DATA_DIR` | `/app/data` | Directory for persistent state files (`users.json`, `api_tokens.json`, `audit_log.jsonl`). |
 | `MINECRAFT_DATA_DIR` | `/app/minecraft-data` | Path to Minecraft server root directory (worlds, plugins, configs). |
 | `SYSTEMD_CONFIG_DIR` | `/app/systemd-config` | Directory containing systemd user Quadlet files (`*.container`). |
 | `LAZYMC_CONFIG_FILE` | `/app/lazymc-config/lazymc.toml` | Path to lazymc hibernation configuration. |
-| `PODMAN_CONTAINER_NAME` | `minecraft-server` | Target container name for Podman inspection and metrics. |
-| `PODMAN_SOCKET` | *(auto-detected)* | Path to rootless Podman Unix domain socket. |
 | `DBUS_SESSION_BUS_ADDRESS` | `unix:path=/run/user/<UID>/bus` | D-Bus session bus address for systemd unit control. |
-| `UID` | `1000` | User ID for user-level socket and bus resolution. |
 | `ALLOWED_ORIGINS` | `http://127.0.0.1:25500, http://localhost:25500` | Comma-separated list of allowed CORS origins (`*` to permit any origin). |
 | `TOOLS_SYNC_INTERVAL_SECS` | `86400` | Interval in seconds for the automatic tools synchronization loop (Spark, Chunky, LuckPerms). |
 | `CURSEFORGE_API_KEY` | *(empty)* | Optional API key for CurseForge modpack and addon catalog search. |
 
 ---
 
-## 4. Step-by-Step Homelab Deployment
+## 4. Local Development & UI Preview
 
-For environments without a remote container registry, deployment uses image archive streaming:
+To visually check frontend changes or UI routing locally without modifying a production server:
 
 ```bash
-# 1. Build the container image locally
+# Build the test image
 podman build -t localhost/chipanel:latest -f Containerfile .
 
-# 2. Export and transfer the container archive to the target host
-podman save localhost/chipanel:latest -o /tmp/chipanel.tar
-scp -i ~/.ssh/chiserv_host007 /tmp/chipanel.tar chiserv@192.168.1.109:/tmp/chipanel.tar
-rm -f /tmp/chipanel.tar
+# Launch local preview on port 25501
+podman rm -f chipanel-local 2>/dev/null
+podman run -d --name chipanel-local -p 127.0.0.1:25501:25500 \
+  -e HOST=0.0.0.0 -e PORT=25500 \
+  -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=preview \
+  -e RUST_LOG=info \
+  localhost/chipanel:latest
 
-# 3. Load image on host and restart systemd service
-ssh -i ~/.ssh/chiserv_host007 chiserv@192.168.1.109 "podman load -i /tmp/chipanel.tar && rm -f /tmp/chipanel.tar && systemctl --user restart chipanel"
+# Open http://localhost:25501 in your browser (admin / preview)
+# Cleanup when finished
+podman rm -f chipanel-local
 ```
 
 ---
@@ -135,6 +173,8 @@ curl -s http://127.0.0.1:25500/api/health
 ### Quadlet Changes & Reload Gotcha
 > [!IMPORTANT]
 > Whenever you modify `chipanel.container` or any Quadlet file, you **must** execute `systemctl --user daemon-reload` before restarting the service. Without `daemon-reload`, changes to volume mounts, environment variables, or memory limits remain completely inactive.
+>
+> Additionally, `podman load` does not restart running containers. Always chain reload with restart.
 
 ```bash
 systemctl --user daemon-reload
@@ -145,3 +185,4 @@ systemctl --user restart chipanel.service
 ```bash
 podman stats --no-stream chipanel
 ```
+

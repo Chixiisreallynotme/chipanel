@@ -1,6 +1,6 @@
 # Architecture & Internal Mechanisms of ChiPanel
 
-ChiPanel is an ultra-lightweight, self-contained, high-performance management console engineered specifically for resource-constrained homelab hardware (e.g., Intel Core i3 2C/4T @ 1.70 GHz, 8 GB RAM) without competing for the CPU and RAM allocations required by the Minecraft server JVM.
+ChiPanel is an ultra-lightweight, self-contained, high-performance management console engineered specifically for resource-constrained homelab hardware (e.g., Intel Core i3 2C/4T @ 1.70 GHz, 8 GB RAM) without competing for the CPU and RAM allocations required by the game server JVM.
 
 ---
 
@@ -12,6 +12,7 @@ ChiPanel decouples into a native, compiled asynchronous Rust backend and a clien
 +-------------------------------------------------------------------------+
 |                        WEB BROWSER (Client SPA)                         |
 |   - Svelte 5 Runes: $state, $derived, $effect, $props, $bindable        |
+|   - Dual-Mode UX (Novice 1-Click / Power-User DevOps, Alt+M)            |
 |   - Native WebSocket Client (Log streaming, live telemetry, queue)      |
 |   - CodeMirror 6 (Syntax highlighting, Myers visual diff editor)        |
 |   - uPlot (Ultra-fast Canvas time-series synchronized graphs)           |
@@ -37,15 +38,18 @@ ChiPanel decouples into a native, compiled asynchronous Rust backend and a clien
 |  │  - Tokio mpsc(128) + oneshot       - Direct S3 / MinIO streaming  │  |
 |  │  - Auto-reconnect backoff          - Automated retention policy   │  |
 |  │                                                                   │  |
-|  │  [Systemd & Podman Integration]    [Immutable Audit Log]          │  |
-|  │  - UDS: /run/user/1000/podman.sock - Append-only audit_log.jsonl  │  |
-|  │  - D-Bus: /run/user/1000/bus (zbus)- Filtered queries & CSV export│  |
+|  │  [Multi-Container Engine Layer]    [Immutable Audit Log]          │  |
+|  │  - Trait ContainerEngine           - Append-only audit_log.jsonl  │  |
+|  │  - PodmanEngine (UDS + zbus D-Bus) - Filtered queries & CSV export│  |
+|  │  - DockerEngine (Socket + demux)   - Auto-detector runtime        │  |
 |  │                                                                   │  |
-|  │  [Background Async Engines]                                       │  |
-|  │  - Mojang Version Watcher (1h)     - Telemetry Sampler (2s tick)  │  |
-|  │  - Diagnostic Tools Sync (24h)     - Deferred Command Queue Loop  │  |
+|  │  [Game Engine Drivers Registry]    [Background Async Engines]     │  |
+|  │  - Trait GameDriver                - Mojang Version Watcher (1h)  │  |
+|  │  - MinecraftDriver                 - Diagnostic Tools Sync (24h)  │  |
+|  │  - Palworld / Valheim Drivers      - Fast-Path Log Watcher (<50ms)│  |
+|  │  - Dynamic thread-safe Registry    - Telemetry Sampler (2s tick)  │  |
 |  └──────────────────────────────────┬────────────────────────────────┘  |
-+-------------------------------------┼───────────────────────────────────+
++-------------------------------------┼────────────────────────────────---+
                                       │
               ┌───────────────────────┼───────────────────────┐
               ▼                       ▼                       ▼
@@ -58,7 +62,64 @@ ChiPanel decouples into a native, compiled asynchronous Rust backend and a clien
 
 ---
 
-## 2. The Rust Backend (Axum 0.7 & Tokio)
+## 2. Multi-Container Engine Abstraction (`src/container/`)
+
+ChiPanel is runtime-agnostic. Rather than coupling directly to Podman or Docker, it defines a unified asynchronous contract via the `ContainerEngine` trait:
+
+```rust
+#[async_trait]
+pub trait ContainerEngine: Send + Sync {
+    async fn get_status(&self, container_name: &str) -> Result<ContainerStatusResponse, AppError>;
+    async fn get_stats(&self, container_name: &str) -> Result<Option<ContainerMetrics>, AppError>;
+    async fn start_container(&self, container_name: &str) -> Result<bool, AppError>;
+    async fn stop_container(&self, container_name: &str) -> Result<bool, AppError>;
+    async fn restart_container(&self, container_name: &str) -> Result<bool, AppError>;
+    async fn get_logs(&self, container_name: &str, tail: usize) -> Result<Vec<String>, AppError>;
+    fn engine_type(&self) -> ContainerEngineType;
+    fn is_available(&self) -> bool;
+}
+```
+
+### Supported Runtime Implementations:
+1. **`PodmanEngine` (`src/container/podman.rs`)**:
+   - Primary engine for homelab hosts running Linux.
+   - Communicates over the rootless Unix Domain Socket (`/run/user/<uid>/podman/podman.sock` or `PODMAN_SOCKET`) via low-level Hyper 1.0 HTTP.
+   - Orchestrates systemd user Quadlets via D-Bus (`zbus`) to cleanly manage `minecraft.service` and `lazymc.service`.
+2. **`DockerEngine` (`src/container/docker.rs`)**:
+   - Universal engine for standard Docker hosts (`/var/run/docker.sock`, `/run/user/<uid>/docker.sock` or `DOCKER_HOST`).
+   - Implements 8-byte multiplexed header decoding for Docker stdout/stderr streams.
+3. **`AutoDetector` (`src/container/detector.rs`)**:
+   - Probes available sockets at initialization (`CONTAINER_ENGINE=auto|podman|docker`) and seamlessly falls back to a mock/degraded mode if no daemon is accessible.
+
+---
+
+## 3. Modular Game Drivers Architecture (`src/engine/`)
+
+ChiPanel separates the web management core from game-specific mechanics through the `GameDriver` trait:
+
+```rust
+#[async_trait]
+pub trait GameDriver: Send + Sync {
+    fn game_id(&self) -> &'static str;
+    fn display_name(&self) -> &'static str;
+    async fn get_status(&self) -> Result<GameServerStatus, AppError>;
+    async fn send_command(&self, command: &str) -> Result<String, AppError>;
+    async fn get_players(&self) -> Result<Vec<PlayerInfo>, AppError>;
+    async fn kick_player(&self, player_id: &str, reason: Option<&str>) -> Result<(), AppError>;
+    async fn ban_player(&self, player_id: &str, reason: Option<&str>) -> Result<(), AppError>;
+    async fn unban_player(&self, player_id: &str) -> Result<(), AppError>;
+    async fn get_telemetry(&self) -> Result<GameTelemetry, AppError>;
+}
+```
+
+### Driver Registry & Multi-Game Dispatch:
+- **`MinecraftDriver` (`src/engine/minecraft.rs`)**: Full-featured driver powering Java & Bedrock editions (RCON actor, 11 server loaders, NBT parsing, Modrinth API, Chunky, LuckPerms, lazymc).
+- **`PalworldDriver` / `ValheimDriver` (`src/engine/palworld.rs`, `src/engine/valheim.rs`)**: Ready-to-use drivers managing dedicated servers for modern survival games.
+- **`GameEngineRegistry` (`src/engine/registry.rs`)**: Thread-safe dynamic registry (`Arc<RwLock<HashMap<String, Box<dyn GameDriver>>>>`) allowing instances to be dispatched dynamically.
+
+---
+
+## 4. The Rust Backend (Axum 0.7 & Tokio)
 
 The backend compiles to a single static binary with Link-Time Optimization (`opt-level = "z"`, `lto = true`, `panic = "abort"`, `codegen-units = 1`). The resulting executable binary occupies under 15 MB on disk and maintains a baseline memory footprint of under 25 MB RAM.
 
@@ -78,35 +139,36 @@ ChiPanel implements the **Tokio Actor Pattern**:
 #### Multi-Packet Response Handling (Dummy Packet Technique)
 The Minecraft Source RCON protocol splits large command outputs across multiple packets without an end-of-stream delimiter. ChiPanel guarantees complete message collection by sending an immediate empty dummy packet (`SERVERDATA_RESPONSE_VALUE`) following each command. Responses matching the request ID are concatenated until the response with `id == dummy_id` is received, cleanly terminating the stream.
 
-### B. Rootless Podman & Systemd D-Bus Integration
-ChiPanel runs inside an isolated rootless container (UID 1000) and communicates with the host through two read-only mounts:
-1. **Rootless Podman Unix Socket (`/run/user/1000/podman/podman.sock`)**: Communicates with the Libpod REST API using low-level Hyper 1.0 HTTP client over Unix Domain Sockets (`tokio::net::UnixStream`) to query container status and compute CPU/RAM cgroups metrics.
-2. **User D-Bus Session Bus (`/run/user/1000/bus`)**: Uses the `zbus` crate to directly instruct `systemd --user` manager (`org.freedesktop.systemd1.Manager`) to start, stop, or restart Quadlets (`minecraft.service`) and native units (`lazymc.service`). If D-Bus is temporarily unreachable, ChiPanel transparently falls back to direct Libpod API calls.
+### B. Fast-Path Instant Join Log Watcher (<50ms)
+To execute queued moderation commands (`/api/players/action`) for offline players without waiting for the 2-second telemetry polling loop:
+- ChiPanel inspects the live log stream emitted via WebSocket / container log reader.
+- Detection of join regex patterns triggers immediate FIFO execution (<50ms response time) against the RCON actor.
+- Execution results are broadcast to clients via WebSocket event `pending_commands_executed`.
 
 ---
 
-## 3. Frontend Architecture (Svelte 5 Runes)
+## 5. Frontend Architecture (Svelte 5 Runes & Dual-Mode UX)
 
 The user interface is an ultra-fast Single Page Application (SPA) built with SvelteKit 2 using `@sveltejs/adapter-static` and compiled with Vite 6.
 
 ### Svelte 5 Runes System
-ChiPanel adopts modern Svelte 5 runes, eliminating legacy Svelte stores (`writable()`, `readable()`) in favor of fine-grained, compile-time reactivity:
+ChiPanel adopts modern Svelte 5 runes, eliminating legacy Svelte stores in favor of fine-grained, compile-time reactivity:
 - **`$state()`**: Encapsulates component-local reactive state (modals, search queries, table filters, inputs, loading indicators).
 - **`$derived()` & `$derived.by()`**: Computes memoized reactive calculations without unnecessary DOM re-renders (inventory slicing, Chunky percentage completion, audit statistics).
 - **`$props()` & `$bindable()`**: Declares strictly typed component interfaces with bidirectional data bindings.
 - **`$effect()`**: Manages lifecycle hooks, WebSocket event listeners, and `uPlot` chart resizing.
 - **`untrack()`**: Isolates reactive dependencies inside polling loops and timer callbacks.
 
-### Core Frontend Libraries
-- **CodeMirror 6**: syntax highlighting for YAML, Properties, JSON, TOML, and integrated visual diff viewer.
-- **uPlot**: high-performance Canvas-based charting engine rendering thousands of telemetry data points without UI frame drops.
-- **Lucide Svelte**: lightweight SVG icon set.
+### Dual-Mode UX & Zero-Code Onboarding:
+- **Novice Mode (1-Click Setup, `/setup`)**: 4-step visual wizard (`OnboardingWizard.svelte`), hardware-aware RAM slider, automatic loader recommendation (Purpur), 1-click EULA, and pre-activated lazymc hibernation.
+- **Power-User Mode (DevOps)**: Unlocks direct Quadlet inspection, raw RCON console, Myers config diff viewer, cgroups memory limits, JVM flags, and S3 backup pipelines.
+- **Zero-Latency Toggle**: `Alt+M` shortcut or hardware switch (`ModeSwitch.svelte`) with instantaneous reactivity managed by `stores/preferences.svelte.js`.
 
 ---
 
-## 4. Server Lifecycle & lazymc Hibernation
+## 6. Server Lifecycle & lazymc Hibernation
 
-ChiPanel manages the Minecraft server across three distinct operational states:
+ChiPanel manages the game server across three distinct operational states:
 
 ```
              ┌──────────────────────────────────────────────┐
@@ -143,7 +205,15 @@ ChiPanel manages the Minecraft server across three distinct operational states:
 
 ---
 
-## 5. Background Async Engines
+## 7. Desktop Application Vision (Tauri v2 / Localhost)
+
+ChiPanel's clean decoupling (stateless REST API + WebSocket Hub + Static SPA) makes it fully ready for packaging into a standalone desktop application using **Tauri v2**:
+- **Target Audience**: Players and creators wanting to host and manage games directly on local Windows, macOS, or Linux PCs without remote server setup.
+- **Hybrid Operation**: Capable of either orchestrating local container runtimes (Podman Desktop, Docker Desktop) or remotely controlling a ChiPanel homelab instance via API keys over Tailscale.
+
+---
+
+## 8. Background Async Engines
 
 ChiPanel runs four non-blocking background workers within Tokio:
 1. **Mojang Version Watcher (`version_watch.rs`)**: Polls `launchermeta.mojang.com` every 1 hour, discovers newly released Minecraft versions or snapshots, updates the catalog cache, and notifies the UI.
