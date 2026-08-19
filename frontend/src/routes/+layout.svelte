@@ -38,9 +38,11 @@
 	} from 'lucide-svelte';
 	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 	import ModeSwitch from '$lib/components/onboarding/ModeSwitch.svelte';
+	import QuakeTerminalHUD from '$lib/components/console/QuakeTerminalHUD.svelte';
 
 	let { children } = $props();
 	let sidebarOpen = $state(false);
+	let quakeOpen = $state(false);
 
 	const navSections = [
 		{
@@ -236,6 +238,9 @@
 {:else if isLoginPage}
 	{@render children()}
 {:else}
+	<!-- Quake Terminal HUD Global Component -->
+	<QuakeTerminalHUD bind:open={quakeOpen} />
+
 	<div class="app-layout">
 		<!-- Mobile Sidebar Backdrop Overlay -->
 		{#if sidebarOpen}
@@ -332,6 +337,18 @@
 				</div>
 
 				<div class="header-right">
+					<!-- Quake HUD Trigger Button -->
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm quake-trigger-btn font-mono"
+						onclick={() => (quakeOpen = !quakeOpen)}
+						title="Ouvrir la console Quake HUD (Raccourci : ~ ou F12)"
+					>
+						<Terminal size={14} class="text-blue" />
+						<span class="quake-btn-text">Console</span>
+						<kbd class="quake-kbd">~</kbd>
+					</button>
+
 					<ModeSwitch compact={true} />
 
 					<!-- Quick Telemetry Status Pill -->
@@ -547,7 +564,7 @@
 	}
 
 	.nav-item:active {
-		transform: scale(0.98);
+		transform: scale(0.97);
 	}
 
 	.nav-item.active {
@@ -655,7 +672,7 @@
 	}
 
 	.action-btn:active {
-		transform: scale(0.94);
+		transform: scale(0.97);
 	}
 
 	.action-btn.action-logout:hover {
@@ -708,6 +725,35 @@
 		line-height: 1;
 	}
 
+	/* Quake HUD Trigger Button */
+	.quake-trigger-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 8px;
+		height: 30px;
+		background-color: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-btn);
+		font-size: var(--font-size-xs);
+		color: var(--text-secondary);
+	}
+
+	.quake-trigger-btn:hover {
+		color: var(--text-primary);
+		border-color: var(--border-focus);
+	}
+
+	.quake-kbd {
+		background-color: rgba(255, 255, 255, 0.06);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-sm);
+		padding: 1px 4px;
+		font-size: 10px;
+		line-height: 1;
+		color: var(--accent-blue-text);
+	}
+
 	/* Quick Telemetry Status Pill */
 	.quick-status-pill {
 		display: flex;
@@ -737,8 +783,6 @@
 		font-weight: var(--font-weight-semibold);
 	}
 
-	/* Was var(--border-focus) — 1.84:1 against the pill background, i.e. invisible. It is a
-	   decorative separator (aria-hidden), so 3:1 would be enough; --text-muted gives 5.12:1. */
 	.pill-divider {
 		color: var(--text-muted);
 	}
@@ -798,9 +842,6 @@
 			z-index: calc(var(--z-modal) - 1);
 		}
 
-		/* B7: nav rows and the footer icon buttons reach the 44px touch minimum only below
-		   this breakpoint — at desktop width they stay ~36px so the last nav item keeps its
-		   clearance above the sticky footer (B8). */
 		.nav-item {
 			min-height: 44px;
 			padding: var(--space-3);
@@ -849,6 +890,30 @@
 
 		.main-body {
 			padding: var(--space-4);
+		}
+	}
+
+	@media (max-width: 640px) {
+		.header-bar {
+			padding: 0 var(--space-3);
+		}
+
+		.header-left,
+		.header-right {
+			gap: var(--space-2);
+		}
+
+		.quake-btn-text,
+		.quake-kbd {
+			display: none;
+		}
+
+		.quake-trigger-btn {
+			padding: 4px 6px;
+		}
+
+		.header-user-profile {
+			padding-left: var(--space-1);
 		}
 	}
 </style>

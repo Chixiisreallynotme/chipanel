@@ -378,3 +378,136 @@ L'interface de ChiPanel s'adapte dynamiquement au profil de l'administrateur hom
 1. **Conteneur Hardware Multi-Étapes :** Utilisation de l'enveloppe `.hardware-shell` (p-1.5, bordure 1px subtile) et du cœur `.hardware-core` (`#12151E`, chanfrein zénithal 1px).
 2. **Jauge d'Allocation Mémoire :** Visualisation segmentée (OS Reserve, Heap Minecraft, Headroom) avec indicateur de saturation au-delà de 75% de la RAM hôte (`transform: scaleX(...)` GPU-safe).
 3. **Micro-Interactions Tactiles :** Boutons d'action et tuiles de sélection dotés de `active:scale-[0.97]` et courbes d'accélération `--ease-hypr-smooth`.
+
+---
+
+## 12. Session Design Council I — Standards & Implémentations Établis (2026-08-20)
+
+Cette section consigne les décisions techniques et esthétiques validées lors de la première session du Design Council de ChiPanel, et constitue une mise à jour normative de la spécification.
+
+### 12.1 Source de Vérité Unique des Tokens (Architecture)
+
+Le fichier `src/lib/styles/tokens.css` est désormais **l'unique source de vérité** pour tous les tokens CSS. `src/app.css` l'importe via `@import` en ligne 1 et ne redéfinit aucune variable `:root`. Toute duplication est formellement interdite.
+
+**Palette Milled Monolith Finalisée (implémentée & en production) :**
+```css
+--bg-base:     #0B0D13;  /* Fond global d'application — obsidien pur */
+--bg-surface:  #12151E;  /* Cartes monolithiques, sidebar, header */
+--bg-elevated: #191D2A;  /* Modales, popovers, Quake HUD */
+--bg-active:   #212638;  /* Sélection clavier, hover actif */
+--border:      #1F2433;  /* Séparateurs structurels */
+--border-subtle: rgba(255, 255, 255, 0.07); /* Hairlines internes */
+```
+
+**Biseau Spéculaire Zénithal (Highlight de Surface) :**
+```css
+--bevel-top:      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+--bevel-top-core: inset 0 1px 0 rgba(255, 255, 255, 0.09); /* cœur Double-Bezel */
+```
+
+### 12.2 Classes Utilitaires Canoniques Ajoutées à `tokens.css`
+
+| Classe | Usage |
+| :--- | :--- |
+| `.micro-stamp` | Identifiants techniques monospace en petite casse : `[0x7F::RCON]`, `PID:4012` |
+| `.micro-stamp-active` | Variante illuminée (bleu) pour les stamps actifs |
+| `.hardware-shell` | Enveloppe Double-Bezel extérieure (fond subtil, bordure 1px, padding 6px) |
+| `.hardware-core` | Cœur Double-Bezel intérieur (bg-surface, bevel-top-core) |
+| `.telemetry-led-green` / `-amber` / `-blue` / `-red` | Voyants LED d'état système (6×6px, halo radial `box-shadow`) |
+
+### 12.3 Quake Terminal HUD — Spécification Implémentée
+
+**Fichier :** `src/lib/components/console/QuakeTerminalHUD.svelte`
+**Montage :** `src/routes/+layout.svelte` (niveau racine, z-index `var(--z-quake-hud)` = 1500)
+
+**Raccourcis d'activation :** `~` (hors INPUT/TEXTAREA), `Ctrl+\``, `F12`, `Escape` (fermeture).
+
+**Micro-stamps de statut :**
+```
+[0x7F::RCON LIVE]   [PORT:25565]   [BUF:300L]
+```
+
+**Filtres 1-touche numériques :** `1` ALL · `2` INFO · `3` WARN · `4` ERR · `5` RCON
+
+**Animation d'entrée (160ms, `--ease-hypr-snap`) :**
+```css
+@starting-style { transform: translateY(-100%); opacity: 0; }
+transform: translateY(0); opacity: 1;
+transition: transform 160ms var(--ease-hypr-snap), opacity 120ms var(--ease-out);
+```
+
+**Fonctionnalités RCON :**
+- Historique de commandes (`↑` / `↓`), autocomplétion `Tab`
+- Export `mclo.gs` en 1 clic avec copie URL dans le presse-papiers
+- Buffer DOM plafonné à 300 entrées pour garantir 60fps GPU
+
+### 12.4 Corrections Responsives Mobile (375px) — Zero Overflow Garanti
+
+**Cause racine diagnostiquée par Playwright :** `.login-card` avec `padding: var(--space-8)` excédait la largeur disponible à 375px (+35px hors-cadre).
+
+**Correctifs appliqués sur `src/routes/login/+page.svelte` :**
+```css
+.login-container {
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: hidden;
+}
+.login-shell {
+  box-sizing: border-box;
+  border-radius: var(--radius-card); /* unifié vers token, supprime le 1rem hardcodé */
+}
+.login-card {
+  box-sizing: border-box;
+  padding: var(--space-6);           /* réduit de space-8 */
+}
+@media (max-width: 480px) {
+  .login-container { padding: var(--space-3); }
+  .login-card      { padding: var(--space-4); }
+}
+```
+
+**Résultat Playwright After — Overflow sur 68 pages × 4 viewports :**
+| Viewport | Résultat |
+| :--- | :--- |
+| Desktop 1440px (17 pages) | ✅ Overflow: OK sur toutes |
+| Laptop 1024px (17 pages) | ✅ Overflow: OK sur toutes |
+| Tablet 768px (17 pages) | ✅ Overflow: OK sur toutes |
+| Mobile 375px (17 pages) | ✅ Overflow: OK sur toutes |
+
+### 12.5 Correctifs de Tokens Hardcodés
+
+| Fichier | Avant | Après | Raison |
+| :--- | :--- | :--- | :--- |
+| `MetricsChart.svelte` | `#6366F1` (violet Tailwind) | `#3B82F6` / `rgba(59,130,246,0.12)` | Alignement palette bleue ChiPanel |
+| `RamAllocationStep.svelte` | `#161922`, `#1F2330` | `var(--bg-surface)`, `var(--bg-elevated)` | Source de vérité tokens |
+| `OnboardingWizard.svelte` | `#161922` | `var(--bg-surface)` | Idem |
+| `login/+page.svelte` | `border-radius: 1rem` | `var(--radius-card)` | Alignement token systémique |
+
+### 12.6 ModeSwitch Responsive (Header Mobile)
+
+**Fichier :** `src/lib/components/onboarding/ModeSwitch.svelte`
+
+En dessous de 640px, `ModeSwitch` passe en mode icon-only (icônes `Sparkles` et `Terminal` 32×32px) au lieu du texte complet (210px). Cette réduction divise l'emprise header de 210px à ~68px, éliminant le débordement horizontal.
+
+```css
+@media (max-width: 640px) {
+  .mode-label { display: none; }
+  .mode-btn   { width: 32px; padding: 0; justify-content: center; }
+}
+```
+
+### 12.7 Physique Universelle du Header (`+layout.svelte`)
+
+Haptics unifiés sur tous les éléments interactifs du header :
+```css
+.nav-item:active, .action-btn:active { transform: scale(0.97); }
+```
+Transition : `140ms var(--ease-out)` sur `transform`, `opacity`, `background-color`.
+
+### 12.8 Résultats Build
+
+```
+npm run check  → svelte-check found 0 errors and 124 warnings in 34 files
+npm run build  → Vite static build succeeded (exit 0)
+```
+

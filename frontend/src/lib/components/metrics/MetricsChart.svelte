@@ -31,7 +31,7 @@
 	 */
 	const SERIES = {
 		tps: { key: 'tps', label: 'TPS', suffix: ' TPS', color: '#0FA968', fill: 'rgba(15, 169, 104, 0.12)', digits: 2, axisDigits: 1, max: 20.5 },
-		cpu: { key: 'cpu', label: 'CPU', suffix: ' %', color: '#6366F1', fill: 'rgba(99, 102, 241, 0.12)', digits: 1, axisDigits: 0, max: 100 },
+		cpu: { key: 'cpu', label: 'CPU', suffix: ' %', color: '#3B82F6', fill: 'rgba(59, 130, 246, 0.12)', digits: 1, axisDigits: 0, max: 100 },
 		ram: { key: 'ram_mb', label: 'RAM', suffix: ' Mo', color: '#D97706', fill: 'rgba(217, 119, 6, 0.12)', digits: 0, axisDigits: 0, max: null },
 		players: { key: 'players', label: 'Joueurs', suffix: '', color: '#8B5CF6', fill: 'rgba(139, 92, 246, 0.12)', digits: 0, axisDigits: 0, max: null }
 	};
@@ -251,7 +251,7 @@
 	}
 
 	.chart-header-icon.icon-cpu {
-		color: #6366f1;
+		color: #3b82f6;
 	}
 
 	.chart-header-icon.icon-ram {

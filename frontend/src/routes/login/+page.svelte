@@ -105,6 +105,9 @@
 		justify-content: center;
 		background-color: var(--bg-base);
 		padding: var(--space-4);
+		box-sizing: border-box;
+		width: 100%;
+		overflow-x: hidden;
 	}
 
 	.login-shell {
@@ -112,10 +115,11 @@
 		max-width: 420px;
 		background-color: rgba(255, 255, 255, 0.02);
 		border: 1px solid var(--border-subtle);
-		border-radius: 1rem;
+		border-radius: var(--radius-card);
 		padding: 6px;
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 		animation: loginEntrance 180ms var(--ease-out);
+		box-sizing: border-box;
 	}
 
 	@keyframes loginEntrance {
@@ -135,9 +139,19 @@
 		border: 1px solid rgba(255, 255, 255, 0.04);
 		border-radius: calc(var(--radius-card) - 6px);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 8px 32px rgba(0, 0, 0, 0.4);
-		padding: var(--space-8);
+		padding: var(--space-6);
 		display: flex;
 		flex-direction: column;
+		box-sizing: border-box;
+	}
+
+	@media (max-width: 480px) {
+		.login-container {
+			padding: var(--space-3);
+		}
+		.login-card {
+			padding: var(--space-4);
+		}
 	}
 
 	.login-header {

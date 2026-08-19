@@ -265,7 +265,7 @@
 	}
 
 	.hardware-core.onboarding-inner-core {
-		background-color: #161922;
+		background-color: var(--bg-surface);
 		border-radius: calc(1rem - 0.375rem); /* 10px */
 		border: 1px solid rgba(255, 255, 255, 0.04);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.25);
@@ -301,7 +301,7 @@
 	.stencil-icon {
 		width: 32px;
 		height: 32px;
-		background: #1F2330;
+		background: var(--bg-elevated);
 		border: 1px solid var(--border-focus);
 		border-radius: var(--radius-input);
 		display: flex;

@@ -36,7 +36,7 @@
 		}
 	});
 
-	const statusLedClass = $derived(() => {
+	const statusLedClass = $derived.by(() => {
 		switch (status) {
 			case 'active':
 				return 'telemetry-led-active';
@@ -53,7 +53,7 @@
 		}
 	});
 
-	const statusLabel = $derived(() => {
+	const statusLabel = $derived.by(() => {
 		switch (status) {
 			case 'active':
 				return 'En ligne / Actif';
@@ -74,9 +74,9 @@
 <div
 	class="chipanel-logo-container {className}"
 	style="width: {pixelSize}px; height: {pixelSize}px; min-width: {pixelSize}px; min-height: {pixelSize}px;"
-	title="ChiPanel — {statusLabel()}"
+	title="ChiPanel — {statusLabel}"
 	role="img"
-	aria-label="ChiPanel Logo ({statusLabel()})"
+	aria-label="ChiPanel Logo ({statusLabel})"
 >
 	<svg
 		class="chipanel-logo-svg"
@@ -147,7 +147,7 @@
 	</svg>
 
 	{#if showLed}
-		<span class="logo-led-dot telemetry-led {statusLedClass()}"></span>
+		<span class="logo-led-dot telemetry-led {statusLedClass}"></span>
 	{/if}
 </div>
 

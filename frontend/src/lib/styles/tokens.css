@@ -1,28 +1,38 @@
 /* ==========================================================================
    ChiPanel Design System — tokens.css (Machined Hardware & Double-Bezel Core)
-   Strict adherence to the 33 Anti-Slop Rules & WCAG AAA Contrast
+   Single source of truth for design tokens, Milled Monolith & Hyprland Physics.
+   Strict adherence to Anti-Slop Rules & WCAG AAA Contrast.
    ========================================================================== */
 
 :root {
   /* ------------------------------------------------------------------------
      1. Base Canvas & Surfaces (Obsidian Milled Console)
      ------------------------------------------------------------------------ */
-  --bg-base: #0F1117;          /* oklch(0.18 0.015 260) - Base background */
-  --bg-surface: #161922;       /* oklch(0.22 0.018 260) - Primary card surface */
-  --bg-elevated: #1F2330;      /* oklch(0.26 0.022 260) - Modals, popovers, drawers */
-  --border: #242836;           /* oklch(0.29 0.018 260) - Structural border */
+  --bg-base: #0B0D13;          /* oklch(0.16 0.015 260) - Base background */
+  --bg-surface: #12151E;       /* oklch(0.20 0.018 260) - Primary card surface */
+  --bg-elevated: #191D2A;      /* oklch(0.24 0.022 260) - Modals, popovers, drawers */
+  --bg-active: #212638;        /* oklch(0.28 0.024 260) - Selected/active item */
+  --border: #1F2433;           /* oklch(0.28 0.018 260) - Structural border */
   --border-subtle: rgba(255, 255, 255, 0.07); /* Capillary separator */
-  --border-focus: #3A4056;     /* Active focus border */
+  --border-focus: #3A4460;     /* Active focus border */
 
   /* ------------------------------------------------------------------------
-     2. Anti-Glare Typography & High-Contrast Levels (WCAG AAA >= 14:1)
+     2. Specular Highlights & Bevels
      ------------------------------------------------------------------------ */
-  --text-primary: #F1F3F9;     /* oklch(0.96 0.008 260) - 14:1 on --bg-surface */
-  --text-secondary: #9DA4B9;   /* oklch(0.72 0.02 260) - 5.5:1 on --bg-surface */
-  --text-muted: #848CA6;       /* oklch(0.64 0.025 260) - >= 4.68:1 on all surfaces */
+  --bevel-top: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --bevel-top-core: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --bevel-subtle: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   /* ------------------------------------------------------------------------
-     3. The 3-Role Semantic Accents (Fill, Text Bump, Solid Button)
+     3. Anti-Glare Typography & High-Contrast Levels (WCAG AAA >= 14:1)
+     ------------------------------------------------------------------------ */
+  --text-primary: #F1F3F9;     /* oklch(0.96 0.008 260) - 14.5:1 on --bg-surface */
+  --text-secondary: #9DA4B9;   /* oklch(0.72 0.02 260) - 5.8:1 on --bg-surface */
+  --text-muted: #848CA6;       /* oklch(0.64 0.025 260) - 4.8:1 on all surfaces */
+  --text-code: #A5B4FC;        /* oklch(0.78 0.08 275) - Monospace identifiers */
+
+  /* ------------------------------------------------------------------------
+     4. The 3-Role Semantic Accents (Fill, Text Bump, Solid Button)
      ------------------------------------------------------------------------ */
   /* Green: Online / Up / Healthy */
   --accent-green: #0FA968;
@@ -70,7 +80,7 @@
   --glow-danger: 0 0 16px rgba(239, 68, 68, 0.25);
 
   /* ------------------------------------------------------------------------
-     4. Geometry & Radii Scale (Capped at 12px for Cards)
+     5. Geometry & Radii Scale (Capped at 12px for Cards)
      ------------------------------------------------------------------------ */
   --radius-sm: 4px;
   --radius-input: 6px;
@@ -81,7 +91,7 @@
   --radius-badge: 9999px;
 
   /* ------------------------------------------------------------------------
-     5. Strict Z-Index Scale (Universal Architecture Scale)
+     6. Strict Z-Index Scale (Universal Architecture Scale)
      ------------------------------------------------------------------------ */
   --z-base: 1;
   --z-sticky: 100;
@@ -91,25 +101,32 @@
   --z-modal: 1000;
   --z-toast: 1100;
   --z-tooltip: 1200;
+  --z-quake-hud: 1500;
 
   /* ------------------------------------------------------------------------
-     6. Motion & Physics Tokens (Emil Kowalski Haptics)
+     7. Motion & Physics Tokens (Hyprland Snappy + Emil Kowalski Physics)
      ------------------------------------------------------------------------ */
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-hypr-snap: cubic-bezier(0.05, 0.9, 0.1, 1.05);   /* Snappy avec micro-punch */
+  --ease-hypr-smooth: cubic-bezier(0.16, 1, 0.3, 1);       /* Glissement de panneau & HUD */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);               /* Interaction standard UI */
+  --ease-in: cubic-bezier(0.32, 0, 0.67, 0);                /* Sorties vives */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);           /* Morphing de carte */
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-  --duration-instant: 0ms;
-  --duration-fast: 120ms;
-  --duration-normal: 180ms;
+  --duration-instant: 0ms;      /* Hotkeys & actions 100+/jour */
+  --duration-micro: 80ms;       /* Changements discrets */
+  --duration-fast: 120ms;       /* Boutons & press */
+  --duration-snappy: 160ms;     /* Tabs, HUD slide */
+  --duration-normal: 180ms;     /* Modales */
   --duration-slow: 240ms;
 
   --transition-fast: 120ms var(--ease-out);
+  --transition-snappy: 160ms var(--ease-hypr-snap);
   --transition-normal: 180ms var(--ease-out);
   --transition-slow: 240ms var(--ease-out);
 
   /* ------------------------------------------------------------------------
-     7. Spacing & Typography
+     8. Spacing Scale (4px Base Grid)
      ------------------------------------------------------------------------ */
   --space-1: 4px;
   --space-2: 8px;
@@ -119,8 +136,36 @@
   --space-8: 32px;
   --space-12: 48px;
 
+  /* ------------------------------------------------------------------------
+     9. Typography Scale
+     ------------------------------------------------------------------------ */
   --font-ui: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.8125rem; /* 13px */
+  --font-size-base: 0.875rem;/* 14px */
+  --font-size-md: 1rem;      /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+  --font-size-2xl: 1.5rem;   /* 24px */
+  --font-size-3xl: 2rem;     /* 32px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* ------------------------------------------------------------------------
+     10. Shadows & Elevation
+     ------------------------------------------------------------------------ */
+  --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --elevation-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  --modal-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 25px 50px -12px rgba(0, 0, 0, 0.7);
 }
 
 /* ==========================================================================
@@ -132,23 +177,64 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
   padding: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .hardware-core {
   background-color: var(--bg-surface);
   border-radius: calc(var(--radius-card) - 6px);
   border: 1px solid rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--bevel-top-core), 0 2px 8px rgba(0, 0, 0, 0.25);
   padding: var(--space-4);
 }
 
 .hardware-bezel-highlight {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  box-shadow: var(--bevel-top);
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   Micro-Stamps d'Ingénierie Gravés
+   ========================================================================== */
+
+.micro-stamp {
+  font-family: var(--font-mono);
+  font-size: 0.625rem; /* 10px */
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  line-height: 1.2;
+  box-shadow: var(--bevel-subtle);
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.micro-stamp-active {
+  color: var(--accent-green-text);
+  background-color: var(--accent-green-bg);
+  border-color: var(--accent-green-border);
+}
+
+.micro-stamp-warning {
+  color: var(--warning-text);
+  background-color: var(--warning-bg);
+  border-color: var(--warning-border);
+}
+
+.micro-stamp-danger {
+  color: var(--danger-text);
+  background-color: var(--danger-bg);
+  border-color: var(--danger-border);
 }
 
 /* ==========================================================================
@@ -166,12 +252,12 @@
 
 .telemetry-led-active {
   background-color: var(--accent-green);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 8px rgba(15, 169, 104, 0.4);
 }
 
 .telemetry-led-hibernating {
   background-color: var(--accent-orange);
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 8px rgba(217, 119, 6, 0.4);
   animation: led-breathe 4s ease-in-out infinite;
 }
 
@@ -224,9 +310,10 @@ a.btn,
 .pressable:active,
 button:active:not(:disabled),
 .btn:active:not(:disabled),
-.nav-item:active {
+.nav-item:active,
+.card-interactive:active {
   transform: scale(0.97);
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: transform var(--duration-fast) var(--ease-hypr-snap);
 }
 
 .text-balance {

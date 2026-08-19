@@ -298,17 +298,17 @@
 	}
 
 	.segment-os {
-		background-color: #4B5563; /* Cool Slate Gray */
+		background-color: #4B5563; /* Cool Slate Gray OS reserve */
 		z-index: 2;
 	}
 
 	.segment-heap {
-		background-color: var(--accent-blue);
+		background-color: var(--accent-blue-solid);
 		z-index: 1;
 	}
 
 	.segment-free {
-		background-color: #1F2937;
+		background-color: var(--bg-elevated);
 		z-index: 0;
 	}
 
@@ -334,8 +334,8 @@
 	}
 
 	.dot-os { background-color: #4B5563; }
-	.dot-heap { background-color: var(--accent-blue); }
-	.dot-free { background-color: #1F2937; border: 1px solid var(--border-focus); }
+	.dot-heap { background-color: var(--accent-blue-solid); }
+	.dot-free { background-color: var(--bg-elevated); border: 1px solid var(--border-focus); }
 
 	.tabular-nums {
 		font-variant-numeric: tabular-nums;
