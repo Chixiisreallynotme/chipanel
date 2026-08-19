@@ -1,7 +1,8 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte.js';
-	import { Server, Lock, User, AlertCircle, ArrowRight } from 'lucide-svelte';
+	import { Lock, User, AlertCircle, ArrowRight } from 'lucide-svelte';
+	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 
 	let username = $state('');
 	let password = $state('');
@@ -24,72 +25,74 @@
 </script>
 
 <svelte:head>
-	<title>Login - ChiPanel Admin</title>
+	<title>Connexion - ChiPanel Admin</title>
 </svelte:head>
 
 <div class="login-container">
-	<div class="login-card">
-		<div class="login-header">
-			<div class="logo-wrapper">
-				<Server size={32} class="logo-icon" />
+	<div class="hardware-shell login-shell">
+		<div class="hardware-core login-card">
+			<div class="login-header">
+				<div class="logo-wrapper">
+					<ChiPanelLogo size="lg" status="stopped" />
+				</div>
+				<h1 class="login-title">ChiPanel</h1>
+				<p class="login-subtitle">Administration Homelab & Serveurs de Jeu</p>
 			</div>
-			<h1 class="login-title">ChiPanel</h1>
-			<p class="login-subtitle">Game Server & Homelab Administration</p>
+
+			{#if auth.error}
+				<div class="error-banner" role="alert">
+					<AlertCircle size={18} class="error-icon" />
+					<span class="error-text">{auth.error}</span>
+				</div>
+			{/if}
+
+			<form onsubmit={handleSubmit} class="login-form">
+				<div class="form-group">
+					<label for="username" class="label label-required">Nom d'utilisateur</label>
+					<div class="input-container">
+						<User size={16} class="field-icon" />
+						<input
+							id="username"
+							type="text"
+							class="input"
+							placeholder="Entrez votre nom d'utilisateur"
+							bind:value={username}
+							disabled={isSubmitting}
+							required
+							autocomplete="username"
+						/>
+					</div>
+				</div>
+
+				<div class="form-group">
+					<label for="password" class="label label-required">Mot de passe</label>
+					<div class="input-container">
+						<Lock size={16} class="field-icon" />
+						<input
+							id="password"
+							type="password"
+							class="input"
+							placeholder="Entrez votre mot de passe"
+							bind:value={password}
+							disabled={isSubmitting}
+							required
+							autocomplete="current-password"
+						/>
+					</div>
+				</div>
+
+				<button
+					type="submit"
+					class="btn btn-primary btn-lg submit-btn {isSubmitting ? 'btn-loading' : ''}"
+					disabled={isSubmitting || !username.trim() || !password.trim()}
+				>
+					{#if !isSubmitting}
+						<span>Se connecter</span>
+						<ArrowRight size={18} />
+					{/if}
+				</button>
+			</form>
 		</div>
-
-		{#if auth.error}
-			<div class="error-banner" role="alert">
-				<AlertCircle size={18} class="error-icon" />
-				<span class="error-text">{auth.error}</span>
-			</div>
-		{/if}
-
-		<form onsubmit={handleSubmit} class="login-form">
-			<div class="form-group">
-				<label for="username" class="label label-required">Username</label>
-				<div class="input-container">
-					<User size={16} class="field-icon" />
-					<input
-						id="username"
-						type="text"
-						class="input"
-						placeholder="Enter your username"
-						bind:value={username}
-						disabled={isSubmitting}
-						required
-						autocomplete="username"
-					/>
-				</div>
-			</div>
-
-			<div class="form-group">
-				<label for="password" class="label label-required">Password</label>
-				<div class="input-container">
-					<Lock size={16} class="field-icon" />
-					<input
-						id="password"
-						type="password"
-						class="input"
-						placeholder="Enter your password"
-						bind:value={password}
-						disabled={isSubmitting}
-						required
-						autocomplete="current-password"
-					/>
-				</div>
-			</div>
-
-			<button
-				type="submit"
-				class="btn btn-primary btn-lg submit-btn {isSubmitting ? 'btn-loading' : ''}"
-				disabled={isSubmitting || !username.trim() || !password.trim()}
-			>
-				{#if !isSubmitting}
-					<span>Sign In</span>
-					<ArrowRight size={18} />
-				{/if}
-			</button>
-		</form>
 	</div>
 </div>
 
@@ -104,13 +107,34 @@
 		padding: var(--space-4);
 	}
 
-	.login-card {
+	.login-shell {
 		width: 100%;
 		max-width: 420px;
+		background-color: rgba(255, 255, 255, 0.02);
+		border: 1px solid var(--border-subtle);
+		border-radius: 1rem;
+		padding: 6px;
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+		animation: loginEntrance 180ms var(--ease-out);
+	}
+
+	@keyframes loginEntrance {
+		from {
+			opacity: 0;
+			transform: scale(0.95);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.login-card {
+		width: 100%;
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-card);
-		box-shadow: var(--elevation-shadow);
+		border: 1px solid rgba(255, 255, 255, 0.04);
+		border-radius: calc(var(--radius-card) - 6px);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 8px 32px rgba(0, 0, 0, 0.4);
 		padding: var(--space-8);
 		display: flex;
 		flex-direction: column;
@@ -125,15 +149,9 @@
 	}
 
 	.logo-wrapper {
-		width: 56px;
-		height: 56px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--accent-blue-text);
 		margin-bottom: var(--space-4);
 	}
 
@@ -162,7 +180,18 @@
 		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-medium);
 		margin-bottom: var(--space-4);
-		animation: modalSlideUp var(--transition-fast) ease-out;
+		animation: alertSlideIn 150ms var(--ease-out);
+	}
+
+	@keyframes alertSlideIn {
+		from {
+			opacity: 0;
+			transform: translateY(-4px) scale(0.98);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
 	}
 
 	.error-banner :global(.error-icon) {
@@ -189,12 +218,32 @@
 	}
 
 	.input-container .input {
+		width: 100%;
 		padding-left: calc(var(--space-3) * 2 + 16px);
+		border: 1px solid var(--border);
+		background-color: var(--bg-base);
+		color: var(--text-primary);
+		border-radius: var(--radius-input);
+		transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+	}
+
+	.input-container .input:focus {
+		outline: none;
+		border-color: var(--accent-blue);
+		box-shadow: 0 0 0 2px var(--accent-blue-border);
 	}
 
 	.submit-btn {
 		width: 100%;
 		margin-top: var(--space-2);
 		font-weight: var(--font-weight-semibold);
+		transition: transform 160ms var(--ease-out),
+					background-color 150ms var(--ease-out),
+					border-color 150ms var(--ease-out),
+					opacity 150ms var(--ease-out);
+	}
+
+	.submit-btn:active:not(:disabled) {
+		transform: scale(0.97);
 	}
 </style>

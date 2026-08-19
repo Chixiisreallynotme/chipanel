@@ -765,15 +765,17 @@
 	/* Dropzone Banner */
 	.dropzone-banner {
 		background-color: var(--bg-surface);
-		border: 2px dashed var(--border);
+		border: 1px dashed var(--border);
 		border-radius: var(--radius-card);
 		padding: var(--space-4) var(--space-5);
-		transition: all var(--transition-fast);
+		transition: all 160ms var(--ease-out);
 		cursor: pointer;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 	.dropzone-banner:hover, .dropzone-active {
 		border-color: var(--accent-blue);
 		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.06));
+		transform: translateY(-1px);
 	}
 	.dropzone-uploading {
 		border-color: var(--accent-blue);
@@ -822,6 +824,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 	.stat-icon {
 		width: 36px;
@@ -832,10 +835,10 @@
 		justify-content: center;
 		flex-shrink: 0;
 	}
-	.icon-blue { background-color: rgba(59, 130, 246, 0.12); color: #60a5fa; }
-	.icon-green { background-color: rgba(34, 197, 94, 0.12); color: #4ade80; }
-	.icon-danger { background-color: rgba(239, 68, 68, 0.12); color: #f87171; }
-	.icon-purple { background-color: rgba(168, 85, 247, 0.12); color: #c084fc; }
+	.icon-blue { background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12)); color: var(--accent-blue-text, #60a5fa); border: 1px solid var(--accent-blue-border); }
+	.icon-green { background-color: var(--accent-green-bg, rgba(34, 197, 94, 0.12)); color: var(--accent-green-text, #4ade80); border: 1px solid var(--accent-green-border); }
+	.icon-danger { background-color: var(--danger-bg, rgba(239, 68, 68, 0.12)); color: var(--danger-text, #f87171); border: 1px solid var(--danger-border); }
+	.icon-purple { background-color: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.25); }
 
 	.stat-content {
 		display: flex;
@@ -845,6 +848,7 @@
 		font-size: var(--font-size-lg);
 		font-weight: var(--font-weight-bold);
 		color: var(--text-primary);
+		font-variant-numeric: tabular-nums;
 	}
 	.stat-label {
 		font-size: var(--font-size-xs);

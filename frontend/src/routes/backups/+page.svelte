@@ -244,43 +244,51 @@
 
 	<!-- KPI Stats Grid -->
 	<div class="kpi-grid">
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-primary">
-				<Archive size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Nombre de Sauvegardes</span>
-				<span class="kpi-value">{backups.length}</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-success">
-				<HardDrive size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Espace Disque Utilisé</span>
-				<span class="kpi-value">{formatBytes(totalBytesUsed)}</span>
+		<div class="hardware-shell">
+			<div class="hardware-core kpi-card">
+				<div class="kpi-icon-wrapper kpi-primary">
+					<Archive size={20} />
+				</div>
+				<div class="kpi-content">
+					<span class="kpi-label">Nombre de Sauvegardes</span>
+					<span class="kpi-value font-mono tabular-nums">{backups.length}</span>
+				</div>
 			</div>
 		</div>
 
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-info">
-				<ShieldCheck size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Rétention Max</span>
-				<span class="kpi-value">{settings.max_retention_count} archives max</span>
+		<div class="hardware-shell">
+			<div class="hardware-core kpi-card">
+				<div class="kpi-icon-wrapper kpi-success">
+					<HardDrive size={20} />
+				</div>
+				<div class="kpi-content">
+					<span class="kpi-label">Espace Disque Utilisé</span>
+					<span class="kpi-value font-mono tabular-nums">{formatBytes(totalBytesUsed)}</span>
+				</div>
 			</div>
 		</div>
 
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper {settings.s3_config?.enabled ? 'kpi-success' : 'kpi-warning'}">
-				<CloudUpload size={22} />
+		<div class="hardware-shell">
+			<div class="hardware-core kpi-card">
+				<div class="kpi-icon-wrapper kpi-info">
+					<ShieldCheck size={20} />
+				</div>
+				<div class="kpi-content">
+					<span class="kpi-label">Rétention Max</span>
+					<span class="kpi-value font-mono tabular-nums">{settings.max_retention_count} archives max</span>
+				</div>
 			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Export Distant S3 / MinIO</span>
-				<span class="kpi-value">{settings.s3_config?.enabled ? 'Actif' : 'Désactivé'}</span>
+		</div>
+
+		<div class="hardware-shell">
+			<div class="hardware-core kpi-card">
+				<div class="kpi-icon-wrapper {settings.s3_config?.enabled ? 'kpi-success' : 'kpi-warning'}">
+					<CloudUpload size={20} />
+				</div>
+				<div class="kpi-content">
+					<span class="kpi-label">Export Distant S3 / MinIO</span>
+					<span class="kpi-value">{settings.s3_config?.enabled ? 'Actif' : 'Désactivé'}</span>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -290,16 +298,16 @@
 		<div class="table-header-row">
 			<div class="filter-pills">
 				<button class="pill-btn {scopeFilter === 'ALL' ? 'active' : ''}" onclick={() => (scopeFilter = 'ALL')}>
-					Toutes ({backups.length})
+					Toutes (<span class="font-mono tabular-nums">{backups.length}</span>)
 				</button>
 				<button class="pill-btn {scopeFilter === 'full' ? 'active' : ''}" onclick={() => (scopeFilter = 'full')}>
-					Complètes ({backups.filter((b) => b.scope === 'full').length})
+					Complètes (<span class="font-mono tabular-nums">{backups.filter((b) => b.scope === 'full').length}</span>)
 				</button>
 				<button class="pill-btn {scopeFilter === 'world_only' ? 'active' : ''}" onclick={() => (scopeFilter = 'world_only')}>
-					Mondes seuls ({backups.filter((b) => b.scope === 'world_only').length})
+					Mondes seuls (<span class="font-mono tabular-nums">{backups.filter((b) => b.scope === 'world_only').length}</span>)
 				</button>
 				<button class="pill-btn {scopeFilter === 'configs_only' ? 'active' : ''}" onclick={() => (scopeFilter = 'configs_only')}>
-					Configs ({backups.filter((b) => b.scope === 'configs_only').length})
+					Configs (<span class="font-mono tabular-nums">{backups.filter((b) => b.scope === 'configs_only').length}</span>)
 				</button>
 			</div>
 
@@ -328,7 +336,7 @@
 					<thead>
 						<tr>
 							<th>Nom de l'Archive</th>
-							<th>Type</th>
+							<th>Type & Format</th>
 							<th>Taille</th>
 							<th>Date de Création</th>
 							<th class="text-right">Actions</th>
@@ -347,15 +355,17 @@
 									</div>
 								</td>
 								<td>
-									<div class="flex items-center gap-1.5">
+									<div class="flex items-center gap-1.5 flex-wrap">
 										{#if backup.scope === 'full'}
-											<span class="badge badge-primary">Complète</span>
+											<span class="badge badge-primary font-mono text-xs">Complète</span>
 										{:else if backup.scope === 'world_only'}
-											<span class="badge badge-success">Monde seul</span>
+											<span class="badge badge-success font-mono text-xs">Monde seul</span>
 										{:else}
-											<span class="badge badge-warning">Configs</span>
+											<span class="badge badge-warning font-mono text-xs">Configs</span>
 										{/if}
-										<span class="badge badge-secondary font-mono">{backup.format || 'zip'}</span>
+										<span class="badge badge-format font-mono tabular-nums text-xs">
+											{backup.format === 'zstd' ? '.tar.zst' : `.${backup.format || 'zip'}`}
+										</span>
 									</div>
 								</td>
 								<td class="font-mono text-sm tabular-nums">{formatBytes(backup.file_size_bytes)}</td>
@@ -734,22 +744,39 @@
 		gap: var(--space-4);
 		padding: var(--space-4);
 		background-color: var(--bg-surface);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
 	.kpi-icon-wrapper {
 		width: 42px;
 		height: 42px;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-card);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
 	}
 
-	.kpi-primary { background-color: var(--accent-blue-bg); color: var(--accent-blue-text); }
-	.kpi-success { background-color: rgba(16, 185, 129, 0.15); color: #10B981; }
-	.kpi-info { background-color: rgba(59, 130, 246, 0.15); color: #60A5FA; }
-	.kpi-warning { background-color: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+	.kpi-primary {
+		background-color: var(--accent-blue-bg);
+		color: var(--accent-blue-text);
+		border: 1px solid var(--accent-blue-border);
+	}
+	.kpi-success {
+		background-color: var(--accent-green-bg);
+		color: var(--accent-green);
+		border: 1px solid var(--accent-green-border);
+	}
+	.kpi-info {
+		background-color: rgba(59, 130, 246, 0.15);
+		color: #60A5FA;
+		border: 1px solid var(--accent-blue-border);
+	}
+	.kpi-warning {
+		background-color: var(--warning-bg);
+		color: var(--warning);
+		border: 1px solid var(--warning-border);
+	}
 
 	.kpi-content {
 		display: flex;
@@ -762,12 +789,14 @@
 		color: var(--text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
+		font-weight: var(--font-weight-medium);
 	}
 
 	.kpi-value {
 		font-size: var(--font-size-base);
 		font-weight: var(--font-weight-bold);
 		color: var(--text-primary);
+		font-variant-numeric: tabular-nums;
 	}
 
 	/* Table Card */
@@ -786,17 +815,32 @@
 	.filter-pills {
 		display: flex;
 		gap: var(--space-2);
+		flex-wrap: wrap;
 	}
 
 	.pill-btn {
-		background: none;
+		background-color: var(--bg-base);
 		border: 1px solid var(--border);
 		border-radius: 9999px;
 		padding: 4px 12px;
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
 		cursor: pointer;
-		transition: all 0.15s ease;
+		user-select: none;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+		transition: transform 160ms var(--ease-out),
+		            background-color 150ms var(--ease-out),
+		            border-color 150ms var(--ease-out),
+		            color 150ms var(--ease-out);
+	}
+
+	.pill-btn:hover {
+		color: var(--text-primary);
+		border-color: var(--border-focus);
+	}
+
+	.pill-btn:active {
+		transform: scale(0.97);
 	}
 
 	.pill-btn.active {
@@ -804,6 +848,16 @@
 		border-color: var(--accent-blue-border);
 		color: var(--accent-blue-text);
 		font-weight: var(--font-weight-semibold);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px var(--accent-blue);
+	}
+
+	.badge-format {
+		background-color: rgba(255, 255, 255, 0.03);
+		border: 1px solid var(--border);
+		color: var(--accent-blue-text);
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	}
 
 	.table-wrapper {

@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
+	import { apiGet } from '$lib/api/client.js';
 	import { auth } from '$lib/stores/auth.svelte.js';
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
 	import {
@@ -147,35 +148,79 @@
 		return typeof value === 'number' ? format(value) : UNAVAILABLE;
 	}
 
+	// Server Power Mode Tracking (live from /api/server/status and WebSocket)
+	let powerMode = $state(/** @type {'on' | 'hibernating' | 'off' | null} */ (null));
+
+	async function fetchPowerMode() {
+		if (!browser || !auth.isAuthenticated) return;
+		try {
+			const res = await apiGet('/api/server/status');
+			if (res?.power_mode) {
+				powerMode = res.power_mode === 'hibernate' ? 'hibernating' : res.power_mode;
+			}
+		} catch {
+			// silently handled fallback
+		}
+	}
+
+	$effect(() => {
+		if (browser && auth.isAuthenticated) {
+			fetchPowerMode();
+		}
+	});
+
+	// Derive power_mode from state or live telemetry
+	let effectivePowerMode = $derived.by(() => {
+		if (powerMode) return powerMode;
+		if (!wsStore.connected) return 'off';
+		if (wsStore.telemetry.containerRunning === true) return 'on';
+		if (wsStore.telemetry.podmanAvailable && wsStore.telemetry.containerRunning === false) return 'hibernating';
+		return 'off';
+	});
+
+	let logoStatus = $derived.by(() => {
+		if (effectivePowerMode === 'on') return 'active';
+		if (effectivePowerMode === 'hibernating' || effectivePowerMode === 'hibernate') return 'hibernating';
+		return 'stopped';
+	});
+
 	// Server Status Helper
 	let serverStatus = $derived.by(() => {
-		const danger = { dotClass: 'status-dot-danger', textClass: 'badge-danger', logoStatus: 'stopped' };
-		const warning = { dotClass: 'status-dot-warning status-dot-pulse', textClass: 'badge-warning', logoStatus: 'hibernating' };
-		const success = { dotClass: 'status-dot-success status-dot-pulse', textClass: 'badge-success', logoStatus: 'active' };
+		const danger = { dotClass: 'status-dot-danger', textClass: 'badge-danger' };
+		const warning = { dotClass: 'status-dot-warning status-dot-pulse', textClass: 'badge-warning' };
+		const success = { dotClass: 'status-dot-success status-dot-pulse', textClass: 'badge-success' };
+
+		if (wsStore.status === 'connecting' || wsStore.status === 'reconnecting') {
+			return { label: 'Connexion…', ...warning };
+		}
 
 		if (!wsStore.connected) {
-			return { label: 'Hors ligne', ...danger, logoStatus: 'stopped' };
+			return { label: 'Hors ligne', ...danger };
+		}
+
+		if (effectivePowerMode === 'hibernating' || effectivePowerMode === 'hibernate') {
+			return { label: 'En veille lazymc', ...warning };
 		}
 
 		const { containerRunning, rconAvailable, tps } = wsStore.telemetry;
 
 		if (containerRunning === false) {
-			return { label: 'Arrêté', ...danger, logoStatus: 'stopped' };
+			return { label: 'Arrêté', ...danger };
 		}
 		if (!rconAvailable) {
-			return { label: 'En veille / RCON indisponible', ...warning, logoStatus: 'hibernating' };
+			return { label: 'En veille / RCON indisponible', ...warning };
 		}
 		if (tps === null) {
 			// RCON is up but the server has no `tps` command (vanilla) — not an error, not 20.0.
-			return { label: 'En ligne', ...success, logoStatus: 'active' };
+			return { label: 'En ligne', ...success };
 		}
 		if (tps >= 18) {
-			return { label: 'En ligne', ...success, logoStatus: 'active' };
+			return { label: 'En ligne', ...success };
 		}
 		if (tps > 0) {
-			return { label: `Lenteur (${tps.toFixed(1)} TPS)`, ...warning, logoStatus: 'busy' };
+			return { label: `Lenteur (${tps.toFixed(1)} TPS)`, ...warning };
 		}
-		return { label: 'Arrêté', ...danger, logoStatus: 'stopped' };
+		return { label: 'Arrêté', ...danger };
 	});
 
 	let isLoginPage = $derived(page.url.pathname === '/login');
@@ -208,10 +253,10 @@
 		<aside class="sidebar {sidebarOpen ? 'open' : ''}">
 			<div class="sidebar-header">
 				<div class="brand-logo-container">
-					<ChiPanelLogo status={serverStatus.logoStatus} size={32} />
+					<ChiPanelLogo status={logoStatus} size={32} />
 					<div class="brand-title-group">
 						<span class="brand-title">ChiPanel</span>
-						<span class="online-status-badge">
+						<span class="online-status-badge tabular-nums">
 							<span class="status-dot {serverStatus.dotClass}"></span>
 							<span>{serverStatus.label}</span>
 						</span>
@@ -280,7 +325,7 @@
 					</button>
 
 					<!-- Server Status Indicator -->
-					<div class="status-badge badge {serverStatus.textClass}">
+					<div class="status-badge badge {serverStatus.textClass} tabular-nums">
 						<span class="status-dot {serverStatus.dotClass}"></span>
 						<span class="status-label">{serverStatus.label}</span>
 					</div>
@@ -312,7 +357,12 @@
 								)}
 							</span>
 						</div>
-						{#if wsStore.connected && !wsStore.telemetry.rconAvailable}
+						{#if wsStore.status === 'connecting' || wsStore.status === 'reconnecting'}
+							<span class="pill-divider" aria-hidden="true">|</span>
+							<span class="pill-hint" title="Connexion au flux télémétrique">
+								Connexion…
+							</span>
+						{:else if wsStore.connected && !wsStore.telemetry.rconAvailable}
 							<span class="pill-divider" aria-hidden="true">|</span>
 							<span class="pill-hint" title="Les données de jeu proviennent de RCON">
 								RCON indisponible

@@ -142,7 +142,7 @@
 
 	<!-- Quick Action Chips Grid -->
 	<div class="chips-grid">
-		{#each QUICK_COMMANDS as item (item.id)}
+		{#each QUICK_COMMANDS as item, idx (item.id)}
 			{@const IconComponent = item.icon}
 			<div
 				class="chip-card"
@@ -167,12 +167,13 @@
 
 				<div class="chip-right">
 					<span class="badge {item.badgeClass} chip-badge">{item.badge}</span>
+					<kbd class="chip-shortcut tabular-nums" title="Raccourci #{idx + 1}">#{idx + 1}</kbd>
 					<button
 						type="button"
 						class="btn-fill-input"
 						onclick={(e) => fillToInput(item, e)}
-						title="Fill command into prompt"
-						aria-label="Fill command into prompt"
+						title="Remplir dans le prompt"
+						aria-label="Remplir dans le prompt"
 					>
 						<CornerDownLeft size={12} />
 					</button>
@@ -195,12 +196,12 @@
 			<div class="modal-header">
 				<div class="modal-title-group">
 					<AlertTriangle size={20} class="warning-icon" />
-					<h3 class="modal-title" id="confirm-modal-title">Confirm Quick Action</h3>
+					<h3 class="modal-title" id="confirm-modal-title">Confirmer l'action rapide</h3>
 				</div>
 				<button
 					class="btn btn-ghost btn-icon btn-sm"
 					onclick={() => (confirmModalAction = null)}
-					aria-label="Close confirmation dialog"
+					aria-label="Fermer la confirmation"
 				>
 					<X size={16} />
 				</button>
@@ -209,17 +210,17 @@
 			<div class="modal-body">
 				<p class="confirm-message">{confirmModalAction.confirmMessage}</p>
 				<div class="cmd-preview-box">
-					<span class="cmd-label">Target Command:</span>
+					<span class="cmd-label">Commande cible :</span>
 					<code class="cmd-code">/{confirmModalAction.command}</code>
 				</div>
 			</div>
 
 			<div class="modal-footer">
 				<button class="btn btn-secondary" onclick={() => (confirmModalAction = null)}>
-					Cancel
+					Annuler
 				</button>
 				<button class="btn btn-danger" onclick={confirmAndExecute}>
-					Confirm & Execute
+					Confirmer & Exécuter
 				</button>
 			</div>
 		</div>
@@ -243,7 +244,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		font-size: var(--font-size-sm);
+		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-semibold);
 		color: var(--text-secondary);
 		text-transform: uppercase;
@@ -274,19 +275,24 @@
 		background-color: var(--bg-surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-card);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 		cursor: pointer;
 		user-select: none;
-		transition: border-color var(--transition-fast),
-			background-color var(--transition-fast),
-			transform var(--transition-fast),
-			box-shadow var(--transition-fast);
+		transition: transform 160ms var(--ease-out),
+			background-color 150ms var(--ease-out),
+			border-color 150ms var(--ease-out),
+			box-shadow 150ms var(--ease-out);
 	}
 
 	.chip-card:hover {
 		background-color: var(--bg-elevated);
 		border-color: var(--border-focus);
 		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.3);
+	}
+
+	.chip-card:active {
+		transform: scale(0.97);
 	}
 
 	.chip-left {
@@ -306,6 +312,7 @@
 		align-items: center;
 		justify-content: center;
 		color: var(--accent-blue-text);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 		flex-shrink: 0;
 	}
 
@@ -342,6 +349,18 @@
 		padding: 1px 7px;
 	}
 
+	.chip-shortcut {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		padding: 1px 5px;
+		border-radius: var(--radius-sm);
+		background-color: rgba(255, 255, 255, 0.06);
+		border: 1px solid var(--border-subtle);
+		color: var(--text-muted);
+		font-variant-numeric: tabular-nums;
+		user-select: none;
+	}
+
 	.btn-fill-input {
 		display: flex;
 		align-items: center;
@@ -353,12 +372,16 @@
 		background: transparent;
 		color: var(--text-muted);
 		cursor: pointer;
-		transition: background-color var(--transition-fast), color var(--transition-fast);
+		transition: background-color var(--transition-fast), color var(--transition-fast), transform 160ms var(--ease-out);
 	}
 
 	.btn-fill-input:hover {
 		background-color: rgba(255, 255, 255, 0.1);
 		color: var(--text-primary);
+	}
+
+	.btn-fill-input:active {
+		transform: scale(0.95);
 	}
 
 	/* Modal Confirmation Styling */
@@ -400,5 +423,6 @@
 	.cmd-code {
 		color: var(--accent-blue-text);
 		font-weight: var(--font-weight-semibold);
+		font-family: var(--font-mono);
 	}
 </style>

@@ -894,6 +894,8 @@
 		border-radius: var(--radius-badge);
 		padding: var(--space-2) var(--space-4);
 		font-size: var(--font-size-sm);
+		font-variant-numeric: tabular-nums;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
 	.pill-icon {

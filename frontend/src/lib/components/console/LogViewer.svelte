@@ -543,8 +543,8 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-		background-color: #0c0e14;
-		box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+		background-color: #080a0f;
+		box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
 	.console-output {
@@ -556,6 +556,7 @@
 		line-height: 1.55;
 		color: var(--text-primary);
 		word-break: break-word;
+		background-color: #080a0f;
 	}
 
 	.empty-logs {

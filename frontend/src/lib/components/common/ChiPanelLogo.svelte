@@ -6,7 +6,7 @@
 	/**
 	 * @type {{
 	 *   status?: ServerStatus,
-	 *   size?: number,
+	 *   size?: number | 'sm' | 'md' | 'lg' | 'xl' | string,
 	 *   showLed?: boolean,
 	 *   class?: string
 	 * }}
@@ -17,6 +17,24 @@
 		showLed = true,
 		class: className = ''
 	} = $props();
+
+	const pixelSize = $derived.by(() => {
+		if (typeof size === 'number') return size;
+		switch (size) {
+			case 'sm':
+				return 24;
+			case 'md':
+				return 32;
+			case 'lg':
+				return 48;
+			case 'xl':
+				return 64;
+			default: {
+				const parsed = parseInt(String(size), 10);
+				return isNaN(parsed) ? 32 : parsed;
+			}
+		}
+	});
 
 	const statusLedClass = $derived(() => {
 		switch (status) {
@@ -55,7 +73,7 @@
 
 <div
 	class="chipanel-logo-container {className}"
-	style="width: {size}px; height: {size}px; min-width: {size}px; min-height: {size}px;"
+	style="width: {pixelSize}px; height: {pixelSize}px; min-width: {pixelSize}px; min-height: {pixelSize}px;"
 	title="ChiPanel — {statusLabel()}"
 	role="img"
 	aria-label="ChiPanel Logo ({statusLabel()})"

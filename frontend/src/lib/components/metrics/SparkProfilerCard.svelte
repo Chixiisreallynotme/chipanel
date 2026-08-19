@@ -118,13 +118,15 @@
 		<!-- Profiler Duration Selector Presets -->
 		<div class="preset-section">
 			<span class="label">Profiler Sampling Duration:</span>
-			<div class="preset-buttons-grid">
+			<div class="segmented-control" role="radiogroup" aria-label="Profiler sampling duration">
 				{#each presets as preset}
 					<button
 						type="button"
-						class="btn btn-secondary preset-btn {selectedDuration === preset.seconds ? 'active' : ''}"
+						class="segmented-btn {selectedDuration === preset.seconds ? 'active' : ''}"
 						disabled={isProfiling}
 						onclick={() => selectPreset(preset.seconds)}
+						role="radio"
+						aria-checked={selectedDuration === preset.seconds}
 					>
 						{preset.label}
 					</button>
@@ -280,21 +282,53 @@
 		gap: var(--space-2);
 	}
 
-	.preset-buttons-grid {
+	.segmented-control {
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
-		gap: var(--space-2);
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-btn);
+		padding: 3px;
+		gap: 3px;
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
 	}
 
-	.preset-btn {
+	.segmented-btn {
 		font-family: var(--font-mono);
+		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-semibold);
+		font-variant-numeric: tabular-nums;
+		height: 32px;
+		border: 1px solid transparent;
+		border-radius: calc(var(--radius-btn) - 3px);
+		background: transparent;
+		color: var(--text-secondary);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		user-select: none;
+		transition: transform 160ms var(--ease-out),
+		            background-color 150ms var(--ease-out),
+		            border-color 150ms var(--ease-out),
+		            color 150ms var(--ease-out),
+		            box-shadow 150ms var(--ease-out);
 	}
 
-	.preset-btn.active {
-		background-color: var(--accent-blue-bg);
-		border-color: var(--accent-blue);
+	.segmented-btn:hover:not(:disabled):not(.active) {
+		color: var(--text-primary);
+		background-color: rgba(255, 255, 255, 0.04);
+	}
+
+	.segmented-btn:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+
+	.segmented-btn.active {
+		background-color: var(--bg-elevated);
+		border-color: var(--accent-blue-border);
 		color: var(--accent-blue-text);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 2px 6px rgba(0, 0, 0, 0.35);
 	}
 
 	.start-profiler-btn {

@@ -657,23 +657,38 @@
 		background-color: var(--bg-base);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-badge);
-		padding: var(--space-1) var(--space-3);
+		padding: 3px 10px;
 		font-size: var(--font-size-xs);
 		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
 		color: var(--text-secondary);
 		cursor: pointer;
-		transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+		user-select: none;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+		transition: transform 160ms var(--ease-out),
+		            background-color 150ms var(--ease-out),
+		            border-color 150ms var(--ease-out),
+		            color 150ms var(--ease-out),
+		            box-shadow 150ms var(--ease-out);
 	}
 
 	.preset-pill:hover:not(:disabled) {
-		border-color: var(--accent-blue);
+		border-color: var(--accent-blue-border);
 		color: var(--text-primary);
+		background-color: rgba(255, 255, 255, 0.04);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+
+	.preset-pill:active:not(:disabled) {
+		transform: scale(0.97);
 	}
 
 	.preset-pill.active {
 		background-color: var(--accent-blue-bg);
 		border-color: var(--accent-blue);
 		color: var(--accent-blue-text);
+		font-weight: var(--font-weight-semibold);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 1px var(--accent-blue);
 	}
 
 	/* Shape Selector */
@@ -700,18 +715,34 @@
 		border-radius: var(--radius-btn);
 		color: var(--text-muted);
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		user-select: none;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+		transition: transform 160ms var(--ease-out),
+		            background-color 150ms var(--ease-out),
+		            border-color 150ms var(--ease-out),
+		            color 150ms var(--ease-out),
+		            box-shadow 150ms var(--ease-out);
 	}
 
 	.shape-card:hover:not(:disabled) {
 		border-color: var(--border-focus);
 		color: var(--text-primary);
 		background-color: rgba(255, 255, 255, 0.02);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+
+	.shape-card:active:not(:disabled) {
+		transform: scale(0.97);
 	}
 
 	.shape-card.active {
 		background-color: var(--accent-blue-bg);
 		border-color: var(--accent-blue);
+		color: var(--accent-blue-text);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 1px var(--accent-blue);
+	}
+
+	.shape-card.active .shape-icon {
 		color: var(--accent-blue-text);
 	}
 

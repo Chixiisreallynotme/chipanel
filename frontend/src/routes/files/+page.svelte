@@ -271,67 +271,75 @@
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} />
 
 <div class="files-page-container">
-	<!-- Page Header with Preset Chips -->
-	<header class="files-page-header">
-		<div class="header-title-group">
-			<h1>
-				<FileCode size={28} class="header-icon" />
-				File & Config Editor
-			</h1>
-			<p>Manage, inspect, and edit Minecraft server config files with syntax highlighting</p>
-		</div>
+	<!-- Page Header with Preset Chips in Double-Bezel Shell -->
+	<header class="hardware-shell files-header-shell">
+		<div class="hardware-core files-header-card">
+			<div class="header-title-group">
+				<div class="header-title-row">
+					<div class="icon-badge">
+						<FileCode size={20} class="header-icon" />
+					</div>
+					<div>
+						<h1 class="page-title">Éditeur de Fichiers & Configurations</h1>
+						<p class="page-subtitle">Inspectez et modifiez les fichiers de configuration du serveur Minecraft avec coloration syntaxique</p>
+					</div>
+				</div>
+			</div>
 
-		<!-- Quick Presets Chips Bar -->
-		<div class="preset-chips-wrapper" aria-label="Quick configuration file presets">
-			<span class="presets-label">
-				<Sparkles size={14} class="preset-sparkle-icon" />
-				Quick Presets:
-			</span>
-			<div class="chips-list">
-				{#each PRESET_CHIPS as preset}
-					{@const IconComponent = preset.icon}
-					<button
-						type="button"
-						class="preset-chip {selectedPath === preset.path ? 'active' : ''}"
-						onclick={() => requestSelectFile(preset.path)}
-						title="Open {preset.name}"
-						aria-pressed={selectedPath === preset.path}
-					>
-						<IconComponent size={13} />
-						<span>{preset.name}</span>
-					</button>
-				{/each}
+			<!-- Quick Presets Chips Bar (Double-Bezel Milled Capsule) -->
+			<div class="preset-chips-wrapper" aria-label="Fichiers de configuration prédéfinis">
+				<span class="presets-label">
+					<Sparkles size={13} class="preset-sparkle-icon" />
+					<span>Presets :</span>
+				</span>
+				<div class="chips-list">
+					{#each PRESET_CHIPS as preset}
+						{@const IconComponent = preset.icon}
+						<button
+							type="button"
+							class="preset-chip {selectedPath === preset.path ? 'active' : ''}"
+							onclick={() => requestSelectFile(preset.path)}
+							title="Ouvrir {preset.name}"
+							aria-pressed={selectedPath === preset.path}
+						>
+							<IconComponent size={13} />
+							<span>{preset.name}</span>
+						</button>
+					{/each}
+				</div>
 			</div>
 		</div>
 	</header>
 
-	<!-- Dual-Pane Layout -->
-	<div class="files-dual-pane">
-		<!-- Left Pane: File Tree Sidebar (300px width) -->
-		<div class="file-tree-pane">
-			<FileTree
-				tree={fileTree}
-				error={treeError}
-				loading={isLoadingTree}
-				{selectedPath}
-				onSelectFile={requestSelectFile}
-				onRefreshTree={loadTree}
-				onCreateItem={openCreateModal}
-				onDeleteItem={openDeleteModal}
-			/>
-		</div>
+	<!-- Dual-Pane Layout in Hardware Double-Bezel Shell -->
+	<div class="hardware-shell files-dual-pane-shell">
+		<div class="hardware-core files-dual-pane">
+			<!-- Left Pane: File Tree Sidebar (300px width) -->
+			<div class="file-tree-pane">
+				<FileTree
+					tree={fileTree}
+					error={treeError}
+					loading={isLoadingTree}
+					{selectedPath}
+					onSelectFile={requestSelectFile}
+					onRefreshTree={loadTree}
+					onCreateItem={openCreateModal}
+					onDeleteItem={openDeleteModal}
+				/>
+			</div>
 
-		<!-- Right Pane: CodeMirror Editor -->
-		<div class="config-editor-pane">
-			<ConfigEditor
-				{fileData}
-				{isSaving}
-				error={fileError}
-				isLoading={isLoadingFile}
-				onSave={handleSaveFile}
-				onRetry={retryLoadFile}
-				onDirtyChange={(dirty) => (isEditorDirty = dirty)}
-			/>
+			<!-- Right Pane: CodeMirror Editor -->
+			<div class="config-editor-pane">
+				<ConfigEditor
+					{fileData}
+					{isSaving}
+					error={fileError}
+					isLoading={isLoadingFile}
+					onSave={handleSaveFile}
+					onRetry={retryLoadFile}
+					onDirtyChange={(dirty) => (isEditorDirty = dirty)}
+				/>
+			</div>
 		</div>
 	</div>
 </div>
@@ -535,53 +543,78 @@
 		min-height: calc(100dvh - 60px - 48px);
 	}
 
-	.files-page-header {
+	/* Double-Bezel Header Shell & Card */
+	.files-header-shell {
+		padding: 4px;
+		flex-shrink: 0;
+	}
+
+	.files-header-card {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-4);
 		flex-wrap: wrap;
+		padding: var(--space-3) var(--space-5);
+		border-radius: calc(var(--radius-card) - 4px);
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-card);
-		padding: var(--space-4) var(--space-6);
 	}
 
-	.header-title-group h1 {
-		font-size: var(--font-size-xl);
+	.header-title-row {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-3);
 	}
 
-	:global(.header-icon) {
+	.icon-badge {
+		width: 40px;
+		height: 40px;
+		border-radius: var(--radius-btn);
+		background-color: var(--accent-blue-bg);
+		border: 1px solid var(--accent-blue-border);
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		color: var(--accent-blue-text);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		flex-shrink: 0;
 	}
 
-	.header-title-group p {
+	.page-title {
+		font-size: var(--font-size-lg);
+		font-weight: var(--font-weight-bold);
+		color: var(--text-primary);
+		line-height: 1.2;
+		letter-spacing: -0.02em;
+	}
+
+	.page-subtitle {
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
 		margin-top: 2px;
 	}
 
+	/* Preset Chips (Milled Capsule) */
 	.preset-chips-wrapper {
 		display: flex;
 		align-items: center;
-		gap: var(--space-3);
+		gap: var(--space-2);
 		background-color: var(--bg-base);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-btn);
-		padding: var(--space-2) var(--space-3);
+		padding: 3px 6px;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
 	.presets-label {
 		display: flex;
 		align-items: center;
-		gap: var(--space-1);
+		gap: 4px;
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-medium);
 		color: var(--text-muted);
 		white-space: nowrap;
+		padding: 0 4px;
 	}
 
 	:global(.preset-sparkle-icon) {
@@ -591,24 +624,28 @@
 	.chips-list {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: 4px;
 		overflow-x: auto;
 	}
 
 	.preset-chip {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-1);
-		padding: var(--space-1) var(--space-3);
+		gap: 5px;
+		padding: 3px 10px;
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-badge);
+		border: 1px solid rgba(255, 255, 255, 0.05);
+		border-radius: var(--radius-sm);
 		color: var(--text-secondary);
 		font-size: var(--font-size-xs);
 		font-family: var(--font-mono);
 		cursor: pointer;
 		white-space: nowrap;
-		transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+		transition: transform 160ms var(--ease-out),
+			background-color 150ms var(--ease-out),
+			border-color 150ms var(--ease-out),
+			color 150ms var(--ease-out);
 	}
 
 	.preset-chip:hover {
@@ -617,22 +654,34 @@
 		background-color: var(--bg-elevated);
 	}
 
+	.preset-chip:active {
+		transform: scale(0.97);
+	}
+
 	.preset-chip.active {
 		background-color: var(--accent-blue-bg);
 		border-color: var(--accent-blue-border);
 		color: var(--accent-blue-text);
 		font-weight: var(--font-weight-semibold);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 	}
 
 	/* Dual Pane Layout */
+	.files-dual-pane-shell {
+		padding: 4px;
+		flex: 1;
+		display: flex;
+		min-height: 0;
+	}
+
 	.files-dual-pane {
 		display: flex;
 		flex: 1;
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-card);
+		border-radius: calc(var(--radius-card) - 4px);
 		overflow: hidden;
 		min-height: 0;
+		padding: 0;
 	}
 
 	.file-tree-pane {

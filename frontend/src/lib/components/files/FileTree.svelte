@@ -334,13 +334,27 @@
 
 			{#if visibleNodes.length === 0}
 				<div class="tree-empty-state">
+					<div class="empty-icon-box">
+						{#if searchQuery}
+							<Search size={22} class="empty-icon" />
+						{:else}
+							<FolderOpen size={22} class="empty-icon" />
+						{/if}
+					</div>
 					{#if searchQuery}
-						<p class="empty-text">No files match "{searchQuery}"</p>
-						<button type="button" class="btn btn-ghost btn-sm" onclick={clearSearch}>Clear Filter</button>
+						<p class="empty-title">Aucun fichier trouvé</p>
+						<p class="empty-text">Aucun élément ne correspond à « {searchQuery} »</p>
+						<button type="button" class="btn btn-ghost btn-sm" onclick={clearSearch}>Effacer le filtre</button>
 					{:else if tree.error || tree.truncated}
-						<p class="empty-text">No entries could be listed</p>
+						<p class="empty-title">Arborescence incomplète</p>
+						<p class="empty-text">Aucun élément n'a pu être listé</p>
 					{:else}
-						<p class="empty-text">Directory is empty</p>
+						<p class="empty-title">Dossier vide</p>
+						<p class="empty-text">Aucun fichier de configuration dans ce répertoire</p>
+						<button type="button" class="btn btn-secondary btn-sm" onclick={() => onCreateItem('')}>
+							<Plus size={13} />
+							<span>Créer un fichier</span>
+						</button>
 					{/if}
 				</div>
 			{:else}
@@ -672,9 +686,35 @@
 		gap: var(--space-2);
 	}
 
+	.empty-icon-box {
+		width: 44px;
+		height: 44px;
+		border-radius: var(--radius-btn);
+		background-color: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--text-muted);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+		margin-bottom: 2px;
+	}
+
+	.empty-icon {
+		color: var(--text-muted);
+	}
+
+	.empty-title {
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+		color: var(--text-primary);
+		margin: 0;
+	}
+
 	.empty-text {
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
+		margin: 0;
 	}
 
 	.error-title {

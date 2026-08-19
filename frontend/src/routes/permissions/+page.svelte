@@ -372,46 +372,52 @@
 
 	<!-- Quick Telemetry & Stats Cards Bar -->
 	<div class="stats-grid">
-		<div class="card stat-card">
-			<div class="stat-card-body">
-				<div class="stat-icon-wrapper blue">
-					<Layers size={20} />
-				</div>
-				<div class="stat-details">
-					<span class="stat-label">Total Groups</span>
-					<span class="stat-value">{loadError ? '—' : totalGroupsCount}</span>
-				</div>
-			</div>
-		</div>
-
-		<div class="card stat-card">
-			<div class="stat-card-body">
-				<div class="stat-icon-wrapper green">
-					<Key size={20} />
-				</div>
-				<div class="stat-details">
-					<span class="stat-label">Assigned Permission Nodes</span>
-					<span class="stat-value">{loadError ? '—' : totalPermissionsCount}</span>
+		<div class="hardware-shell">
+			<div class="hardware-core stat-card">
+				<div class="stat-card-body">
+					<div class="stat-icon-wrapper blue">
+						<Layers size={20} />
+					</div>
+					<div class="stat-details">
+						<span class="stat-label">Total Groups</span>
+						<span class="stat-value font-mono tabular-nums">{loadError ? '—' : totalGroupsCount}</span>
+					</div>
 				</div>
 			</div>
 		</div>
 
-		<div class="card stat-card">
-			<div class="stat-card-body">
-				<div class="stat-icon-wrapper purple">
-					<Crown size={20} />
+		<div class="hardware-shell">
+			<div class="hardware-core stat-card">
+				<div class="stat-card-body">
+					<div class="stat-icon-wrapper green">
+						<Key size={20} />
+					</div>
+					<div class="stat-details">
+						<span class="stat-label">Assigned Permission Nodes</span>
+						<span class="stat-value font-mono tabular-nums">{loadError ? '—' : totalPermissionsCount}</span>
+					</div>
 				</div>
-				<div class="stat-details">
-					<span class="stat-label">Highest Priority Group</span>
-					<span class="stat-value font-mono">
-						{#if loadError}
-							—
-						{:else if highestWeightGroup}
-							{highestWeightGroup.name} (w: {highestWeightGroup.weight})
-						{:else}
-							None
-						{/if}
-					</span>
+			</div>
+		</div>
+
+		<div class="hardware-shell">
+			<div class="hardware-core stat-card">
+				<div class="stat-card-body">
+					<div class="stat-icon-wrapper purple">
+						<Crown size={20} />
+					</div>
+					<div class="stat-details">
+						<span class="stat-label">Highest Priority Group</span>
+						<span class="stat-value font-mono">
+							{#if loadError}
+								—
+							{:else if highestWeightGroup}
+								{highestWeightGroup.name} <span class="weight-sub tabular-nums">(w: {highestWeightGroup.weight})</span>
+							{:else}
+								None
+							{/if}
+						</span>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -604,7 +610,8 @@
 
 	.stat-card {
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
+		border-radius: calc(var(--radius-card) - 6px);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 
 	.stat-card-body {
@@ -645,12 +652,15 @@
 	.stat-details {
 		display: flex;
 		flex-direction: column;
+		min-width: 0;
 	}
 
 	.stat-label {
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
 		font-weight: var(--font-weight-medium);
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
 	}
 
 	.stat-value {
@@ -658,6 +668,15 @@
 		font-weight: var(--font-weight-bold);
 		color: var(--text-primary);
 		line-height: 1.2;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.weight-sub {
+		font-size: var(--font-size-xs);
+		color: var(--text-muted);
+		font-weight: normal;
 	}
 
 	.unavailable-banner {

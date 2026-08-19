@@ -159,12 +159,18 @@
 		align-items: center;
 		gap: var(--space-2);
 		font-size: var(--font-size-sm);
+		padding: var(--space-2) var(--space-3);
+		border-radius: var(--radius-sm);
 	}
 	.status-ok {
+		background-color: var(--accent-green-bg);
+		border: 1px solid var(--accent-green-border);
 		color: var(--accent-green-text, #34d399);
 	}
 	.status-warn {
-		color: var(--warning, #f59e0b);
+		background-color: var(--warning-bg);
+		border: 1px solid var(--warning-border);
+		color: var(--warning-text, #f59e0b);
 	}
 	.status-row code {
 		font-family: var(--font-mono);

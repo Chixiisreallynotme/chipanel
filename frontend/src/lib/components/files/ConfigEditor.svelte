@@ -303,7 +303,7 @@
 				<!-- Diff Preview Button -->
 				<button
 					type="button"
-					class="btn btn-secondary btn-sm"
+					class="btn btn-secondary btn-sm diff-btn"
 					disabled={!isDirty}
 					onclick={() => (showDiffModal = true)}
 					title="Visualiser le diff avant enregistrement"
@@ -315,15 +315,15 @@
 				<!-- Save Button -->
 				<button
 					type="button"
-					class="btn btn-primary btn-sm {isSaving ? 'btn-loading' : ''}"
+					class="btn btn-primary btn-sm save-btn {isSaving ? 'btn-loading' : ''}"
 					disabled={isSaving || !isDirty}
 					onclick={handleSave}
-					title="Save file changes (Ctrl+S)"
-					aria-label="Save Changes"
+					title="Enregistrer les modifications (Ctrl+S)"
+					aria-label="Enregistrer les modifications"
 				>
 					<Save size={15} />
-					<span>Save Changes</span>
-					<kbd class="shortcut-kbd">Ctrl+S</kbd>
+					<span>Enregistrer</span>
+					<kbd class="shortcut-kbd tabular-nums">Ctrl+S</kbd>
 				</button>
 			</div>
 		</header>

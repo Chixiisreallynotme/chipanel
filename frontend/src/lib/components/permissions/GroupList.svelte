@@ -164,22 +164,26 @@
 			<p>Loading LuckPerms group configurations...</p>
 		</div>
 	{:else if filteredGroups.length === 0}
-		<div class="empty-state card">
-			<Layers size={40} class="empty-icon" />
-			{#if searchQuery}
-				<h3>No Matching LuckPerms Groups</h3>
-				<p>No permission group matches search query "{searchQuery}".</p>
-				<button class="btn btn-secondary btn-sm" onclick={() => (searchQuery = '')}>
-					Clear Filter
-				</button>
-			{:else}
-				<h3>No Groups Configured</h3>
-				<p>Get started by creating your first LuckPerms permission group.</p>
-				<button class="btn btn-primary btn-sm" onclick={onCreateGroup}>
-					<Plus size={14} />
-					<span>Create First Group</span>
-				</button>
-			{/if}
+		<div class="empty-state-shell hardware-shell">
+			<div class="empty-state hardware-core card">
+				<div class="empty-icon-box">
+					<Layers size={36} class="empty-icon" />
+				</div>
+				{#if searchQuery}
+					<h3 class="empty-state-title">No Matching LuckPerms Groups</h3>
+					<p class="empty-state-desc">No permission group matches search query "{searchQuery}".</p>
+					<button class="btn btn-secondary btn-sm" onclick={() => (searchQuery = '')}>
+						Clear Filter
+					</button>
+				{:else}
+					<h3 class="empty-state-title">No Groups Configured</h3>
+					<p class="empty-state-desc">Get started by creating your first LuckPerms permission group.</p>
+					<button class="btn btn-primary btn-md create-first-btn" onclick={onCreateGroup}>
+						<Plus size={16} />
+						<span>Create First Group</span>
+					</button>
+				{/if}
+			</div>
 		</div>
 	{:else if viewMode === 'card'}
 		<!-- Grid / Card View -->
@@ -698,8 +702,58 @@
 		color: var(--text-muted);
 	}
 
+	.empty-state-shell {
+		width: 100%;
+	}
+
+	.empty-icon-box {
+		width: 64px;
+		height: 64px;
+		border-radius: var(--radius-card);
+		background-color: var(--accent-blue-bg);
+		border: 1px solid var(--accent-blue-border);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: var(--space-2);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+
+	.empty-icon-box .empty-icon {
+		color: var(--accent-blue-text);
+	}
+
 	.empty-icon {
 		color: var(--text-muted);
+	}
+
+	.empty-state-title {
+		color: var(--text-primary);
+		font-size: var(--font-size-lg);
+		font-weight: var(--font-weight-semibold);
+		letter-spacing: -0.01em;
+	}
+
+	.empty-state-desc {
+		font-size: var(--font-size-sm);
+		color: var(--text-muted);
+		max-width: 42ch;
+	}
+
+	.create-first-btn {
+		margin-top: var(--space-2);
+		height: 38px;
+		padding: 0 var(--space-5);
+		font-size: var(--font-size-sm);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 8px rgba(0, 0, 0, 0.25);
+		transition: transform 160ms var(--ease-out),
+		            background-color 150ms var(--ease-out),
+		            border-color 150ms var(--ease-out),
+		            box-shadow 150ms var(--ease-out);
+	}
+
+	.create-first-btn:active {
+		transform: scale(0.97);
 	}
 
 	.empty-state h3 {

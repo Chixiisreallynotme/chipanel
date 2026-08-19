@@ -490,11 +490,12 @@
 	.range-selector-group {
 		display: flex;
 		align-items: center;
-		background-color: var(--bg-surface);
+		background-color: var(--bg-base);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-badge);
 		padding: 2px;
 		gap: 2px;
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 	}
 
 	.range-btn {
@@ -503,12 +504,23 @@
 		height: 26px;
 		font-size: var(--font-size-xs);
 		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		user-select: none;
+		transition: transform 160ms var(--ease-out),
+		            background-color 150ms var(--ease-out),
+		            border-color 150ms var(--ease-out),
+		            color 150ms var(--ease-out);
+	}
+
+	.range-btn:active {
+		transform: scale(0.97);
 	}
 
 	/* White label, so it needs the solid (white-safe) fill, not the palette hue. */
 	.range-btn.active {
 		background-color: var(--accent-blue-solid);
 		color: #ffffff;
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
 	}
 
 	/* Grid Layout */
@@ -544,6 +556,7 @@
 		border: 1px solid var(--danger-border);
 		color: var(--danger-text);
 		font-size: var(--font-size-sm);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
 	/* Toast Notification Stack */
@@ -650,6 +663,9 @@
 	.webhook-card {
 		padding: var(--space-5);
 		background-color: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-card);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 2px 8px rgba(0, 0, 0, 0.2);
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
@@ -659,12 +675,15 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		padding-bottom: var(--space-2);
+		border-bottom: 1px solid var(--border-subtle);
 	}
 
 	.card-title {
 		font-size: var(--font-size-base);
 		font-weight: var(--font-weight-semibold);
 		margin: 0;
+		color: var(--text-primary);
 	}
 
 	.cron-job-list {
@@ -675,13 +694,17 @@
 
 	.cron-job-item {
 		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-card);
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-btn);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
 	.cron-job-main {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		gap: var(--space-3);
 	}
 
 	.webhook-actions {
@@ -689,6 +712,7 @@
 		align-items: center;
 		gap: var(--space-3);
 		margin-top: auto;
+		padding-top: var(--space-2);
 	}
 
 	@media (max-width: 992px) {

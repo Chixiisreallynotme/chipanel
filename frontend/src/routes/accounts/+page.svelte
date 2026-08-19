@@ -413,123 +413,123 @@
 		</div>
 	</div>
 
-	<!-- Info Banner -->
-	<div class="card info-banner-card">
-		<div class="card-body banner-body">
-			<div class="banner-icon-box">
-				<ShieldCheck size={32} />
-			</div>
-			<div class="banner-text font-ui">
-				<h3>Niveaux d'accès sécurisés & profils types</h3>
-				<p>
-					Configurez des rôles précis pour chaque utilisateur (administrateurs, opérateurs, modérateurs ou profils personnalisés). Chaque session bénéficie d'un token valide 24 heures.
-				</p>
-			</div>
+	<!-- Semantic Tokenized Info Alert -->
+	<div class="semantic-info-alert" role="status">
+		<div class="alert-icon-box">
+			<ShieldCheck size={28} />
+		</div>
+		<div class="alert-content font-ui">
+			<h3 class="alert-title">Niveaux d'accès sécurisés & profils types</h3>
+			<p class="alert-desc">
+				Configurez des rôles précis pour chaque utilisateur (administrateurs, opérateurs, modérateurs ou profils personnalisés). Chaque session bénéficie d'un token valide 24 heures.
+			</p>
 		</div>
 	</div>
 
-	<!-- User Accounts Table -->
-	<div class="card accounts-table-card">
-		<div class="card-header">
-			<div class="table-header-title">
-				<Users size={18} />
-				<h3>Comptes d'accès enregistrés ({users.length})</h3>
+	<!-- User Accounts Table with Double-Bezel -->
+	<div class="hardware-shell accounts-table-shell">
+		<div class="hardware-core accounts-table-card">
+			<div class="table-card-header">
+				<div class="table-header-title">
+					<Users size={18} />
+					<h3>Comptes d'accès enregistrés ({users.length})</h3>
+				</div>
 			</div>
-		</div>
 
-		<div class="card-body table-body">
-			{#if isLoading}
-				<div class="loading-state">
-					<Loader2 size={32} class="spinner" />
-					<p>Chargement des comptes utilisateurs...</p>
-				</div>
-			{:else if error}
-				<!-- role="alert" so the failure is announced, and a separate visual treatment for
-				     403: "you may not do this" is a different outcome from "this broke". -->
-				<div
-					class="alert-banner {errorKind === 'forbidden' ? 'alert-forbidden' : 'alert-danger'}"
-					role="alert"
-				>
-					{#if errorKind === 'forbidden'}
-						<Lock size={18} />
-					{:else}
-						<AlertCircle size={18} />
-					{/if}
-					<span>{error}</span>
-				</div>
-			{:else if users.length === 0}
-				<div class="empty-state">
-					<Lock size={40} class="empty-icon" />
-					<h4>Aucun compte secondaire</h4>
-					<p>Cliquez sur « Nouveau compte sur-mesure » pour créer un profil utilisateur.</p>
-				</div>
-			{:else}
-				<div class="table-wrapper">
-					<table class="table">
-						<thead>
-							<tr>
-								<th>NOM D'UTILISATEUR</th>
-								<th>PROFIL D'ACCÈS</th>
-								<th>AUTORISATIONS ACCORDÉES</th>
-								<th>DATE DE CRÉATION</th>
-								<th class="text-right">ACTIONS</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each users as user (user.id || user.username)}
-								{@const roleInfo = getRoleBadge(user.role)}
-								{@const RoleIcon = roleInfo.icon}
-								{@const permCount = Array.isArray(user.permissions) ? user.permissions.length : 0}
+			<div class="table-body">
+				{#if isLoading}
+					<div class="loading-state">
+						<Loader2 size={32} class="spinner" />
+						<p>Chargement des comptes utilisateurs...</p>
+					</div>
+				{:else if error}
+					<!-- role="alert" so the failure is announced, and a separate visual treatment for
+					     403: "you may not do this" is a different outcome from "this broke". -->
+					<div
+						class="alert-banner {errorKind === 'forbidden' ? 'alert-forbidden' : 'alert-danger'}"
+						role="alert"
+					>
+						{#if errorKind === 'forbidden'}
+							<Lock size={18} />
+						{:else}
+							<AlertCircle size={18} />
+						{/if}
+						<span>{error}</span>
+					</div>
+				{:else if users.length === 0}
+					<div class="empty-state">
+						<Lock size={40} class="empty-icon" />
+						<h4>Aucun compte secondaire</h4>
+						<p>Cliquez sur « Nouveau compte sur-mesure » pour créer un profil utilisateur.</p>
+					</div>
+				{:else}
+					<div class="table-wrapper">
+						<table class="table">
+							<thead>
 								<tr>
-									<td class="font-medium text-primary">
-										<div class="user-name-cell">
-											<div class="user-avatar-sm">
-												{user.username.charAt(0).toUpperCase()}
-											</div>
-											<span>{user.username}</span>
-											{#if user.username.toLowerCase() === auth.user?.username?.toLowerCase()}
-												<span class="current-user-tag">(Vous)</span>
-											{/if}
-										</div>
-									</td>
-									<td>
-										<span class="badge {roleInfo.badgeClass} role-badge">
-											<RoleIcon size={13} />
-											<span>{roleInfo.label}</span>
-										</span>
-									</td>
-									<td>
-										{#if user.role.toLowerCase() === 'admin' || user.permissions?.includes('*')}
-											<span class="badge badge-success">Accès Total (Tous droits)</span>
-										{:else if permCount > 0}
-											<span class="badge badge-purple">{permCount} Autorisations activées</span>
-										{:else}
-											<span class="badge badge-info">Lecture seule</span>
-										{/if}
-									</td>
-									<td class="text-muted text-sm">
-										{user.created_at || 'Compte système'}
-									</td>
-									<td class="text-right">
-										{#if user.username.toLowerCase() !== auth.user?.username?.toLowerCase()}
-											<button
-												class="btn btn-ghost btn-sm text-danger"
-												onclick={() => requestDeleteUser(user)}
-												title="Supprimer ce compte"
-											>
-												<Trash2 size={14} />
-												<span>Supprimer</span>
-											</button>
-										{:else}
-											<span class="text-muted text-xs italic">Compte Actif</span>
-										{/if}
-									</td>
+									<th>NOM D'UTILISATEUR</th>
+									<th>PROFIL D'ACCÈS</th>
+									<th>AUTORISATIONS ACCORDÉES</th>
+									<th>DATE DE CRÉATION</th>
+									<th class="text-right">ACTIONS</th>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{/if}
+							</thead>
+							<tbody>
+								{#each users as user (user.id || user.username)}
+									{@const roleInfo = getRoleBadge(user.role)}
+									{@const RoleIcon = roleInfo.icon}
+									{@const permCount = Array.isArray(user.permissions) ? user.permissions.length : 0}
+									<tr>
+										<td class="font-medium text-primary">
+											<div class="user-name-cell">
+												<div class="user-avatar-sm">
+													{user.username.charAt(0).toUpperCase()}
+												</div>
+												<span>{user.username}</span>
+												{#if user.username.toLowerCase() === auth.user?.username?.toLowerCase()}
+													<span class="current-user-tag">(Vous)</span>
+												{/if}
+											</div>
+										</td>
+										<td>
+											<span class="badge {roleInfo.badgeClass} role-badge">
+												<RoleIcon size={13} />
+												<span>{roleInfo.label}</span>
+											</span>
+										</td>
+										<td>
+											{#if user.role.toLowerCase() === 'admin' || user.permissions?.includes('*')}
+												<span class="badge badge-success">Accès Total (Tous droits)</span>
+											{:else if permCount > 0}
+												<span class="badge badge-purple">{permCount} Autorisations activées</span>
+											{:else}
+												<span class="badge badge-info">Lecture seule</span>
+											{/if}
+										</td>
+										<td class="text-muted text-sm tabular-nums">
+											{user.created_at || 'Compte système'}
+										</td>
+										<td class="text-right">
+											{#if user.username.toLowerCase() !== auth.user?.username?.toLowerCase()}
+												<button
+													class="btn btn-ghost btn-sm text-danger"
+													onclick={() => requestDeleteUser(user)}
+													title="Supprimer ce compte"
+												>
+													<Trash2 size={14} />
+													<span>Supprimer</span>
+												</button>
+											{:else}
+												<span class="text-muted text-xs italic">Compte Actif</span>
+											{/if}
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 
@@ -537,162 +537,164 @@
 	{#if createModalOpen}
 		<div class="modal-backdrop" onclick={closeCreateModal} aria-hidden="true">
 			<div
-				class="modal create-modal modal-lg"
+				class="hardware-shell modal-hardware-shell"
 				onclick={(e) => e.stopPropagation()}
 				onkeydown={(e) => e.stopPropagation()}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="create-user-modal-title"
 			>
-				<div class="modal-header">
-					<div class="modal-title-row">
-						<UserPlus size={22} class="text-accent" />
-						<h3 id="create-user-modal-title" class="modal-title">Créer un compte & personnaliser les droits</h3>
+				<div class="hardware-core modal create-modal modal-lg">
+					<div class="modal-header">
+						<div class="modal-title-row">
+							<UserPlus size={22} class="text-accent" />
+							<h3 id="create-user-modal-title" class="modal-title">Créer un compte & personnaliser les droits</h3>
+						</div>
+						<button class="btn btn-ghost btn-icon btn-sm" onclick={closeCreateModal} disabled={isCreating} aria-label="Fermer">
+							<X size={18} />
+						</button>
 					</div>
-					<button class="btn btn-ghost btn-icon btn-sm" onclick={closeCreateModal} disabled={isCreating} aria-label="Fermer">
-						<X size={18} />
-					</button>
-				</div>
 
-				<div class="modal-body font-ui">
-					{#if createError}
-						<div class="alert-banner alert-danger mb-4">
-							<AlertCircle size={18} />
-							<span>{createError}</span>
+					<div class="modal-body font-ui">
+						{#if createError}
+							<div class="alert-banner alert-danger mb-4">
+								<AlertCircle size={18} />
+								<span>{createError}</span>
+							</div>
+						{/if}
+
+						<!-- User Info Fields -->
+						<div class="form-grid-2 mb-4">
+							<div class="form-group">
+								<label for="new-username" class="label label-required">Nom d'Utilisateur</label>
+								<input
+									id="new-username"
+									type="text"
+									class="input"
+									placeholder="ex. alex, op_server, mod_alex"
+									bind:value={newUsername}
+									disabled={isCreating}
+								/>
+							</div>
+
+							<div class="form-group">
+								<label for="new-password" class="label label-required">Mot de passe</label>
+								<input
+									id="new-password"
+									type="password"
+									class="input"
+									placeholder="Définir un mot de passe sécurisé"
+									bind:value={newPassword}
+									disabled={isCreating}
+								/>
+							</div>
 						</div>
-					{/if}
 
-					<!-- User Info Fields -->
-					<div class="form-grid-2 mb-4">
-						<div class="form-group">
-							<label for="new-username" class="label label-required">Nom d'Utilisateur</label>
+						<div class="form-group mb-4">
+							<label for="confirm-password" class="label label-required">Confirmer le mot de passe</label>
 							<input
-								id="new-username"
-								type="text"
-								class="input"
-								placeholder="ex. alex, op_server, mod_alex"
-								bind:value={newUsername}
-								disabled={isCreating}
-							/>
-						</div>
-
-						<div class="form-group">
-							<label for="new-password" class="label label-required">Mot de passe</label>
-							<input
-								id="new-password"
+								id="confirm-password"
 								type="password"
 								class="input"
-								placeholder="Définir un mot de passe sécurisé"
-								bind:value={newPassword}
+								placeholder="Confirmer le mot de passe"
+								bind:value={confirmPassword}
 								disabled={isCreating}
 							/>
 						</div>
-					</div>
 
-					<div class="form-group mb-4">
-						<label for="confirm-password" class="label label-required">Confirmer le mot de passe</label>
-						<input
-							id="confirm-password"
-							type="password"
-							class="input"
-							placeholder="Confirmer le mot de passe"
-							bind:value={confirmPassword}
-							disabled={isCreating}
-						/>
-					</div>
+						<!-- Section 1: Pre-configured Profiles (Profils Types) -->
+						<div class="section-divider">
+							<h4>1. Sélectionner un profil type préconfiguré</h4>
+							<p class="section-subtitle">Choisissez un profil modèle pour appliquer automatiquement les autorisations correspondantes.</p>
+						</div>
 
-					<!-- Section 1: Pre-configured Profiles (Profils Types) -->
-					<div class="section-divider">
-						<h4>1. Sélectionner un profil type préconfiguré</h4>
-						<p class="section-subtitle">Choisissez un profil modèle pour appliquer automatiquement les autorisations correspondantes.</p>
-					</div>
-
-					<div class="preset-profiles-grid mb-6">
-						{#each PRESET_PROFILES as profile (profile.id)}
-							{@const ProfileIcon = profile.icon}
-							{@const isSelected = selectedPreset === profile.id}
-							<button
-								type="button"
-								class="preset-card {isSelected ? 'selected' : ''}"
-								onclick={() => selectPresetProfile(profile.id)}
-							>
-								<div class="preset-header">
-									<div class="preset-icon-box">
-										<ProfileIcon size={18} />
+						<div class="preset-profiles-grid mb-6">
+							{#each PRESET_PROFILES as profile (profile.id)}
+								{@const ProfileIcon = profile.icon}
+								{@const isSelected = selectedPreset === profile.id}
+								<button
+									type="button"
+									class="preset-card {isSelected ? 'selected' : ''}"
+									onclick={() => selectPresetProfile(profile.id)}
+								>
+									<div class="preset-header">
+										<div class="preset-icon-box">
+											<ProfileIcon size={18} />
+										</div>
+										<span class="badge {profile.badgeClass}">{profile.title}</span>
 									</div>
-									<span class="badge {profile.badgeClass}">{profile.title}</span>
-								</div>
-								<p class="preset-desc">{profile.desc}</p>
-								<div class="preset-check-mark">
-									{#if isSelected}
-										<CheckCircle2 size={16} class="text-accent" />
-									{/if}
-								</div>
-							</button>
-						{/each}
-					</div>
-
-					<!-- Section 2: Fine-Grained Custom Permissions Checklist -->
-					<div class="section-divider flex-between">
-						<div>
-							<h4>2. Personnalisation détaillée des autorisations</h4>
-							<p class="section-subtitle">Cochez ou décochez les droits individuels autorisés pour ce compte.</p>
+									<p class="preset-desc">{profile.desc}</p>
+									<div class="preset-check-mark">
+										{#if isSelected}
+											<CheckCircle2 size={16} class="text-accent" />
+										{/if}
+									</div>
+								</button>
+							{/each}
 						</div>
-						<div class="perm-quick-actions">
-							<button type="button" class="btn btn-ghost btn-xs" onclick={selectAllPermissions}>
-								<span>Tout Cocher</span>
-							</button>
-							<button type="button" class="btn btn-ghost btn-xs" onclick={deselectAllPermissions}>
-								<span>Tout Décocher</span>
-							</button>
-						</div>
-					</div>
 
-					<div class="permissions-categories-container">
-						{#each PERMISSION_CATEGORIES as category (category.id)}
-							{@const CatIcon = category.icon}
-							<div class="category-block">
-								<div class="category-header">
-									<CatIcon size={16} class="text-accent" />
-									<h5>{category.title}</h5>
-								</div>
-
-								<div class="permissions-items-grid">
-									{#each category.permissions as perm (perm.id)}
-										{@const isChecked = selectedPermissions.includes(perm.id)}
-										<label class="permission-item-label {isChecked ? 'checked' : ''}">
-											<input
-												type="checkbox"
-												checked={isChecked}
-												onchange={() => togglePermission(perm.id)}
-												disabled={isCreating}
-											/>
-											<div class="perm-info">
-												<span class="perm-name">{perm.label}</span>
-												<span class="perm-desc">{perm.desc}</span>
-											</div>
-										</label>
-									{/each}
-								</div>
+						<!-- Section 2: Fine-Grained Custom Permissions Checklist -->
+						<div class="section-divider flex-between">
+							<div>
+								<h4>2. Personnalisation détaillée des autorisations</h4>
+								<p class="section-subtitle">Cochez ou décochez les droits individuels autorisés pour ce compte.</p>
 							</div>
-						{/each}
-					</div>
-				</div>
+							<div class="perm-quick-actions">
+								<button type="button" class="btn btn-ghost btn-xs" onclick={selectAllPermissions}>
+									<span>Tout Cocher</span>
+								</button>
+								<button type="button" class="btn btn-ghost btn-xs" onclick={deselectAllPermissions}>
+									<span>Tout Décocher</span>
+								</button>
+							</div>
+						</div>
 
-				<div class="modal-footer">
-					<button class="btn btn-secondary" onclick={closeCreateModal} disabled={isCreating}>
-						Annuler
-					</button>
-					<button
-						class="btn btn-primary {isCreating ? 'btn-loading' : ''}"
-						onclick={confirmCreateUser}
-						disabled={isCreating || !newUsername.trim() || !newPassword}
-					>
-						{#if !isCreating}
-							<UserPlus size={16} />
-						{/if}
-						<span>Créer le Compte ({selectedPermissions.length} droits)</span>
-					</button>
+						<div class="permissions-categories-container">
+							{#each PERMISSION_CATEGORIES as category (category.id)}
+								{@const CatIcon = category.icon}
+								<div class="category-block">
+									<div class="category-header">
+										<CatIcon size={16} class="text-accent" />
+										<h5>{category.title}</h5>
+									</div>
+
+									<div class="permissions-items-grid">
+										{#each category.permissions as perm (perm.id)}
+											{@const isChecked = selectedPermissions.includes(perm.id)}
+											<label class="permission-item-label {isChecked ? 'checked' : ''}">
+												<input
+													type="checkbox"
+													checked={isChecked}
+													onchange={() => togglePermission(perm.id)}
+													disabled={isCreating}
+												/>
+												<div class="perm-info">
+													<span class="perm-name">{perm.label}</span>
+													<span class="perm-desc">{perm.desc}</span>
+												</div>
+											</label>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<div class="modal-footer">
+						<button class="btn btn-secondary" onclick={closeCreateModal} disabled={isCreating}>
+							Annuler
+						</button>
+						<button
+							class="btn btn-primary {isCreating ? 'btn-loading' : ''}"
+							onclick={confirmCreateUser}
+							disabled={isCreating || !newUsername.trim() || !newPassword}
+						>
+							{#if !isCreating}
+								<UserPlus size={16} />
+							{/if}
+							<span>Créer le Compte ({selectedPermissions.length} droits)</span>
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -810,33 +812,33 @@
 		max-width: 70ch;
 	}
 
-	.info-banner-card {
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-	}
-
-	.banner-body {
+	.semantic-info-alert {
 		display: flex;
 		align-items: center;
 		gap: var(--space-4);
-		padding: var(--space-5);
+		background-color: var(--accent-blue-bg);
+		border: 1px solid var(--accent-blue-border);
+		border-radius: var(--radius-card);
+		padding: var(--space-4) var(--space-5);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
-	.banner-icon-box {
+	.alert-icon-box {
 		color: var(--accent-blue-text);
 		flex-shrink: 0;
 	}
 
-	.banner-text h3 {
-		font-size: var(--font-size-md);
-		font-weight: var(--font-weight-bold);
+	.alert-content .alert-title {
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
 		color: var(--text-primary);
+		margin: 0;
 	}
 
-	.banner-text p {
-		font-size: var(--font-size-sm);
+	.alert-content .alert-desc {
+		font-size: var(--font-size-xs);
 		color: var(--text-secondary);
-		margin-top: 4px;
+		margin: 2px 0 0 0;
 	}
 
 	.accounts-table-card {
