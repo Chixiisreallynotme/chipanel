@@ -719,7 +719,11 @@
 		cursor: pointer;
 		font-size: var(--font-size-sm);
 		color: var(--text-secondary);
-		transition: all var(--transition-fast);
+		transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+	}
+
+	.radio-label:active {
+		transform: scale(0.97);
 	}
 
 	.radio-label.selected-radio {

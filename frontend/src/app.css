@@ -147,17 +147,26 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-  --transition-fast: 150ms var(--ease-out);
-  --transition-normal: 200ms var(--ease-out);
-  --transition-slow: 250ms var(--ease-out);
+  --duration-instant: 0ms;
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 240ms;
+
+  --transition-fast: 120ms var(--ease-out);
+  --transition-normal: 180ms var(--ease-out);
+  --transition-slow: 240ms var(--ease-out);
 
   /* ------------------------------------------------------------------------
-     7. Stacking Scale — every z-index in the app comes from one of these four tiers.
+     7. Stacking Scale — universal semantic tiers
      ------------------------------------------------------------------------ */
+  --z-base: 1;
   --z-sticky: 100;    /* sticky headers, sticky table heads, in-flow chrome */
-  --z-dropdown: 200;  /* sidebar, popovers, floating panels */
-  --z-modal: 1000;    /* modal backdrops, the mobile sidebar drawer */
+  --z-dropdown: 200;  /* popovers, dropdown menus, floating panels */
+  --z-drawer: 500;    /* mobile sidebar drawer and overlay sheets */
+  --z-modal-backdrop: 900;
+  --z-modal: 1000;    /* modal dialogues */
   --z-toast: 1100;    /* toasts and confirmations layered above a modal */
+  --z-tooltip: 1200;  /* tooltips always on top */
 }
 
 /* ==========================================================================

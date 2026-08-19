@@ -370,15 +370,13 @@
 						{/if}
 					</div>
 
-					<!-- User Profile & Logout Action -->
+					<!-- Quick User Action -->
 					<div class="header-user-profile">
-						<div class="header-user-avatar">
-							<UserIcon size={16} />
+						<div class="header-user-avatar" title={`Connecté en tant que ${auth.user?.username || 'Utilisateur'}`}>
+							<UserIcon size={15} />
 						</div>
-						<span class="header-user-name">{auth.user?.username || UNAVAILABLE}</span>
-						<button class="btn btn-secondary btn-sm" onclick={handleLogout}>
-							<LogOut size={14} />
-							<span class="btn-text">Déconnexion</span>
+						<button class="btn btn-ghost btn-icon btn-sm" onclick={handleLogout} title="Déconnexion">
+							<LogOut size={15} />
 						</button>
 					</div>
 				</div>
@@ -562,7 +560,6 @@
 
 	.nav-item.active :global(.nav-icon) {
 		color: var(--accent-green-text);
-		filter: drop-shadow(0 0 6px rgba(15, 169, 104, 0.35));
 	}
 
 	/* Footer User Profile Box */

@@ -1534,7 +1534,7 @@
 		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-medium);
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
 		white-space: nowrap;
 	}
 
@@ -1892,7 +1892,7 @@
 		font-weight: var(--font-weight-medium);
 		cursor: pointer;
 		white-space: nowrap;
-		transition: all var(--transition-fast);
+		transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
 	}
 
 	.cat-pill:hover {
@@ -1989,13 +1989,16 @@
 		cursor: pointer;
 		text-align: left;
 		position: relative;
-		transition: all var(--transition-fast);
+		transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
 	}
 
 	.item-grid-card:hover {
 		border-color: var(--border-hover);
 		background-color: var(--bg-elevated);
-		transform: translateY(-1px);
+	}
+
+	.item-grid-card:active {
+		transform: scale(0.97);
 	}
 
 	.item-grid-card.selected {
@@ -2122,12 +2125,15 @@
 		border-radius: var(--radius-sm);
 		cursor: pointer;
 		text-align: left;
-		transition: all var(--transition-fast);
+		transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
 	}
 
 	.gamemode-select-btn:hover {
 		border-color: var(--border-hover);
-		transform: translateY(-1px);
+	}
+
+	.gamemode-select-btn:active {
+		transform: scale(0.97);
 	}
 
 	.gamemode-select-btn.active {

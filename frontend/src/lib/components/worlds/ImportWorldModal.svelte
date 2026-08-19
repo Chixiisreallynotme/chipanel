@@ -239,11 +239,18 @@
 		font-size: var(--font-size-sm);
 		color: var(--text-secondary);
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		transition: background-color var(--transition-fast),
+					border-color var(--transition-fast),
+					color var(--transition-fast),
+					transform var(--transition-fast);
 	}
 
 	.tab-btn:hover {
 		color: var(--text-primary);
+	}
+
+	.tab-btn:active {
+		transform: scale(0.97);
 	}
 
 	.tab-active {

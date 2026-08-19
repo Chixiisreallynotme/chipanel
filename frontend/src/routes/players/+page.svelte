@@ -574,12 +574,16 @@
 		font-weight: var(--font-weight-medium);
 		color: var(--text-secondary);
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 	}
 
 	.live-status-pill:hover {
 		border-color: var(--border-hover);
 		color: var(--text-primary);
+	}
+
+	.live-status-pill:active {
+		transform: scale(0.97);
 	}
 
 	.live-status-pill.active {

@@ -759,25 +759,28 @@
 		font-weight: var(--font-weight-medium);
 		cursor: pointer;
 		border-bottom: 2px solid transparent;
-		transition: all var(--transition-fast);
+		transition: color var(--transition-fast), border-color var(--transition-fast);
 		white-space: nowrap;
 	}
 	.tab-btn:hover {
 		color: var(--text-primary);
 	}
+	.tab-btn:active {
+		transform: scale(0.97);
+	}
 	.tab-btn.active {
-		color: var(--accent-blue);
+		color: var(--accent-blue-text);
 		border-bottom-color: var(--accent-blue);
 	}
 	.tab-badge {
 		font-size: 11px;
 		font-family: var(--font-mono);
 		padding: 1px 6px;
-		border-radius: 10px;
+		border-radius: var(--radius-badge);
 		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.08));
 	}
 	.badge-pill {
-		border-radius: 999px;
+		border-radius: var(--radius-badge);
 		padding: 2px 7px;
 	}
 
@@ -808,10 +811,13 @@
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-medium);
 		cursor: pointer;
-		transition: all var(--transition-fast);
+		transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 	}
 	.subview-btn:hover {
 		color: var(--text-primary);
+	}
+	.subview-btn:active {
+		transform: scale(0.97);
 	}
 	.subview-btn.active {
 		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12));
@@ -901,7 +907,7 @@
 		position: fixed;
 		bottom: var(--space-6);
 		right: var(--space-6);
-		z-index: 1000;
+		z-index: var(--z-toast);
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
@@ -960,7 +966,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 999;
+		z-index: var(--z-modal);
 		padding: var(--space-4);
 	}
 	.modal-card {

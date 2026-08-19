@@ -792,7 +792,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 999;
+		z-index: var(--z-modal);
 		padding: var(--space-4);
 	}
 	.modal-card {
@@ -858,10 +858,13 @@
 		color: var(--text-secondary);
 		cursor: pointer;
 		font-size: var(--font-size-xs);
-		transition: all var(--transition-fast);
+		transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 	}
 	.segment-btn:hover {
 		background-color: var(--bg-subtle-hover, rgba(255, 255, 255, 0.08));
+	}
+	.segment-btn:active {
+		transform: scale(0.97);
 	}
 	.segment-btn.active {
 		border-color: var(--accent-blue);

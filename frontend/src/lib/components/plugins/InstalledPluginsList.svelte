@@ -768,7 +768,7 @@
 		border: 1px dashed var(--border);
 		border-radius: var(--radius-card);
 		padding: var(--space-4) var(--space-5);
-		transition: all 160ms var(--ease-out);
+		transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
 		cursor: pointer;
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
@@ -1088,7 +1088,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 999;
+		z-index: var(--z-modal);
 		padding: var(--space-4);
 	}
 	.modal-card {

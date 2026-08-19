@@ -206,11 +206,10 @@
 			<div class="uplot-wrapper" style="min-height: {height}px" bind:this={containerEl}></div>
 		{:else}
 			<div class="chart-empty-state" style="min-height: {height}px">
-				<Activity size={24} />
-				<span class="empty-title">Aucune donnée mesurée</span>
-				<span class="empty-desc">
-					Les échantillons apparaîtront dès que la télémétrie sera disponible. Les périodes non
-					mesurées restent vides — elles ne sont pas comblées.
+				<Activity size={22} class="empty-icon" />
+				<span class="empty-title">En attente de télémétrie</span>
+				<span class="empty-desc text-balance">
+					Les métriques s'afficheront en temps réel dès la réception du premier flux.
 				</span>
 			</div>
 		{/if}

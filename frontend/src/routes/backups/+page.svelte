@@ -202,10 +202,20 @@
 	}
 
 	// Computed KPIs
-	let totalBytesUsed = $derived(backups.reduce((acc, b) => acc + (b.file_size_bytes || 0), 0));
-	let filteredBackups = $derived(
-		scopeFilter === 'ALL' ? backups : backups.filter((b) => b.scope === scopeFilter)
+	let totalBytesUsed = $derived(
+		Array.isArray(backups) ? backups.reduce((acc, b) => acc + (b.file_size_bytes || 0), 0) : 0
 	);
+	let filteredBackups = $derived(
+		!Array.isArray(backups)
+			? []
+			: scopeFilter === 'ALL'
+				? backups
+				: backups.filter((b) => b.scope === scopeFilter)
+	);
+	let allCount = $derived(Array.isArray(backups) ? backups.length : 0);
+	let fullCount = $derived(Array.isArray(backups) ? backups.filter((b) => b.scope === 'full').length : 0);
+	let worldCount = $derived(Array.isArray(backups) ? backups.filter((b) => b.scope === 'world_only').length : 0);
+	let configsCount = $derived(Array.isArray(backups) ? backups.filter((b) => b.scope === 'configs_only').length : 0);
 </script>
 
 <svelte:head>
@@ -298,16 +308,16 @@
 		<div class="table-header-row">
 			<div class="filter-pills">
 				<button class="pill-btn {scopeFilter === 'ALL' ? 'active' : ''}" onclick={() => (scopeFilter = 'ALL')}>
-					Toutes (<span class="font-mono tabular-nums">{backups.length}</span>)
+					Toutes (<span class="font-mono tabular-nums">{allCount}</span>)
 				</button>
 				<button class="pill-btn {scopeFilter === 'full' ? 'active' : ''}" onclick={() => (scopeFilter = 'full')}>
-					Complètes (<span class="font-mono tabular-nums">{backups.filter((b) => b.scope === 'full').length}</span>)
+					Complètes (<span class="font-mono tabular-nums">{fullCount}</span>)
 				</button>
 				<button class="pill-btn {scopeFilter === 'world_only' ? 'active' : ''}" onclick={() => (scopeFilter = 'world_only')}>
-					Mondes seuls (<span class="font-mono tabular-nums">{backups.filter((b) => b.scope === 'world_only').length}</span>)
+					Mondes seuls (<span class="font-mono tabular-nums">{worldCount}</span>)
 				</button>
 				<button class="pill-btn {scopeFilter === 'configs_only' ? 'active' : ''}" onclick={() => (scopeFilter = 'configs_only')}>
-					Configs (<span class="font-mono tabular-nums">{backups.filter((b) => b.scope === 'configs_only').length}</span>)
+					Configs (<span class="font-mono tabular-nums">{configsCount}</span>)
 				</button>
 			</div>
 
@@ -916,7 +926,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
+		z-index: var(--z-modal);
 	}
 
 	.modal-card {
@@ -1037,7 +1047,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		z-index: 2000;
+		z-index: var(--z-toast);
 	}
 
 	.toast {

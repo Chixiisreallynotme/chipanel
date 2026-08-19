@@ -108,7 +108,7 @@
 			<div class="hero-right-metrics">
 				<!-- Online Players Metric -->
 				<div class="hero-metric-box">
-					<span class="hero-metric-label">JOUEURS EN LIGNE</span>
+					<span class="hero-metric-label">Joueurs en ligne</span>
 					<div class="hero-metric-val tabular-nums">
 						{srv.onlinePlayers ?? UNAVAILABLE}
 						<span class="val-slash">/</span>
@@ -124,9 +124,9 @@
 
 				<!-- Real Uptime Metric -->
 				<div class="hero-metric-box">
-					<span class="hero-metric-label">DURÉE DE FONCTIONNEMENT</span>
+					<span class="hero-metric-label">Durée de fonctionnement</span>
 					<div class="hero-metric-val-row tabular-nums">
-						<Clock size={16} class="text-green" />
+						<Clock size={15} class="text-green" />
 						<span class="hero-metric-val">{formattedUptime}</span>
 					</div>
 				</div>
@@ -312,7 +312,6 @@
 		width: 100%;
 		background: var(--accent-green);
 		border-radius: var(--radius-badge);
-		box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
 		transform-origin: left;
 		transition: transform var(--transition-fast);
 	}

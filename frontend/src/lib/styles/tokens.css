@@ -81,15 +81,16 @@
   --radius-badge: 9999px;
 
   /* ------------------------------------------------------------------------
-     5. Strict Z-Index Scale (No arbitrary magic numbers)
+     5. Strict Z-Index Scale (Universal Architecture Scale)
      ------------------------------------------------------------------------ */
-  --z-dropdown: 10;
-  --z-sticky-header: 20;
-  --z-drawer: 30;
-  --z-modal-backdrop: 40;
-  --z-modal: 50;
-  --z-toast: 60;
-  --z-tooltip: 70;
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-dropdown: 200;
+  --z-drawer: 500;
+  --z-modal-backdrop: 900;
+  --z-modal: 1000;
+  --z-toast: 1100;
+  --z-tooltip: 1200;
 
   /* ------------------------------------------------------------------------
      6. Motion & Physics Tokens (Emil Kowalski Haptics)
@@ -98,9 +99,14 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-  --transition-fast: 150ms var(--ease-out);
-  --transition-normal: 200ms var(--ease-out);
-  --transition-slow: 250ms var(--ease-out);
+  --duration-instant: 0ms;
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 240ms;
+
+  --transition-fast: 120ms var(--ease-out);
+  --transition-normal: 180ms var(--ease-out);
+  --transition-slow: 240ms var(--ease-out);
 
   /* ------------------------------------------------------------------------
      7. Spacing & Typography
@@ -199,4 +205,42 @@
 @keyframes led-crash-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.2; }
+}
+
+/* ==========================================================================
+   Tactile Micro-Interactions (Emil Kowalski Haptics)
+   ========================================================================== */
+
+.pressable,
+button,
+a.btn,
+.btn,
+.nav-item,
+.tab-btn {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pressable:active,
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+.nav-item:active {
+  transform: scale(0.97);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

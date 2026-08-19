@@ -168,17 +168,14 @@
 
 	.bar-blue {
 		background-color: var(--accent-blue);
-		box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
 	}
 
 	.bar-purple {
 		background-color: var(--accent-purple);
-		box-shadow: 0 0 8px rgba(139, 92, 246, 0.35);
 	}
 
 	.bar-green {
 		background-color: var(--accent-green);
-		box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
 	}
 
 	.tabular-nums {

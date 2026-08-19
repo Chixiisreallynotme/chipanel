@@ -19,7 +19,8 @@
 		Flame,
 		Terminal,
 		Sliders,
-		Info
+		Info,
+		X
 	} from 'lucide-svelte';
 
 	let health = $state({
@@ -164,7 +165,7 @@
 			</div>
 
 			<div class="health-details">
-				{#if health.issues.length > 0}
+				{#if (health?.issues?.length || 0) > 0}
 					<div class="issue-box">
 						<strong class="text-warning flex items-center gap-1.5 text-xs uppercase">
 							<AlertTriangle size={14} />
@@ -193,28 +194,28 @@
 						<Cpu size={18} class="text-primary" />
 						<h2 class="card-title">Profil Matériel & Moteur Détecté</h2>
 					</div>
-					<span class="badge badge-secondary font-mono">{autotune.hardware.logical_cpu_cores} Coeurs CPU</span>
+					<span class="badge badge-secondary font-mono">{autotune.hardware?.logical_cpu_cores ?? 'N/A'} Coeurs CPU</span>
 				</div>
 
 				<div class="specs-grid">
 					<div class="spec-item">
 						<span class="spec-label">Mémoire Heap Cible</span>
-						<span class="spec-val font-mono">{autotune.recommended_heap_mb} Mo</span>
+						<span class="spec-val font-mono">{autotune.recommended_heap_mb ?? 'N/A'} Mo</span>
 					</div>
 					<div class="spec-item">
 						<span class="spec-label">Collecteur GC Recommandé</span>
-						<span class="spec-val text-primary font-semibold">{autotune.gc_collector}</span>
+						<span class="spec-val text-primary font-semibold">{autotune.gc_collector ?? 'G1GC'}</span>
 					</div>
 					<div class="spec-item">
 						<span class="spec-label">Gain de Stabilité</span>
-						<span class="spec-val text-success">{autotune.expected_tps_gain}</span>
+						<span class="spec-val text-success">{autotune.expected_tps_gain ?? 'Optimal'}</span>
 					</div>
 				</div>
 
 				<div class="autotune-actions">
 					<button class="btn btn-primary btn-sm" onclick={handleApplyAutotune} disabled={applyingAutotune}>
 						<Wrench size={14} class={applyingAutotune ? 'spin' : ''} />
-						<span>Appliquer les {autotune.property_tweaks.length} Optimisations Properties</span>
+						<span>Appliquer les {autotune.property_tweaks?.length ?? 0} Optimisations Properties</span>
 					</button>
 				</div>
 			</div>
@@ -358,8 +359,8 @@
 					<Flame size={18} />
 					<span>Rapport de Crash #{selectedCrash.id}</span>
 				</h2>
-				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (selectedCrash = null)}>
-					✕
+				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (selectedCrash = null)} aria-label="Fermer">
+					<X size={16} />
 				</button>
 			</div>
 
@@ -699,7 +700,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
+		z-index: var(--z-modal);
 	}
 
 	.modal-card {
@@ -774,7 +775,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		z-index: 2000;
+		z-index: var(--z-toast);
 	}
 
 	.toast {

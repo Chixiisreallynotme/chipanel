@@ -537,7 +537,8 @@
 			</span>
 			{#if item.is_trimmed}
 				<span class="trim-tag" title="Armor Trimmed">
-					✨ Trimmed
+					<Sparkles size={12} class="trim-icon" />
+					<span>Trimmed</span>
 				</span>
 			{/if}
 		</div>

@@ -466,7 +466,7 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
-		transition: all var(--transition-fast);
+		transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
 	}
 	.card-active {
 		border-color: var(--accent-blue);
@@ -571,7 +571,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 999;
+		z-index: var(--z-modal);
 		padding: var(--space-4);
 	}
 	.modal-card {

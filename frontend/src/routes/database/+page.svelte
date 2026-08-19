@@ -153,7 +153,7 @@
 			</div>
 			<div class="kpi-content">
 				<span class="kpi-label">CoreProtect (Logs Blocs/Coffres)</span>
-				<span class="kpi-value">{stats ? stats.tables[0]?.formatted_size : '—'}</span>
+				<span class="kpi-value">{stats?.tables?.[0]?.formatted_size ?? '—'}</span>
 			</div>
 		</div>
 
@@ -163,7 +163,7 @@
 			</div>
 			<div class="kpi-content">
 				<span class="kpi-label">Archives Logs (.log.gz)</span>
-				<span class="kpi-value">{stats ? stats.tables[2]?.formatted_size : '—'}</span>
+				<span class="kpi-value">{stats?.tables?.[2]?.formatted_size ?? '—'}</span>
 			</div>
 		</div>
 
@@ -174,8 +174,8 @@
 			<div class="kpi-content">
 				<span class="kpi-label">Dimensions (Nether + End)</span>
 				<span class="kpi-value">
-					{#if stats}
-						{stats.tables[3]?.formatted_size} + {stats.tables[4]?.formatted_size}
+					{#if stats?.tables}
+						{stats.tables[3]?.formatted_size ?? '—'} + {stats.tables[4]?.formatted_size ?? '—'}
 					{:else}
 						—
 					{/if}
@@ -548,7 +548,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 100;
+		z-index: var(--z-modal);
 		padding: var(--space-4);
 	}
 
