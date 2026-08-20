@@ -19,15 +19,24 @@
 
 <style>
 	.setup-page-wrapper {
-		min-height: calc(100vh - 120px);
+		min-height: calc(100dvh - 60px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: 24px 16px;
+		padding: var(--space-6) var(--space-4);
+		box-sizing: border-box;
+		overflow-x: hidden;
 	}
 
 	.setup-container {
 		width: 100%;
 		max-width: 920px;
+	}
+
+	@media (max-width: 768px) {
+		.setup-page-wrapper {
+			align-items: flex-start;
+			padding: var(--space-4) var(--space-3) var(--space-8);
+		}
 	}
 </style>

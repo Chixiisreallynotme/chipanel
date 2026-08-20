@@ -1,6 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { Boxes } from 'lucide-svelte';
+	import RedirectState from '$lib/components/ui/RedirectState.svelte';
 
 	onMount(() => {
 		goto('/addons?tab=modpacks', { replaceState: true });
@@ -11,17 +13,13 @@
 	<title>Redirection vers Addons - ChiPanel</title>
 </svelte:head>
 
-<div class="redirect-container">
-	<p>Redirection vers le Centre des Addons...</p>
-</div>
-
-<style>
-	.redirect-container {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-height: 50vh;
-		color: var(--text-muted, #94a3b8);
-		font-family: var(--font-ui);
-	}
-</style>
+<RedirectState
+	title="Modpacks"
+	description="Les modpacks sont centralisés dans le Centre des Addons pour garder les versions et moteurs synchronisés."
+	href="/addons?tab=modpacks"
+	actionLabel="Ouvrir les modpacks"
+>
+	{#snippet children()}
+		<Boxes size={22} />
+	{/snippet}
+</RedirectState>

@@ -557,3 +557,34 @@ npm run build  → Vite static build succeeded (exit 0)
 Playwright     → 0 horizontal overflow (16 pages × 4 viewports)
 ```
 
+---
+
+## 14. Session Design Council III — Onboarding, Auth & Routes Alias (2026-08-20)
+
+### 14.1 Onboarding `/setup`
+
+Le wizard novice reste une surface dédiée, mais reprend désormais les primitives d'identité et de responsive du produit :
+
+- le logo texte `χ` est remplacé par `ChiPanelLogo.svelte` avec LED d'état ;
+- les rayons et espacements du double-bezel utilisent les tokens (`--radius-card`, `--space-*`) ;
+- sur mobile, le header devient une grille stable (identité/runtime à gauche, bascule de mode à droite) ;
+- la bannière novice passe en colonne lisible au lieu de compresser le texte et le raccourci dans trois zones concurrentes ;
+- `GameSelectorStep` utilise `--bg-active` pour l'état sélectionné.
+
+### 14.2 Auth `/login`
+
+L'écran d'accès conserve son double-bezel minimal et ajoute le contrôle attendu d'affichage du mot de passe (`Eye` / `EyeOff`). Le contrôle reste un vrai bouton clavier, avec `aria-label`, état visuel hover et retour tactile `scale(0.97)`.
+
+### 14.3 Routes Alias
+
+`/plugins`, `/modpacks` et `/profiles` conservent leur routage immédiat vers le Centre des Addons, mais partagent maintenant `src/lib/components/ui/RedirectState.svelte` : état de transition accessible, destination explicite, barre de progression discrète et lien de secours si la navigation est retardée.
+
+### 14.4 Vérification
+
+```
+npm run check  → 0 erreur, warnings historiques du codebase conservés
+npm run build  → Vite static build réussi
+Playwright     → zéro overflow sur setup et toutes les pages cockpit
+Routes alias   → plugins → /addons?tab=plugins, modpacks → /addons?tab=modpacks,
+                 profiles → /addons?tab=profiles
+```

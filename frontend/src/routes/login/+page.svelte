@@ -1,11 +1,12 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte.js';
-	import { Lock, User, AlertCircle, ArrowRight } from 'lucide-svelte';
+	import { Lock, User, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-svelte';
 	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 
 	let username = $state('');
 	let password = $state('');
+	let showPassword = $state(false);
 	let isSubmitting = $state(false);
 
 	async function handleSubmit(event) {
@@ -70,14 +71,27 @@
 						<Lock size={16} class="field-icon" />
 						<input
 							id="password"
-							type="password"
+							type={showPassword ? 'text' : 'password'}
 							class="input"
 							placeholder="Entrez votre mot de passe"
 							bind:value={password}
 							disabled={isSubmitting}
 							required
-							autocomplete="current-password"
+							 autocomplete="current-password"
 						/>
+						<button
+							type="button"
+							class="password-toggle"
+							onclick={() => (showPassword = !showPassword)}
+							aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+							title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+						>
+							{#if showPassword}
+								<EyeOff size={16} />
+							{:else}
+								<Eye size={16} />
+							{/if}
+						</button>
 					</div>
 				</div>
 
@@ -237,6 +251,7 @@
 		border: 1px solid var(--border);
 		background-color: var(--bg-base);
 		color: var(--text-primary);
+		padding-right: 44px;
 		border-radius: var(--radius-input);
 		transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
 	}
@@ -245,6 +260,31 @@
 		outline: none;
 		border-color: var(--accent-blue);
 		box-shadow: 0 0 0 2px var(--accent-blue-border);
+	}
+
+	.password-toggle {
+		position: absolute;
+		right: var(--space-2);
+		width: 32px;
+		height: 32px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 0;
+		border-radius: var(--radius-input);
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		transition: color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+	}
+
+	.password-toggle:hover {
+		color: var(--text-primary);
+		background-color: var(--bg-elevated);
+	}
+
+	.password-toggle:active {
+		transform: scale(0.97);
 	}
 
 	.submit-btn {

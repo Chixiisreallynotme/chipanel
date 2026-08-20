@@ -1,6 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { HardDrive } from 'lucide-svelte';
+	import RedirectState from '$lib/components/ui/RedirectState.svelte';
 
 	onMount(() => {
 		goto('/addons?tab=profiles', { replaceState: true });
@@ -11,17 +13,13 @@
 	<title>Redirection vers Addons - ChiPanel</title>
 </svelte:head>
 
-<div class="redirect-container">
-	<p>Redirection vers les Profils dans Addons...</p>
-</div>
-
-<style>
-	.redirect-container {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-height: 50vh;
-		color: var(--text-muted, #94a3b8);
-		font-family: var(--font-ui);
-	}
-</style>
+<RedirectState
+	title="Profils & presets"
+	description="Les profils de configuration sont gérés dans le Centre des Addons, au même endroit que les modpacks."
+	href="/addons?tab=profiles"
+	actionLabel="Ouvrir les profils"
+>
+	{#snippet children()}
+		<HardDrive size={22} />
+	{/snippet}
+</RedirectState>

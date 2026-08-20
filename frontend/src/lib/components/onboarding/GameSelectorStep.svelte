@@ -163,7 +163,7 @@
 
 	.game-card.selected {
 		border-color: var(--accent-blue);
-		background-color: #171B26;
+		background-color: var(--bg-active);
 		box-shadow: inset 0 1px 0 rgba(59, 130, 246, 0.25), 0 0 0 1px var(--accent-blue), 0 8px 24px rgba(0, 0, 0, 0.4);
 	}
 
@@ -309,4 +309,3 @@
 		font-variant-numeric: tabular-nums;
 	}
 </style>
-

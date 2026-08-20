@@ -8,6 +8,7 @@
 	import EngineSelectorStep from './EngineSelectorStep.svelte';
 	import RamAllocationStep from './RamAllocationStep.svelte';
 	import LaunchReviewStep from './LaunchReviewStep.svelte';
+	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 	import {
 		ArrowLeft,
 		ArrowRight,
@@ -127,7 +128,7 @@
 		<header class="wizard-header">
 			<div class="header-left">
 				<div class="brand-badge">
-					<div class="stencil-icon">χ</div>
+					<ChiPanelLogo size={32} status="stopped" />
 					<div class="brand-text-group">
 						<span class="brand-title">ChiPanel</span>
 						<span class="brand-subtitle">Setup Homelab</span>
@@ -257,8 +258,8 @@
 	.hardware-shell.onboarding-outer-shell {
 		background-color: rgba(255, 255, 255, 0.02);
 		border: 1px solid rgba(255, 255, 255, 0.06);
-		border-radius: 1rem; /* 16px */
-		padding: 0.375rem;   /* 6px */
+		border-radius: var(--radius-card);
+		padding: 6px;
 		max-width: 920px;
 		margin: 0 auto;
 		box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
@@ -266,13 +267,13 @@
 
 	.hardware-core.onboarding-inner-core {
 		background-color: var(--bg-surface);
-		border-radius: calc(1rem - 0.375rem); /* 10px */
+		border-radius: calc(var(--radius-card) - 6px);
 		border: 1px solid rgba(255, 255, 255, 0.04);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.25);
-		padding: 24px;
+		padding: var(--space-6);
 		display: flex;
 		flex-direction: column;
-		gap: 20px;
+		gap: var(--space-4);
 	}
 
 	.wizard-header {
@@ -296,22 +297,6 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-	}
-
-	.stencil-icon {
-		width: 32px;
-		height: 32px;
-		background: var(--bg-elevated);
-		border: 1px solid var(--border-focus);
-		border-radius: var(--radius-input);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-family: var(--font-mono);
-		font-weight: 700;
-		font-size: 18px;
-		color: var(--accent-blue-text);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 	}
 
 	.brand-text-group {
@@ -524,5 +509,66 @@
 	.tabular-nums {
 		font-variant-numeric: tabular-nums;
 	}
-</style>
 
+	@media (max-width: 640px) {
+		.hardware-shell.onboarding-outer-shell {
+			padding: 4px;
+		}
+
+		.hardware-core.onboarding-inner-core {
+			padding: var(--space-4);
+			gap: var(--space-3);
+		}
+
+		.wizard-header {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			align-items: start;
+			gap: var(--space-3);
+		}
+
+		.header-left {
+			min-width: 0;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: var(--space-2);
+		}
+
+		.header-right {
+			justify-self: end;
+		}
+
+		.mode-info-banner {
+			align-items: flex-start;
+			flex-direction: column;
+			gap: var(--space-2);
+			padding: var(--space-3);
+		}
+
+		.banner-left {
+			align-items: flex-start;
+		}
+
+		.banner-shortcut {
+			align-self: flex-start;
+			padding-left: 24px;
+		}
+
+		.steps-progress-nav {
+			justify-content: flex-start;
+			padding: var(--space-2);
+		}
+
+		.step-progress-item {
+			padding: var(--space-1);
+		}
+
+		.step-connector {
+			min-width: 10px;
+		}
+
+		.wizard-body {
+			min-height: 0;
+		}
+	}
+</style>
