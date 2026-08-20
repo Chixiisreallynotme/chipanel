@@ -136,3 +136,35 @@ silently orphan the permissions. `minecraft/luckperms.rs` handles this:
 
 - The static prototype `bento_prototype.html` at the repo root, and the frontend route it inspired (`routes/bento/`), are a pre-production design exploration — not part of the shipped app. The real UI is `routes/dashboard` and its components, which already have WebSocket reconnect/error states, confirmation dialogs on destructive actions, and real alert thresholds the bento mockup never had. Nothing links to `routes/bento/`; it's safe to delete if it reappears.
 - `RCON_PASSWORD` and `ADMIN_PASSWORD` are currently the same value in the deployed quadlet — a known credential-reuse issue across two different trust boundaries, not yet addressed.
+
+## Svelte-check "Unused CSS selector" — faux positifs (ne PAS supprimer)
+
+Depuis le Design Council IV, `npm run check` affiche ~58 warnings `Unused CSS selector` qui sont
+des **faux positifs** : les règles sont utilisées à l'exécution mais svelte-check ne le voit pas.
+Deux familles :
+
+1. **Classe passée à un composant** (ex. `<Inbox class="empty-icon" />`, `<CheckCircle2 class="text-green" />`,
+   `<MessageSquare class="icon-blue" />`) : la classe est transmise à la racine `<svg>` du composant,
+   le CSS scopé s'applique (hash du composant parent), mais l'analyseur ne trace pas la forward.
+2. **Classe passée via prop de composant** (ex. `<Modal class="modal world-modal" backdropClass="modal-backdrop--dim">`) :
+   svelte-check ne peut pas statiquement voir la chaîne, donc flag la règle scopée correspondante.
+
+Règle : supprimer UNIQUEMENT un sélecteur si `rg 'class=.*<sel>'` ne renvoie **aucun** usage dans le fichier.
+Exemple réellement mort récemment supprimé : les 5 règles `.segmented-control`/`.segment-btn*` de
+ModpackCatalogBrowser (UI segmented retirée depuis longtemps).
+
+## Pattern A11y modale (contrat, Design Council IV)
+
+`ui/Modal.svelte` est le shell canonique : `role="dialog"` + `aria-modal` + `aria-labelledby` +
+`tabindex="-1"` sur le panneau, focus-in au premier focusable, focus-restore à la fermeture, ESC
+via `svelte:window`, Tab trap, clic backdrop optionnel (`closeOnBackdrop`). Gardes busy dans
+`onclose` (`submitting ? null : onClose()`). Pour une modale legacy non migrée : ajouter
+`tabindex="-1"` au `role="dialog"` et `onkeydown stopPropagation` aux divs cliquables (backdrop/panneau)
+silencie les warnings a11y sans changer le comportement ni le rendu.
+
+## Initialiseur de $state depuis une prop — svelte-ignore
+
+`let x = $state(initialProp)` (capture initiale volontaire, synchro par `$effect` si besoin) déclenche
+`state_referenced_locally`. Comportement voulu → commenter la ligne avec
+`// svelte-ignore state_referenced_locally` au lieu de "corriger" la réactivité.
+Exemples : `formWorld` (ChunkyPanel), `filterTargetDir` (InstalledPluginsList), `selectedProjectType` (ModrinthCatalogBrowser).
