@@ -5,7 +5,7 @@
 	import RedirectState from '$lib/components/ui/RedirectState.svelte';
 
 	onMount(() => {
-		goto('/addons?tab=installed', { replaceState: true });
+		goto('/addons?tab=plugins', { replaceState: true });
 	});
 </script>
 
