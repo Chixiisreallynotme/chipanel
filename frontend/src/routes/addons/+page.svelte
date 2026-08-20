@@ -7,6 +7,7 @@
 	import ToolsSyncPanel from '$lib/components/plugins/ToolsSyncPanel.svelte';
 	import ModpackCatalogBrowser from '$lib/components/modpacks/ModpackCatalogBrowser.svelte';
 	import ProfileManager from '$lib/components/modpacks/ProfileManager.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Package,
 		Boxes,
@@ -330,50 +331,41 @@
 
 <div class="addons-page">
 	<!-- Hero Header & Engine Context Banner -->
-	<div class="page-header">
-		<div class="header-main font-ui">
-			<div class="title-with-icon">
-				<div class="page-icon-box">
-					<Package size={26} />
-				</div>
-				<div>
-					<h1 class="page-title">Centre des Addons & Extensions</h1>
-					<p class="page-description">
-						Gérez vos plugins, mods, packs de textures et modpacks avec synchronisation automatique selon votre moteur.
-					</p>
-				</div>
+	<PageHeader
+		title="Centre des Addons & Extensions"
+		subtitle="Gérez vos plugins, mods, packs de textures et modpacks avec synchronisation automatique selon votre moteur."
+	>
+		{#snippet icon()}
+			<Package size={26} />
+		{/snippet}
+		<!-- Live Engine Status & Update Checker Bar -->
+		{#if serverEngine}
+			<div class="engine-badge-box">
+				<span class="engine-indicator-dot"></span>
+				<span class="engine-text">Moteur : <strong>{serverEngine}</strong> ({serverVersion || 'MC'})</span>
 			</div>
+		{/if}
 
-			<!-- Live Engine Status & Update Checker Bar -->
-			<div class="header-actions">
-				{#if serverEngine}
-					<div class="engine-badge-box">
-						<span class="engine-indicator-dot"></span>
-						<span class="engine-text">Moteur : <strong>{serverEngine}</strong> ({serverVersion || 'MC'})</span>
-					</div>
-				{/if}
+		<button
+			type="button"
+			class="btn btn-secondary check-updates-btn {isCheckingUpdates ? 'btn-loading' : ''}"
+			disabled={isCheckingUpdates}
+			onclick={handleCheckUpdates}
+		>
+			{#if isCheckingUpdates}
+				<Loader2 size={16} class="spin" />
+			{:else}
+				<RefreshCw size={16} />
+			{/if}
+			<span>Vérifier les mises à jour</span>
+			{#if availableUpdatesCount > 0}
+				<span class="badge badge-amber badge-pill">{availableUpdatesCount}</span>
+			{/if}
+		</button>
+	</PageHeader>
 
-				<button
-					type="button"
-					class="btn btn-secondary check-updates-btn {isCheckingUpdates ? 'btn-loading' : ''}"
-					disabled={isCheckingUpdates}
-					onclick={handleCheckUpdates}
-				>
-					{#if isCheckingUpdates}
-						<Loader2 size={16} class="spin" />
-					{:else}
-						<RefreshCw size={16} />
-					{/if}
-					<span>Vérifier les mises à jour</span>
-					{#if availableUpdatesCount > 0}
-						<span class="badge badge-amber badge-pill">{availableUpdatesCount}</span>
-					{/if}
-				</button>
-			</div>
-		</div>
-
-		<!-- Unified Navigation Tabs Bar -->
-		<div class="tabs-nav-container" role="tablist">
+	<!-- Unified Navigation Tabs Bar -->
+	<div class="tabs-nav-container" role="tablist">
 			<button
 				class="tab-btn {activeTab === 'plugins' ? 'active' : ''}"
 				role="tab"
@@ -446,7 +438,6 @@
 				<span>Profils & Presets</span>
 			</button>
 		</div>
-	</div>
 
 	<!-- Tab Body Content -->
 	<div class="tab-content">
@@ -669,48 +660,7 @@
 		gap: var(--space-6);
 	}
 
-	/* Header */
-	.page-header {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-	.header-main {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-	}
 	.title-with-icon {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-	.page-icon-box {
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12));
-		border: 1px solid var(--accent-blue-border, rgba(59, 130, 246, 0.25));
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text, #60a5fa);
-	}
-	.page-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		margin: 0;
-	}
-	.page-description {
-		font-size: var(--font-size-sm);
-		color: var(--text-secondary);
-		margin: 0;
-	}
-
-	.header-actions {
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);

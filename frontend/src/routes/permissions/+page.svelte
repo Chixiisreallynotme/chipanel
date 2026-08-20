@@ -4,6 +4,7 @@
 	import GroupList from '$lib/components/permissions/GroupList.svelte';
 	import GroupEditorModal from '$lib/components/permissions/GroupEditorModal.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		ShieldCheck,
 		Plus,
@@ -318,38 +319,30 @@
 	</div>
 
 	<!-- Page Header -->
-	<div class="page-header">
-		<div class="header-main">
-			<div class="header-icon-box">
-				<ShieldCheck size={26} />
-			</div>
-			<div>
-				<div class="title-with-badge">
-					<h1 class="page-title">LuckPerms Visual Editor</h1>
-					{#if loadError}
-						<span class="badge badge-danger font-mono">Unavailable</span>
-					{:else}
-						<span class="badge badge-purple font-mono">{totalGroupsCount} Groups</span>
-					{/if}
-				</div>
-				<p class="page-subtitle">
-					Visual management interface for Minecraft LuckPerms groups, prefixes, permission nodes & inheritance
-				</p>
-			</div>
-		</div>
+	<PageHeader
+		title="LuckPerms Visual Editor"
+		subtitle="Visual management interface for Minecraft LuckPerms groups, prefixes, permission nodes & inheritance"
+	>
+		{#snippet icon()}
+			<ShieldCheck size={26} />
+		{/snippet}
+		{#snippet badge()}
+			{#if loadError}
+				<span class="badge badge-danger font-mono">Unavailable</span>
+			{:else}
+				<span class="badge badge-purple font-mono">{totalGroupsCount} Groups</span>
+			{/if}
+		{/snippet}
+		<button class="btn btn-ghost btn-sm" onclick={loadGroups} disabled={loading} title="Refresh LuckPerms groups">
+			<RefreshCw size={14} class={loading ? 'spinner' : ''} />
+			<span>Refresh</span>
+		</button>
 
-		<div class="header-actions">
-			<button class="btn btn-ghost btn-sm" onclick={loadGroups} disabled={loading} title="Refresh LuckPerms groups">
-				<RefreshCw size={14} class={loading ? 'spinner' : ''} />
-				<span>Refresh</span>
-			</button>
-
-			<button class="btn btn-primary" onclick={handleOpenCreateModal}>
-				<Plus size={16} />
-				<span>Create Group</span>
-			</button>
-		</div>
-	</div>
+		<button class="btn btn-primary" onclick={handleOpenCreateModal}>
+			<Plus size={16} />
+			<span>Create Group</span>
+		</button>
+	</PageHeader>
 
 	{#if loadError}
 		<!-- No groups could be read. Nothing is shown in their place. -->
@@ -545,60 +538,6 @@
 		padding: 0;
 		width: 24px;
 		height: 24px;
-	}
-
-	/* Page Header */
-	.page-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-		flex-wrap: wrap;
-		padding-bottom: var(--space-4);
-		border-bottom: 1px solid var(--border);
-	}
-
-	.header-main {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.header-icon-box {
-		width: 48px;
-		height: 48px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-	}
-
-	.title-with-badge {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.page-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		letter-spacing: -0.02em;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin-top: 2px;
-	}
-
-	.header-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
 	}
 
 	/* Quick Stats Bar */

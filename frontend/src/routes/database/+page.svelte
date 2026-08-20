@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiFetch } from '$lib/api/client.js';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Database,
 		HardDrive,
@@ -103,29 +104,23 @@
 
 <div class="db-page-layout">
 	<!-- Header Banner -->
-	<header class="page-header-card card">
-		<div class="header-main">
-			<div class="icon-badge">
-				<Database size={24} />
-			</div>
-			<div>
-				<div class="title-with-badge">
-					<h1 class="page-title">Base de Données & Maintenance</h1>
-					{#if stats}
-						<span class="badge badge-info">{stats.db_type}</span>
-					{/if}
-				</div>
-				<p class="page-subtitle">
-					Diagnostic d'empreinte disque, compaction et purge guidée SQLite / CoreProtect / Logs
-				</p>
-			</div>
-		</div>
-
+	<PageHeader
+		title="Base de Données & Maintenance"
+		subtitle="Diagnostic d'empreinte disque, compaction et purge guidée SQLite / CoreProtect / Logs"
+	>
+		{#snippet icon()}
+			<Database size={22} />
+		{/snippet}
+		{#snippet badge()}
+			{#if stats}
+				<span class="badge">{stats.db_type}</span>
+			{/if}
+		{/snippet}
 		<button class="btn btn-secondary btn-sm" onclick={loadStats} disabled={loading}>
 			<RefreshCw size={14} class={loading ? 'spin' : ''} />
 			<span>Actualiser</span>
 		</button>
-	</header>
+	</PageHeader>
 
 	{#if error}
 		<div class="error-banner card">
@@ -369,50 +364,6 @@
 		flex-direction: column;
 		gap: var(--space-6);
 		padding-bottom: var(--space-8);
-	}
-
-	.page-header-card {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-4) var(--space-6);
-		background-color: var(--bg-surface);
-	}
-
-	.header-main {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.icon-badge {
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-	}
-
-	.title-with-badge {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.page-title {
-		font-size: var(--font-size-xl);
-		font-weight: var(--font-weight-bold);
-		margin: 0;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin: 2px 0 0 0;
 	}
 
 	.error-banner {

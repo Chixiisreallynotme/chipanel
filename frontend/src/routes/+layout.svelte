@@ -709,6 +709,15 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-4);
+		min-width: 0;
+	}
+
+	.header-left {
+		flex: 1 1 auto;
+	}
+
+	.header-right {
+		flex: 0 0 auto;
 	}
 
 	.mobile-toggle-btn {
@@ -719,10 +728,15 @@
 		padding: var(--space-1) var(--space-3);
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-medium);
+		max-width: 100%;
+		overflow: hidden;
 	}
 
 	.status-label {
 		line-height: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	/* Quake HUD Trigger Button */
@@ -827,7 +841,7 @@
 	}
 
 	/* Responsive Media Queries */
-	@media (max-width: 900px) {
+	@media (max-width: 1200px) {
 		.quick-status-pill {
 			display: none;
 		}

@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Activity,
 		ShieldCheck,
@@ -124,27 +125,21 @@
 
 <div class="diagnostics-page-layout">
 	<!-- Header -->
-	<header class="page-header-card card">
-		<div class="header-main">
-			<div class="icon-badge">
-				<Zap size={24} />
-			</div>
-			<div>
-				<div class="title-with-badge">
-					<h1 class="page-title">Diagnostics & Auto-Tuner</h1>
-					<span class="badge badge-primary">Intelligence & Remédiation</span>
-				</div>
-				<p class="page-subtitle">
-					Analyse heuristique des plantages Java, auto-remédiation 1-clic et optimisations matérielles JVM / cgroups.
-				</p>
-			</div>
-		</div>
-
+	<PageHeader
+		title="Diagnostics & Auto-Tuner"
+		subtitle="Analyse heuristique des plantages Java, auto-remédiation 1-clic et optimisations matérielles JVM / cgroups."
+	>
+		{#snippet icon()}
+			<Zap size={22} />
+		{/snippet}
+		{#snippet badge()}
+			<span class="badge">Intelligence & Remédiation</span>
+		{/snippet}
 		<button class="btn btn-ghost btn-sm" onclick={loadDiagnostics} disabled={loading}>
 			<RefreshCw size={14} class={loading ? 'spin' : ''} />
 			<span>Actualiser</span>
 		</button>
-	</header>
+	</PageHeader>
 
 	<!-- Health Score & Status Summary -->
 	<div class="health-grid">
@@ -407,50 +402,6 @@
 		flex-direction: column;
 		gap: var(--space-6);
 		padding-bottom: var(--space-8);
-	}
-
-	.page-header-card {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-4) var(--space-6);
-		background-color: var(--bg-surface);
-	}
-
-	.header-main {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.icon-badge {
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-	}
-
-	.title-with-badge {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.page-title {
-		font-size: var(--font-size-xl);
-		font-weight: var(--font-weight-bold);
-		margin: 0;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin: 2px 0 0 0;
 	}
 
 	/* Health Grid */

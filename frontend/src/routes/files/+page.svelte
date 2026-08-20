@@ -3,6 +3,7 @@
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
 	import FileTree from '$lib/components/files/FileTree.svelte';
 	import ConfigEditor from '$lib/components/files/ConfigEditor.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		FileCode,
 		Settings,
@@ -271,45 +272,37 @@
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} />
 
 <div class="files-page-container">
-	<!-- Page Header with Preset Chips in Double-Bezel Shell -->
-	<header class="hardware-shell files-header-shell">
-		<div class="hardware-core files-header-card">
-			<div class="header-title-group">
-				<div class="header-title-row">
-					<div class="icon-badge">
-						<FileCode size={20} class="header-icon" />
-					</div>
-					<div>
-						<h1 class="page-title">Éditeur de Fichiers & Configurations</h1>
-						<p class="page-subtitle">Inspectez et modifiez les fichiers de configuration du serveur Minecraft avec coloration syntaxique</p>
-					</div>
-				</div>
-			</div>
-
-			<!-- Quick Presets Chips Bar (Double-Bezel Milled Capsule) -->
-			<div class="preset-chips-wrapper" aria-label="Fichiers de configuration prédéfinis">
-				<span class="presets-label">
-					<Sparkles size={13} class="preset-sparkle-icon" />
-					<span>Presets :</span>
-				</span>
-				<div class="chips-list">
-					{#each PRESET_CHIPS as preset}
-						{@const IconComponent = preset.icon}
-						<button
-							type="button"
-							class="preset-chip {selectedPath === preset.path ? 'active' : ''}"
-							onclick={() => requestSelectFile(preset.path)}
-							title="Ouvrir {preset.name}"
-							aria-pressed={selectedPath === preset.path}
-						>
-							<IconComponent size={13} />
-							<span>{preset.name}</span>
-						</button>
-					{/each}
-				</div>
+	<!-- Page Header with Preset Chips -->
+	<PageHeader
+		title="Éditeur de Fichiers & Configurations"
+		subtitle="Inspectez et modifiez les fichiers de configuration du serveur Minecraft avec coloration syntaxique"
+	>
+		{#snippet icon()}
+			<FileCode size={20} />
+		{/snippet}
+		<!-- Quick Presets Chips Bar (Double-Bezel Milled Capsule) -->
+		<div class="preset-chips-wrapper" aria-label="Fichiers de configuration prédéfinis">
+			<span class="presets-label">
+				<Sparkles size={13} class="preset-sparkle-icon" />
+				<span>Presets :</span>
+			</span>
+			<div class="chips-list">
+				{#each PRESET_CHIPS as preset}
+					{@const IconComponent = preset.icon}
+					<button
+						type="button"
+						class="preset-chip {selectedPath === preset.path ? 'active' : ''}"
+						onclick={() => requestSelectFile(preset.path)}
+						title="Ouvrir {preset.name}"
+						aria-pressed={selectedPath === preset.path}
+					>
+						<IconComponent size={13} />
+						<span>{preset.name}</span>
+					</button>
+				{/each}
 			</div>
 		</div>
-	</header>
+	</PageHeader>
 
 	<!-- Dual-Pane Layout in Hardware Double-Bezel Shell -->
 	<div class="hardware-shell files-dual-pane-shell">
@@ -541,57 +534,6 @@
 		gap: var(--space-4);
 		flex: 1;
 		min-height: calc(100dvh - 60px - 48px);
-	}
-
-	/* Double-Bezel Header Shell & Card */
-	.files-header-shell {
-		padding: 4px;
-		flex-shrink: 0;
-	}
-
-	.files-header-card {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-		flex-wrap: wrap;
-		padding: var(--space-3) var(--space-5);
-		border-radius: calc(var(--radius-card) - 4px);
-		background-color: var(--bg-surface);
-	}
-
-	.header-title-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.icon-badge {
-		width: 40px;
-		height: 40px;
-		border-radius: var(--radius-btn);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-		flex-shrink: 0;
-	}
-
-	.page-title {
-		font-size: var(--font-size-lg);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		line-height: 1.2;
-		letter-spacing: -0.02em;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-		margin-top: 2px;
 	}
 
 	/* Preset Chips (Milled Capsule) */

@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiGet, apiFetch } from '$lib/api/client.js';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		ShieldAlert,
 		ShieldCheck,
@@ -173,34 +174,26 @@
 </svelte:head>
 
 <div class="audit-page-layout">
-	<!-- Page Header Card -->
-	<header class="page-header-card card">
-		<div class="header-main">
-			<div class="icon-badge">
-				<ShieldAlert size={24} />
-			</div>
-			<div>
-				<div class="title-with-badge">
-					<h1 class="page-title">Registre d'Audit & Journal des Actions</h1>
-					<span class="badge badge-primary">Traçabilité Immuable</span>
-				</div>
-				<p class="page-subtitle">
-					Historique chronologique et exhaustif des actions sensibles effectuées par les administrateurs et le système.
-				</p>
-			</div>
-		</div>
-
-		<div class="header-actions">
-			<button class="btn btn-secondary btn-sm" onclick={handleExportCsv}>
-				<DownloadCloud size={14} />
-				<span>Exporter CSV</span>
-			</button>
-			<button class="btn btn-ghost btn-sm" onclick={loadAuditLogs} disabled={loading}>
-				<RefreshCw size={14} class={loading ? 'spin' : ''} />
-				<span>Actualiser</span>
-			</button>
-		</div>
-	</header>
+	<!-- Page Header -->
+	<PageHeader
+		title="Registre d'Audit & Journal des Actions"
+		subtitle="Historique chronologique et exhaustif des actions sensibles effectuées par les administrateurs et le système."
+	>
+		{#snippet icon()}
+			<ShieldAlert size={22} />
+		{/snippet}
+		{#snippet badge()}
+			<span class="badge">Traçabilité Immuable</span>
+		{/snippet}
+		<button class="btn btn-secondary btn-sm" onclick={handleExportCsv}>
+			<DownloadCloud size={14} />
+			<span>Exporter CSV</span>
+		</button>
+		<button class="btn btn-ghost btn-sm" onclick={loadAuditLogs} disabled={loading}>
+			<RefreshCw size={14} class={loading ? 'spin' : ''} />
+			<span>Actualiser</span>
+		</button>
+	</PageHeader>
 
 	<!-- KPI Stats Grid -->
 	<div class="kpi-grid">
@@ -419,56 +412,6 @@
 		flex-direction: column;
 		gap: var(--space-6);
 		padding-bottom: var(--space-8);
-	}
-
-	.page-header-card {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-4) var(--space-6);
-		background-color: var(--bg-surface);
-	}
-
-	.header-main {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.icon-badge {
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-	}
-
-	.title-with-badge {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.page-title {
-		font-size: var(--font-size-xl);
-		font-weight: var(--font-weight-bold);
-		margin: 0;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin: 2px 0 0 0;
-	}
-
-	.header-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
 	}
 
 	/* KPI Grid */

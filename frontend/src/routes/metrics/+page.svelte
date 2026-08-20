@@ -5,6 +5,7 @@
 	import MetricsChart from '$lib/components/metrics/MetricsChart.svelte';
 	import SparkProfilerCard from '$lib/components/metrics/SparkProfilerCard.svelte';
 	import AlertSettingsModal from '$lib/components/metrics/AlertSettingsModal.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		RefreshCw,
 		Sliders,
@@ -234,58 +235,54 @@
 
 <div class="metrics-page">
 	<!-- Page Header -->
-	<header class="content-header">
-		<div class="header-title-container">
-			<h1 class="page-title">Time-Series Metrics & Spark Profiler</h1>
-			<p class="page-subtitle">Real-time canvas performance telemetry, historical analysis, and Spark CPU/RAM profiling.</p>
+	<PageHeader
+		title="Time-Series Metrics & Spark Profiler"
+		subtitle="Real-time canvas performance telemetry, historical analysis, and Spark CPU/RAM profiling."
+	>
+		<!-- Telemetry Status Indicator -->
+		<div class="telemetry-status-pill">
+			<span class="status-dot {wsStore.connected ? 'status-dot-success status-dot-pulse' : 'status-dot-warning'}"></span>
+			<span class="status-text">{telemetryStatusText}</span>
 		</div>
 
-		<div class="header-controls">
-			<!-- Telemetry Status Indicator -->
-			<div class="telemetry-status-pill">
-				<span class="status-dot {wsStore.connected ? 'status-dot-success status-dot-pulse' : 'status-dot-warning'}"></span>
-				<span class="status-text">{telemetryStatusText}</span>
-			</div>
-
-			<!-- Time Range Selector Pills -->
-			<div class="range-selector-group" role="radiogroup" aria-label="Select history range">
-				{#each rangePresets as preset}
-					<button
-						type="button"
-						class="btn btn-sm range-btn {selectedRange === preset.value ? 'active' : 'btn-secondary'}"
-						onclick={() => handleRangeChange(preset.value)}
-						aria-checked={selectedRange === preset.value}
-						role="radio"
-					>
-						{preset.label}
-					</button>
-				{/each}
-			</div>
-
-			<!-- Alert Settings Button -->
-			<button
-				type="button"
-				class="btn btn-secondary btn-sm"
-				onclick={() => (isAlertModalOpen = true)}
-				title="Configure Alert Rules"
-			>
-				<Sliders size={14} />
-				<span>Alert Settings</span>
-			</button>
-
-			<!-- Refresh Button -->
-			<button
-				type="button"
-				class="btn btn-secondary btn-icon btn-sm {isRefreshing ? 'btn-loading' : ''}"
-				onclick={loadMetricsHistory}
-				title="Refresh Metrics Data"
-			>
-				{#if !isRefreshing}
-					<RefreshCw size={14} />
-				{/if}
-			</button>
+		<!-- Time Range Selector Pills -->
+		<div class="range-selector-group" role="radiogroup" aria-label="Select history range">
+			{#each rangePresets as preset}
+				<button
+					type="button"
+					class="btn btn-sm range-btn {selectedRange === preset.value ? 'active' : 'btn-secondary'}"
+					onclick={() => handleRangeChange(preset.value)}
+					aria-checked={selectedRange === preset.value}
+					role="radio"
+				>
+					{preset.label}
+				</button>
+			{/each}
 		</div>
-	</header>
+
+		<!-- Alert Settings Button -->
+		<button
+			type="button"
+			class="btn btn-secondary btn-sm"
+			onclick={() => (isAlertModalOpen = true)}
+			title="Configure Alert Rules"
+		>
+			<Sliders size={14} />
+			<span>Alert Settings</span>
+		</button>
+
+		<!-- Refresh Button -->
+		<button
+			type="button"
+			class="btn btn-secondary btn-icon btn-sm {isRefreshing ? 'btn-loading' : ''}"
+			onclick={loadMetricsHistory}
+			title="Refresh Metrics Data"
+		>
+			{#if !isRefreshing}
+				<RefreshCw size={14} />
+			{/if}
+		</button>
+	</PageHeader>
 
 	{#if historyError}
 		<div class="history-alert" role="alert">
@@ -442,33 +439,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-6);
-	}
-
-	.content-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-4);
-	}
-
-	.page-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		letter-spacing: -0.02em;
-	}
-
-	.page-subtitle {
-		color: var(--text-secondary);
-		font-size: var(--font-size-sm);
-		margin-top: var(--space-1);
-	}
-
-	.header-controls {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		flex-wrap: wrap;
 	}
 
 	.telemetry-status-pill {

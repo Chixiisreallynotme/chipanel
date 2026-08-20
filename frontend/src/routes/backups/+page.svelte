@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Archive,
 		HardDrive,
@@ -223,34 +224,26 @@
 </svelte:head>
 
 <div class="backups-page-layout">
-	<!-- Page Header Card -->
-	<header class="page-header-card card">
-		<div class="header-main">
-			<div class="icon-badge">
-				<Archive size={24} />
-			</div>
-			<div>
-				<div class="title-with-badge">
-					<h1 class="page-title">Sauvegardes & Snapshots</h1>
-					<span class="badge badge-primary">Rétention & Exclusions</span>
-				</div>
-				<p class="page-subtitle">
-					Gestion unifiée des archives du serveur (Monde, Plugins, Configurations) avec compression et export distant S3.
-				</p>
-			</div>
-		</div>
-
-		<div class="header-actions">
-			<button class="btn btn-secondary btn-sm" onclick={() => (showSettingsModal = true)}>
-				<Settings2 size={14} />
-				<span>Paramètres & S3</span>
-			</button>
-			<button class="btn btn-primary btn-sm" onclick={() => (showCreateModal = true)}>
-				<Plus size={14} />
-				<span>Nouvelle Sauvegarde</span>
-			</button>
-		</div>
-	</header>
+	<!-- Page Header -->
+	<PageHeader
+		title="Sauvegardes & Snapshots"
+		subtitle="Gestion unifiée des archives du serveur (Monde, Plugins, Configurations) avec compression et export distant S3."
+	>
+		{#snippet icon()}
+			<Archive size={22} />
+		{/snippet}
+		{#snippet badge()}
+			<span class="badge">Rétention & Exclusions</span>
+		{/snippet}
+		<button class="btn btn-secondary btn-sm" onclick={() => (showSettingsModal = true)}>
+			<Settings2 size={14} />
+			<span>Paramètres & S3</span>
+		</button>
+		<button class="btn btn-primary btn-sm" onclick={() => (showCreateModal = true)}>
+			<Plus size={14} />
+			<span>Nouvelle Sauvegarde</span>
+		</button>
+	</PageHeader>
 
 	<!-- KPI Stats Grid -->
 	<div class="kpi-grid">
@@ -689,56 +682,6 @@
 		flex-direction: column;
 		gap: var(--space-6);
 		padding-bottom: var(--space-8);
-	}
-
-	.page-header-card {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-4) var(--space-6);
-		background-color: var(--bg-surface);
-	}
-
-	.header-main {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.icon-badge {
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-	}
-
-	.title-with-badge {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.page-title {
-		font-size: var(--font-size-xl);
-		font-weight: var(--font-weight-bold);
-		margin: 0;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin: 2px 0 0 0;
-	}
-
-	.header-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
 	}
 
 	/* KPI Grid */

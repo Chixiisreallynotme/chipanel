@@ -511,3 +511,49 @@ npm run check  → svelte-check found 0 errors and 124 warnings in 34 files
 npm run build  → Vite static build succeeded (exit 0)
 ```
 
+---
+
+## 13. Session Design Council II — Standardisation des Headers (2026-08-20)
+
+Cette section consigne la standardisation des en-têtes de page autour d'un unique composant canonique, adopté par toutes les pages cockpit.
+
+### 13.1 Composant Canonique `PageHeader.svelte`
+
+**Fichier :** `src/lib/components/ui/PageHeader.svelte`
+
+Composant unique remplaçant les **6 familles d'en-têtes divergentes** identifiées (`page-header`, `page-header-card card`, `hardware-shell` + `hardware-core`, `content-header`, `hero-header`, en-tête nu). API :
+
+| Prop | Type | Usage |
+| :--- | :--- | :--- |
+| `title` | `string` | Titre de page (`h1`, 1.75rem / 700 / -0.02em) |
+| `subtitle` | `string` | Sous-titre descriptif (`--text-secondary`, 14px) |
+| `icon` | `Snippet` | Icône sémantique optionnelle (boîte 40×40px `--accent-blue-bg`) |
+| `badge` | `Snippet` | Pill d'état optionnel, rendu à droite du titre |
+| `children` | `Snippet` | Zone d'actions à droite (`header-actions`) |
+
+**Structure imposée (référence `/engine`) :** titre + sous-titre + actions, sans carte enveloppante, typographie unifiée 1.75rem, espacements `--space-4`, tokens exclusifs (zéro couleur hardcodée).
+
+### 13.2 Pages Standardisées
+
+Les 15 pages cockpit (`dashboard`, `console`, `players`, `files`, `addons`, `worlds`, `backups`, `engine`, `diagnostics`, `metrics`, `database`, `network`, `audit`, `permissions`, `accounts`) utilisent désormais `PageHeader`. Le CSS d'en-tête dupliqué (`.page-header-card`, `.icon-badge`, `.title-with-badge`, `.hero-*`, `.content-header`, etc.) a été supprimé de chaque page.
+
+**Correctifs collatéraux :**
+- Classes mortes supprimées des headers : `badge-primary`, `badge-info` (aucune règle CSS n'existait).
+- Couleurs hardcodées de l'en-tête `/engine` (`#f8fafc`, `#94a3b8`) → tokens (`--text-primary`, `--text-secondary`).
+
+### 13.3 Correction du Header-Bar Global (Responsive)
+
+Le header global (`src/routes/+layout.svelte`) débordait horizontalement sur laptop (1024px) et mobile (375px) — cause racine : le pill télémétrie `.quick-status-pill` (≈350px) restait visible jusqu'à 900px alors que la sidebar (250px) réduit la largeur utile du contenu.
+
+- `.quick-status-pill` masqué à `max-width: 1200px` (au lieu de 900px).
+- `.header-left { flex: 1 1 auto; min-width: 0 }` + `.status-badge`/`.status-label` avec `overflow: hidden; text-overflow: ellipsis`.
+- Résultat Playwright : **0 overflow horizontal** sur 16 pages × 4 viewports (1440 / 1024 / 768 / 375).
+
+### 13.4 Résultats Build
+
+```
+npm run check  → svelte-check found 0 errors and 124 warnings in 34 files
+npm run build  → Vite static build succeeded (exit 0)
+Playwright     → 0 horizontal overflow (16 pages × 4 viewports)
+```
+

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
 	import { auth } from '$lib/stores/auth.svelte.js';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Users,
 		UserPlus,
@@ -390,28 +391,18 @@
 
 <div class="accounts-page">
 	<!-- Hero Header -->
-	<div class="page-header">
-		<div class="header-main font-ui">
-			<div class="title-with-icon">
-				<div class="page-icon-box">
-					<Users size={26} />
-				</div>
-				<div>
-					<h1 class="page-title">Comptes & autorisations sur-mesure</h1>
-					<p class="page-description">
-						Gérez les accès au ChiPanel avec des profils préconfigurés ou une personnalisation complète des droits.
-					</p>
-				</div>
-			</div>
-
-			<div class="header-actions">
-				<button class="btn btn-primary" onclick={openCreateModal}>
-					<UserPlus size={16} />
-					<span>Nouveau compte sur-mesure</span>
-				</button>
-			</div>
-		</div>
-	</div>
+	<PageHeader
+		title="Comptes & autorisations sur-mesure"
+		subtitle="Gérez les accès au ChiPanel avec des profils préconfigurés ou une personnalisation complète des droits."
+	>
+		{#snippet icon()}
+			<Users size={26} />
+		{/snippet}
+		<button class="btn btn-primary" onclick={openCreateModal}>
+			<UserPlus size={16} />
+			<span>Nouveau compte sur-mesure</span>
+		</button>
+	</PageHeader>
 
 	<!-- Semantic Tokenized Info Alert -->
 	<div class="semantic-info-alert" role="status">
@@ -762,54 +753,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-6);
-	}
-
-	.page-header {
-		border-bottom: 1px solid var(--border);
-		padding-bottom: var(--space-4);
-	}
-
-	.header-main {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-		flex-wrap: wrap;
-	}
-
-	.title-with-icon {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.page-icon-box {
-		width: 48px;
-		height: 48px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-		flex-shrink: 0;
-	}
-
-	.page-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		line-height: var(--line-height-tight);
-		text-wrap: balance;
-		letter-spacing: -0.02em;
-	}
-
-	.page-description {
-		font-size: var(--font-size-sm);
-		color: var(--text-secondary);
-		margin-top: 2px;
-		max-width: 70ch;
 	}
 
 	.semantic-info-alert {

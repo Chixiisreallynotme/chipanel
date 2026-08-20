@@ -3,6 +3,7 @@
 	import { apiGet, apiFetch } from '$lib/api/client.js';
 	import VersionPickerButton from '$lib/components/common/VersionPickerButton.svelte';
 	import EngineLogo from '$lib/components/common/EngineLogo.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Sliders,
 		RefreshCw,
@@ -319,18 +320,15 @@
 
 <div class="engine-page">
 	<!-- Page Header -->
-	<header class="page-header">
-		<div class="header-main">
-			<div class="header-titles">
-				<h1>Moteurs & Versions du Serveur</h1>
-				<p class="subtitle">Gérez et basculez l'environnement d'exécution Minecraft en toute sécurité.</p>
-			</div>
-			<button class="btn btn-secondary btn-sm" onclick={loadEngineData} disabled={isLoading}>
-				<RefreshCw size={14} class={isLoading ? 'spin' : ''} />
-				<span>Actualiser</span>
-			</button>
-		</div>
-	</header>
+	<PageHeader
+		title="Moteurs & Versions du Serveur"
+		subtitle="Gérez et basculez l'environnement d'exécution Minecraft en toute sécurité."
+	>
+		<button class="btn btn-secondary btn-sm" onclick={loadEngineData} disabled={isLoading}>
+			<RefreshCw size={14} class={isLoading ? 'spin' : ''} />
+			<span>Actualiser</span>
+		</button>
+	</PageHeader>
 
 	{#if configError}
 		<div class="config-alert" role="alert">
@@ -872,35 +870,6 @@
 		max-width: 1380px;
 		margin: 0 auto;
 		padding: 0 0 4rem 0;
-	}
-
-	/* Header */
-	.page-header {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.header-main {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 1rem;
-	}
-
-	.header-titles h1 {
-		font-size: 1.75rem;
-		font-weight: 700;
-		color: #f8fafc;
-		letter-spacing: -0.02em;
-		margin: 0;
-	}
-
-	.subtitle {
-		font-size: 0.875rem;
-		color: #94a3b8;
-		margin: 0.25rem 0 0 0;
 	}
 
 	/* Version Alerts */

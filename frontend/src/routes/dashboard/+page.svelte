@@ -9,6 +9,7 @@
 	import VersionsCard from '$lib/components/dashboard/VersionsCard.svelte';
 	import MetricsChart from '$lib/components/metrics/MetricsChart.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import { Play, Moon, Power, RotateCw, AlertTriangle, X, Sparkles } from 'lucide-svelte';
 
 	const UNKNOWN = 'inconnu';
@@ -151,63 +152,56 @@
 
 <div class="dashboard-page">
 	<!-- Top Main Header & Controls -->
-	<header class="dashboard-top-header">
-		<div>
-			<h1 class="page-title">Vue d'ensemble</h1>
-			<p class="page-subtitle">
-				Gérez et surveillez votre serveur Minecraft en temps réel.
-				{#if powerMode}
-					<span class="mode-badge mode-badge-{powerMode}">{liveStateLabel}</span>
-				{/if}
-			</p>
-		</div>
+	<PageHeader title="Vue d'ensemble" subtitle="Gérez et surveillez votre serveur Minecraft en temps réel.">
+		{#snippet badge()}
+			{#if powerMode}
+				<span class="mode-badge mode-badge-{powerMode}">{liveStateLabel}</span>
+			{/if}
+		{/snippet}
+		<!-- Three-mode selector. The active mode is highlighted; the live sub-state
+		     (awake/asleep) is shown as a hint next to the label. -->
+		<div class="mode-selector" role="group" aria-label="Mode du serveur">
+			<button
+				class="btn mode-btn mode-off {powerMode === 'off' ? 'mode-active' : ''} {loadingMode === 'off' ? 'btn-loading' : ''}"
+				onclick={() => requestMode('off')}
+				disabled={loadingMode !== null}
+				type="button"
+			>
+				<Power size={15} />
+				<span>Éteint</span>
+			</button>
 
-		<div class="header-actions">
-			<!-- Three-mode selector. The active mode is highlighted; the live sub-state
-			     (awake/asleep) is shown as a hint next to the label. -->
-			<div class="mode-selector" role="group" aria-label="Mode du serveur">
-				<button
-					class="btn mode-btn mode-off {powerMode === 'off' ? 'mode-active' : ''} {loadingMode === 'off' ? 'btn-loading' : ''}"
-					onclick={() => requestMode('off')}
-					disabled={loadingMode !== null}
-					type="button"
-				>
-					<Power size={15} />
-					<span>Éteint</span>
-				</button>
+			<button
+				class="btn mode-btn mode-on {powerMode === 'on' ? 'mode-active' : ''} {loadingMode === 'on' ? 'btn-loading' : ''}"
+				onclick={() => requestMode('on')}
+				disabled={loadingMode !== null}
+				type="button"
+			>
+				<Play size={15} />
+				<span>Allumé</span>
+			</button>
 
-				<button
-					class="btn mode-btn mode-on {powerMode === 'on' ? 'mode-active' : ''} {loadingMode === 'on' ? 'btn-loading' : ''}"
-					onclick={() => requestMode('on')}
-					disabled={loadingMode !== null}
-					type="button"
-				>
-					<Play size={15} />
-					<span>Allumé</span>
-				</button>
-
-				<button
-					class="btn mode-btn mode-hibernate {powerMode === 'hibernate' ? 'mode-active' : ''} {loadingMode === 'hibernate' ? 'btn-loading' : ''}"
-					onclick={() => requestMode('hibernate')}
-					disabled={loadingMode !== null}
-					type="button"
-				>
-					<Moon size={15} />
-					<span>Hibernation</span>
-				</button>
-			</div>
-
-			<a href="/setup" class="btn btn-secondary header-action-btn" title="Lancer l'assistant de configuration 1-clic">
-				<Sparkles size={16} class="text-blue" />
-				<span>Assistant 1-Click</span>
-			</a>
-
-			<button class="btn btn-secondary header-action-btn" onclick={fetchServerInfo} title="Actualiser la télémétrie" type="button">
-				<RotateCw size={16} />
-				<span>Actualiser</span>
+			<button
+				class="btn mode-btn mode-hibernate {powerMode === 'hibernate' ? 'mode-active' : ''} {loadingMode === 'hibernate' ? 'btn-loading' : ''}"
+				onclick={() => requestMode('hibernate')}
+				disabled={loadingMode !== null}
+				type="button"
+			>
+				<Moon size={15} />
+				<span>Hibernation</span>
 			</button>
 		</div>
-	</header>
+
+		<a href="/setup" class="btn btn-secondary header-action-btn" title="Lancer l'assistant de configuration 1-clic">
+			<Sparkles size={16} class="text-blue" />
+			<span>Assistant 1-Click</span>
+		</a>
+
+		<button class="btn btn-secondary header-action-btn" onclick={fetchServerInfo} title="Actualiser la télémétrie" type="button">
+			<RotateCw size={16} />
+			<span>Actualiser</span>
+		</button>
+	</PageHeader>
 
 	{#if modeError}
 		<div class="page-alert alert-danger" role="alert">
@@ -289,38 +283,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-6);
-	}
-
-	.dashboard-top-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-4);
-	}
-
-	.page-title {
-		font-size: 1.75rem;
-		font-weight: var(--font-weight-bold);
-		letter-spacing: -0.02em;
-		color: var(--text-primary);
-	}
-
-	.page-subtitle {
-		color: var(--text-secondary);
-		font-size: var(--font-size-sm);
-		margin-top: 2px;
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-	}
-
-	.header-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		flex-wrap: wrap;
 	}
 
 	.mode-selector {

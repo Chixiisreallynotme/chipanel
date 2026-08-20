@@ -7,6 +7,7 @@
 	import CreateWorldModal from '$lib/components/worlds/CreateWorldModal.svelte';
 	import ImportWorldModal from '$lib/components/worlds/ImportWorldModal.svelte';
 	import ConfigureWorldModal from '$lib/components/worlds/ConfigureWorldModal.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Globe,
 		Compass,
@@ -389,74 +390,66 @@
 
 <div class="worlds-page">
 	<!-- Top Hero Header Banner -->
-	<div class="hero-header">
-		<div class="hero-title-section">
-			<div class="hero-icon-box">
-				<Globe size={26} />
-			</div>
-			<div>
-				<h1 class="page-title">World Management & Chunky Pre-generation</h1>
-				<p class="page-subtitle">
-					Inspect server dimensions, configure world borders, launch background chunk pre-generation, and manage ZIP backups.
-				</p>
-			</div>
-		</div>
-
+	<PageHeader
+		title="World Management & Chunky Pre-generation"
+		subtitle="Inspect server dimensions, configure world borders, launch background chunk pre-generation, and manage ZIP backups."
+	>
+		{#snippet icon()}
+			<Globe size={26} />
+		{/snippet}
 		<!-- Quick Status & Action Buttons -->
-		<div class="hero-actions-row">
-			<div class="quick-pills-group">
-				<div class="quick-pill">
-					<Globe size={16} class="pill-icon icon-blue" />
-					<span class="pill-text font-mono"><strong>{totalWorldsCount}</strong> Worlds</span>
-				</div>
-
-				<div class="quick-pill badge {chunkyQuickStatus.badgeClass}">
-					<span class="status-dot {chunkyQuickStatus.dotClass}"></span>
-					<span>{chunkyQuickStatus.label}</span>
-				</div>
+		<div class="quick-pills-group">
+			<div class="quick-pill">
+				<Globe size={16} class="pill-icon icon-blue" />
+				<span class="pill-text font-mono"><strong>{totalWorldsCount}</strong> Worlds</span>
 			</div>
 
-			<div class="buttons-group">
-				<button
-					type="button"
-					class="btn btn-secondary"
-					onclick={loadWorldsData}
-					disabled={loading}
-					title="Reload worlds & backups"
-				>
-					<RefreshCw size={16} class={loading ? 'spin-slow' : ''} />
-					<span>Refresh</span>
-				</button>
-
-				<button
-					type="button"
-					class="btn btn-primary"
-					onclick={() => (createModalOpen = true)}
-				>
-					<Plus size={16} />
-					<span>New World</span>
-				</button>
-
-				<button
-					type="button"
-					class="btn btn-secondary"
-					onclick={() => (importModalOpen = true)}
-				>
-					<Upload size={16} />
-					<span>Import</span>
-				</button>
-
-				<button
-					type="button"
-					class="btn btn-secondary"
-					onclick={() => (backupModalOpen = true)}
-				>
-					<Archive size={16} />
-					<span>Backups ({backups.length})</span>
-				</button>
+			<div class="quick-pill badge {chunkyQuickStatus.badgeClass}">
+				<span class="status-dot {chunkyQuickStatus.dotClass}"></span>
+				<span>{chunkyQuickStatus.label}</span>
 			</div>
 		</div>
-	</div>
+
+		<div class="buttons-group">
+			<button
+				type="button"
+				class="btn btn-secondary"
+				onclick={loadWorldsData}
+				disabled={loading}
+				title="Reload worlds & backups"
+			>
+				<RefreshCw size={16} class={loading ? 'spin-slow' : ''} />
+				<span>Refresh</span>
+			</button>
+
+			<button
+				type="button"
+				class="btn btn-primary"
+				onclick={() => (createModalOpen = true)}
+			>
+				<Plus size={16} />
+				<span>New World</span>
+			</button>
+
+			<button
+				type="button"
+				class="btn btn-secondary"
+				onclick={() => (importModalOpen = true)}
+			>
+				<Upload size={16} />
+				<span>Import</span>
+			</button>
+
+			<button
+				type="button"
+				class="btn btn-secondary"
+				onclick={() => (backupModalOpen = true)}
+			>
+				<Archive size={16} />
+				<span>Backups ({backups.length})</span>
+			</button>
+		</div>
+	</PageHeader>
 
 	<!-- Main Worlds Grid Section -->
 	<div class="page-section">
@@ -829,56 +822,6 @@
 		position: relative;
 	}
 
-	/* Hero Header */
-	.hero-header {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		border-bottom: 1px solid var(--border);
-		padding-bottom: var(--space-6);
-	}
-
-	.hero-title-section {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.hero-icon-box {
-		width: 52px;
-		height: 52px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-		flex-shrink: 0;
-	}
-
-	.page-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		letter-spacing: -0.015em;
-		line-height: 1.2;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin-top: 2px;
-	}
-
-	.hero-actions-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-		flex-wrap: wrap;
-	}
-
 	.quick-pills-group {
 		display: flex;
 		align-items: center;
@@ -1162,11 +1105,6 @@
 	}
 
 	@media (max-width: 640px) {
-		.hero-actions-row {
-			flex-direction: column;
-			align-items: stretch;
-		}
-
 		.buttons-group {
 			justify-content: stretch;
 		}

@@ -4,6 +4,7 @@
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
 	import PlayerList from '$lib/components/players/PlayerList.svelte';
 	import PlayerProfileModal from '$lib/components/players/PlayerProfileModal.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import {
 		Users,
 		UserCheck,
@@ -266,58 +267,48 @@
 
 <div class="players-page">
 	<!-- Top Hero Banner -->
-	<div class="hero-header">
-		<div class="hero-header-top">
-			<div class="hero-title-section">
-				<div class="hero-icon-box">
-					<Users size={26} />
-				</div>
-				<div>
-					<h1 class="page-title">Player Directory & Moderation</h1>
-					<p class="page-subtitle">
-						Monitor active players, inspect inventories and effects, and execute admin moderation
-						commands in real-time.
-					</p>
-				</div>
-			</div>
+	<PageHeader
+		title="Player Directory & Moderation"
+		subtitle="Monitor active players, inspect inventories and effects, and execute admin moderation commands in real-time."
+	>
+		{#snippet icon()}
+			<Users size={26} />
+		{/snippet}
+		<!-- Real-time Live Status Controls -->
+		<button
+			class="live-status-pill {autoRefreshEnabled ? 'active' : ''}"
+			onclick={() => {
+				autoRefreshEnabled = !autoRefreshEnabled;
+				if (autoRefreshEnabled) setupAutoRefresh();
+			}}
+			title="Toggle 10s auto-refresh"
+		>
+			<span class="live-dot {autoRefreshEnabled ? 'pulse' : ''}"></span>
+			<span class="live-text"
+				>{autoRefreshEnabled ? 'Live Sync (10s)' : 'Auto-refresh Paused'}</span
+			>
+		</button>
 
-			<!-- Real-time Live Status Controls -->
-			<div class="hero-live-controls">
-				<button
-					class="live-status-pill {autoRefreshEnabled ? 'active' : ''}"
-					onclick={() => {
-						autoRefreshEnabled = !autoRefreshEnabled;
-						if (autoRefreshEnabled) setupAutoRefresh();
-					}}
-					title="Toggle 10s auto-refresh"
-				>
-					<span class="live-dot {autoRefreshEnabled ? 'pulse' : ''}"></span>
-					<span class="live-text"
-						>{autoRefreshEnabled ? 'Live Sync (10s)' : 'Auto-refresh Paused'}</span
-					>
-				</button>
+		{#if lastUpdatedTime}
+			<span class="last-sync-time" title="Last synced with Minecraft server">
+				Sync: {lastUpdatedTime}
+			</span>
+		{/if}
 
-				{#if lastUpdatedTime}
-					<span class="last-sync-time" title="Last synced with Minecraft server">
-						Sync: {lastUpdatedTime}
-					</span>
-				{/if}
+		<button
+			class="btn btn-secondary btn-sm refresh-btn-hero {isSilentRefreshing
+				? 'btn-loading'
+				: ''}"
+			onclick={() => loadPlayers(false)}
+			disabled={isSilentRefreshing || loading}
+			title="Refresh now"
+		>
+			<RefreshCw size={14} class={isSilentRefreshing ? 'spinning' : ''} />
+		</button>
+	</PageHeader>
 
-				<button
-					class="btn btn-secondary btn-sm refresh-btn-hero {isSilentRefreshing
-						? 'btn-loading'
-						: ''}"
-					onclick={() => loadPlayers(false)}
-					disabled={isSilentRefreshing || loading}
-					title="Refresh now"
-				>
-					<RefreshCw size={14} class={isSilentRefreshing ? 'spinning' : ''} />
-				</button>
-			</div>
-		</div>
-
-		<!-- Hero Stats Cards Grid -->
-		<div class="hero-stats-row">
+	<!-- Hero Stats Cards Grid -->
+	<div class="hero-stats-row">
 			<div class="stat-card">
 				<div class="stat-icon icon-blue">
 					<Users size={20} />
@@ -358,7 +349,6 @@
 				</div>
 			</div>
 		</div>
-	</div>
 
 	<!-- Main Player List Component -->
 	<div class="page-body">
@@ -503,63 +493,6 @@
 		flex-direction: column;
 		gap: var(--space-6);
 		position: relative;
-	}
-
-	/* Hero Header */
-	.hero-header {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		border-bottom: 1px solid var(--border);
-		padding-bottom: var(--space-6);
-	}
-
-	.hero-header-top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-		flex-wrap: wrap;
-	}
-
-	.hero-title-section {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.hero-icon-box {
-		width: 52px;
-		height: 52px;
-		border-radius: var(--radius-card);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-		flex-shrink: 0;
-	}
-
-	.page-title {
-		font-size: var(--font-size-2xl);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		letter-spacing: -0.015em;
-		line-height: 1.2;
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		margin-top: 2px;
-	}
-
-	/* Hero Live Controls */
-	.hero-live-controls {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
 	}
 
 	.live-status-pill {

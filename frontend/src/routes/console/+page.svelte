@@ -4,6 +4,7 @@
 	import LogViewer from '$lib/components/console/LogViewer.svelte';
 	import CommandBar from '$lib/components/console/CommandBar.svelte';
 	import QuickCommands from '$lib/components/console/QuickCommands.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import { Terminal, RefreshCw, Activity, Users } from 'lucide-svelte';
 
 	let activeCommand = $state('');
@@ -28,50 +29,42 @@
 </svelte:head>
 
 <div class="console-page-layout">
-	<!-- Page Header Toolbar in Hardware Shell -->
-	<div class="hardware-shell console-header-shell">
-		<div class="hardware-core console-header-card">
-			<div class="header-main-info">
-				<div class="icon-badge">
-					<Terminal size={20} class="console-icon" />
-				</div>
-				<div class="header-titles">
-					<div class="title-with-status">
-						<h1 class="page-title">Console Serveur</h1>
-						<div class="status-indicator-badge badge {wsStore.connected ? 'badge-success' : 'badge-danger'}">
-							<span class="status-dot {wsStore.connected ? 'status-dot-success status-dot-pulse' : 'status-dot-danger'}"></span>
-							<span class="status-badge-text">{wsStore.connected ? 'WebSocket Direct' : 'Déconnecté'}</span>
-						</div>
-					</div>
-					<p class="page-subtitle">
-						Flux interactif de logs en temps réel et contrôleur RCON direct
-					</p>
-				</div>
+	<!-- Page Header -->
+	<PageHeader
+		title="Console Serveur"
+		subtitle="Flux interactif de logs en temps réel et contrôleur RCON direct"
+	>
+		{#snippet icon()}
+			<Terminal size={20} />
+		{/snippet}
+		{#snippet badge()}
+			<div class="status-indicator-badge badge {wsStore.connected ? 'badge-success' : 'badge-danger'}">
+				<span class="status-dot {wsStore.connected ? 'status-dot-success status-dot-pulse' : 'status-dot-danger'}"></span>
+				<span class="status-badge-text">{wsStore.connected ? 'WebSocket Direct' : 'Déconnecté'}</span>
 			</div>
-
-			<div class="header-stats-group">
-				<div class="stat-item" title="TPS serveur en direct">
-					<Activity size={14} class="stat-icon" />
-					<span class="stat-label">TPS :</span>
-					<span class="stat-val tabular-nums">{srv.tps == null ? 'n/a' : srv.tps.toFixed(1)}</span>
-				</div>
-				<div class="stat-item-divider" aria-hidden="true">|</div>
-				<div class="stat-item" title="Joueurs en ligne">
-					<Users size={14} class="stat-icon" />
-					<span class="stat-label">Joueurs :</span>
-					<span class="stat-val tabular-nums">
-						{srv.onlinePlayers ?? UNAVAILABLE}/{srv.maxPlayers ?? UNAVAILABLE}
-					</span>
-				</div>
-				{#if !wsStore.connected}
-					<button class="btn btn-secondary btn-sm reconnect-btn" onclick={reconnectWebSocket}>
-						<RefreshCw size={13} />
-						<span>Reconnecter</span>
-					</button>
-				{/if}
+		{/snippet}
+		<div class="header-stats-group">
+			<div class="stat-item" title="TPS serveur en direct">
+				<Activity size={14} class="stat-icon" />
+				<span class="stat-label">TPS :</span>
+				<span class="stat-val tabular-nums">{srv.tps == null ? 'n/a' : srv.tps.toFixed(1)}</span>
 			</div>
+			<div class="stat-item-divider" aria-hidden="true">|</div>
+			<div class="stat-item" title="Joueurs en ligne">
+				<Users size={14} class="stat-icon" />
+				<span class="stat-label">Joueurs :</span>
+				<span class="stat-val tabular-nums">
+					{srv.onlinePlayers ?? UNAVAILABLE}/{srv.maxPlayers ?? UNAVAILABLE}
+				</span>
+			</div>
+			{#if !wsStore.connected}
+				<button class="btn btn-secondary btn-sm reconnect-btn" onclick={reconnectWebSocket}>
+					<RefreshCw size={13} />
+					<span>Reconnecter</span>
+				</button>
+			{/if}
 		</div>
-	</div>
+	</PageHeader>
 
 	<!-- Main Console Body Section -->
 	<div class="console-body">
@@ -112,62 +105,6 @@
 		min-height: 550px;
 	}
 
-	/* Header Shell & Card */
-	.console-header-shell {
-		padding: 4px;
-		flex-shrink: 0;
-	}
-
-	.console-header-card {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-3) var(--space-5);
-		border-radius: calc(var(--radius-card) - 4px);
-		background-color: var(--bg-surface);
-	}
-
-	.header-main-info {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-	}
-
-	.icon-badge {
-		width: 40px;
-		height: 40px;
-		border-radius: var(--radius-btn);
-		background-color: var(--accent-blue-bg);
-		border: 1px solid var(--accent-blue-border);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--accent-blue-text);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-		flex-shrink: 0;
-	}
-
-	.header-titles {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.title-with-status {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.page-title {
-		font-size: var(--font-size-lg);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		line-height: 1.2;
-		text-wrap: balance;
-		letter-spacing: -0.02em;
-	}
-
 	.status-indicator-badge {
 		font-size: 11px;
 		padding: 2px 9px;
@@ -180,11 +117,6 @@
 
 	.status-badge-text {
 		font-weight: var(--font-weight-medium);
-	}
-
-	.page-subtitle {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
 	}
 
 	.header-stats-group {
@@ -281,13 +213,6 @@
 		.console-page-layout {
 			height: auto;
 			max-height: none;
-		}
-
-		.console-header-card {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: var(--space-3);
-			padding: var(--space-4);
 		}
 
 		.header-stats-group {
