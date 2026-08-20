@@ -15,7 +15,7 @@
 		SlidersHorizontal,
 		Check,
 		GitCompare
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 	import ConfigDiffModal from './ConfigDiffModal.svelte';
 
 	let showDiffModal = $state(false);

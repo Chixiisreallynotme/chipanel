@@ -16,7 +16,7 @@
 		Download,
 		Trash2,
 		Settings
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let {
 		world = {

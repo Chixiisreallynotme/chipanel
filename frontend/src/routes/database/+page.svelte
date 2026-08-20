@@ -17,7 +17,7 @@
 		Terminal,
 		Info,
 		Layers
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/** @type {{ total_storage_bytes: number, formatted_total: string, coreprotect_db_bytes: number, luckperms_bytes: number, logs_bytes: number, nether_bytes: number, end_bytes: number, tables: Array<{ name: string, plugin: string, description: string, size_bytes: number, formatted_size: string }>, db_type: string } | null} */
 	let stats = $state(null);
@@ -262,8 +262,8 @@
 
 <!-- Purge Modal Dialogs -->
 {#if activeModal}
-	<div class="modal-backdrop" onclick={closeModal} role="presentation">
-		<div class="modal-dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+	<div class="modal-backdrop" onclick={closeModal} onkeydown={(e) => e.stopPropagation()}  role="presentation">
+		<div class="modal-dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
 			<div class="modal-header">
 				<div class="modal-header-left">
 					{#if activeModal === 'coreprotect'}

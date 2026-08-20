@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Activity,
 		ShieldCheck,
@@ -22,7 +23,7 @@
 		Sliders,
 		Info,
 		X
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let health = $state({
 		score: 100,
@@ -284,10 +285,14 @@
 		</div>
 
 		{#if crashes.length === 0}
-			<div class="empty-state">
+<EmptyState>
+			{#snippet icon()}
 				<ShieldCheck size={36} class="text-success" />
-				<p>Aucun rapport de crash enregistré dans le dossier <code>crash-reports/</code>.</p>
-			</div>
+			{/snippet}
+			{#snippet description()}
+				Aucun rapport de crash enregistré dans le dossier <code>crash-reports/</code>.
+			{/snippet}
+		</EmptyState>
 		{:else}
 			<div class="crash-list">
 				{#each crashes as crash}
@@ -347,8 +352,8 @@
 
 <!-- Modal Détail Stack Trace -->
 {#if selectedCrash}
-	<div class="modal-backdrop" onclick={() => (selectedCrash = null)} role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} role="dialog">
+	<div class="modal-backdrop" onclick={() => (selectedCrash = null)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
+		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
 			<div class="modal-header">
 				<h2 class="modal-title flex items-center gap-2 text-danger">
 					<Flame size={18} />

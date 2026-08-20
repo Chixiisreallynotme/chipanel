@@ -35,7 +35,7 @@
 		Layers,
 		Sparkles,
 		Zap
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 	import ModeSwitch from '$lib/components/onboarding/ModeSwitch.svelte';
 	import QuakeTerminalHUD from '$lib/components/console/QuakeTerminalHUD.svelte';

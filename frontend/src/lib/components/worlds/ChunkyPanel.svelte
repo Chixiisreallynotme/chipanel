@@ -16,7 +16,7 @@
 		RefreshCw,
 		StopCircle,
 		Activity
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let {
 		chunkyStatus = {
@@ -36,6 +36,7 @@
 	} = $props();
 
 	// Form State
+	// svelte-ignore state_referenced_locally — initial world for the form; kept in sync via the $effect below
 	let formWorld = $state(selectedWorldName || (worlds.length > 0 ? worlds[0].folder_name : 'world'));
 	let shape = $state('square'); // 'square' | 'circle' | 'diamond' | 'pentagon'
 	let radius = $state(5000);
@@ -389,6 +390,7 @@
 				<div
 					class="shape-selector-grid"
 					role="radiogroup"
+					tabindex="-1"
 					aria-label="Pre-generation shape selector"
 					onkeydown={handleShapeKeydown}
 				>

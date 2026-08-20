@@ -11,7 +11,7 @@
 		Layers,
 		Swords,
 		Shirt
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let {
 		inventory = null,
@@ -309,6 +309,7 @@
 								{@const slotId = `armor-${slot.type}`}
 								<div
 									class="item-slot-wrapper"
+									role="button"
 									tabindex="0"
 									aria-label="{slot.label} slot"
 									onmouseenter={() => showTooltip(slot.item, 'bottom', 'left', slotId)}
@@ -354,6 +355,7 @@
 						<span class="column-label">Offhand</span>
 						<div
 							class="item-slot-wrapper"
+							role="button"
 							tabindex="0"
 							aria-label="Offhand slot"
 							onmouseenter={() => showTooltip(offhandSlot, 'bottom', 'right', 'offhand-slot')}
@@ -391,6 +393,7 @@
 							{@const align = getAlign(col)}
 							<div
 								class="item-slot-wrapper"
+								role="button"
 								tabindex="0"
 								aria-label="Storage slot {i + 1}"
 								onmouseenter={() => showTooltip(item, pos, align, slotId)}
@@ -424,6 +427,7 @@
 							{@const align = getAlign(col)}
 							<div
 								class="item-slot-wrapper"
+								role="button"
 								tabindex="0"
 								aria-label="Hotbar slot {i + 1}"
 								onmouseenter={() => showTooltip(item, 'top', align, slotId)}
@@ -465,6 +469,7 @@
 							{@const align = getAlign(col)}
 							<div
 								class="item-slot-wrapper"
+								role="button"
 								tabindex="0"
 								aria-label="Ender Chest slot {i + 1}"
 								onmouseenter={() => showTooltip(item, pos, align, slotId)}

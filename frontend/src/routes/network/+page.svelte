@@ -16,7 +16,7 @@
 		ExternalLink,
 		Sliders,
 		Check
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/** @type {{ is_geyser_installed: boolean, is_floodgate_installed: boolean, geyser_jar_name: string|null, floodgate_jar_name: string|null, bedrock_port: number, auth_type: string, has_encryption_key: boolean, is_running: boolean, recommended_engine: string } | null} */
 	let geyserStatus = $state(null);

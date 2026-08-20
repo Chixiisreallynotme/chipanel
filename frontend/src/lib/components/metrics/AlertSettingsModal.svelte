@@ -1,5 +1,5 @@
 <script>
-	import { Bell, X, Send, Save, CheckCircle2, AlertTriangle, ShieldAlert, Loader2 } from 'lucide-svelte';
+	import { Bell, X, Send, Save, CheckCircle2, AlertTriangle, ShieldAlert, Loader2 } from '$lib/icons.js';
 
 	let {
 		isOpen = false,

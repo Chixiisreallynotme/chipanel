@@ -1,5 +1,6 @@
 <script>
 	import { apiGet, apiPost } from '$lib/api/client.js';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Zap,
 		Flame,
@@ -21,7 +22,7 @@
 		Skull,
 		Activity,
 		Clock
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} StatusEffectInfo
@@ -244,11 +245,11 @@
 			<span>Loading active player status effects...</span>
 		</div>
 	{:else if effects.length === 0}
-		<div class="empty-state">
-			<Sparkles size={36} class="icon-muted" />
-			<h4>No Active Status Effects</h4>
-			<p>This player currently has no active status potion effects.</p>
-		</div>
+		<EmptyState dashed title="No Active Status Effects" description="This player currently has no active status potion effects.">
+			{#snippet icon()}
+				<Sparkles size={36} class="icon-muted" />
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="effects-grid">
 			{#each effects as effect (effect.id)}
@@ -424,8 +425,7 @@
 		gap: var(--space-2);
 	}
 
-	.loading-state,
-	.empty-state {
+	.loading-state {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -437,16 +437,6 @@
 		border-radius: var(--radius-card);
 		color: var(--text-muted);
 		text-align: center;
-	}
-
-	.empty-state h4 {
-		color: var(--text-primary);
-		font-size: var(--font-size-md);
-	}
-
-	.empty-state p {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
 	}
 
 	.effects-grid {

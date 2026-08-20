@@ -1,6 +1,6 @@
 <script>
 	import { serverState, fmtNum, barWidth, UNAVAILABLE } from './serverState.js';
-	import { Cpu, HardDrive, Layers } from 'lucide-svelte';
+	import { Cpu, HardDrive, Layers } from '$lib/icons.js';
 
 	let srv = $derived(serverState());
 

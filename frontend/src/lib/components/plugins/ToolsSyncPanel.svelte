@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
-	import { RefreshCw, Zap, Loader2, CheckCircle2, AlertCircle, Wrench } from 'lucide-svelte';
+	import { RefreshCw, Zap, Loader2, CheckCircle2, AlertCircle, Wrench } from '$lib/icons.js';
 
 	let { onToast } = $props();
 

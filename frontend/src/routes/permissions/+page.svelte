@@ -17,7 +17,7 @@
 		Key,
 		Crown,
 		Sparkles
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} LuckPermsPermissionNode

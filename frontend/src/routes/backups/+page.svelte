@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Archive,
 		HardDrive,
@@ -25,7 +26,7 @@
 		Server,
 		Lock,
 		Unlock
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/** @type {Array<{ filename: string, file_size_bytes: number, created_at_secs: number, scope: string, sha256: string, format: string, file_count: number }>} */
 	let backups = $state([]);
@@ -326,13 +327,16 @@
 				<span>Chargement des archives...</span>
 			</div>
 		{:else if filteredBackups.length === 0}
-			<div class="empty-state">
-				<Archive size={40} class="text-muted" />
-				<p>Aucune sauvegarde disponible pour ce filtre.</p>
-				<button class="btn btn-primary btn-sm" onclick={() => (showCreateModal = true)}>
-					Créer une première sauvegarde
-				</button>
-			</div>
+			<EmptyState description="Aucune sauvegarde disponible pour ce filtre.">
+				{#snippet icon()}
+					<Archive size={40} class="text-muted" />
+				{/snippet}
+				{#snippet action()}
+					<button class="btn btn-primary btn-sm" onclick={() => (showCreateModal = true)}>
+						Créer une première sauvegarde
+					</button>
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<div class="table-wrapper">
 				<table class="data-table">
@@ -431,8 +435,8 @@
 
 <!-- Modal Créer Sauvegarde -->
 {#if showCreateModal}
-	<div class="modal-backdrop" onclick={() => (showCreateModal = false)} role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} role="dialog">
+	<div class="modal-backdrop" onclick={() => (showCreateModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
+		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
 			<div class="modal-header">
 				<h2 class="modal-title">Créer une Sauvegarde</h2>
 				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (showCreateModal = false)}>
@@ -520,8 +524,8 @@
 
 <!-- Modal Paramètres & S3 -->
 {#if showSettingsModal}
-	<div class="modal-backdrop" onclick={() => (showSettingsModal = false)} role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} role="dialog">
+	<div class="modal-backdrop" onclick={() => (showSettingsModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
+		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
 			<div class="modal-header">
 				<h2 class="modal-title">Paramètres de Rétention & Export S3</h2>
 				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (showSettingsModal = false)}>
@@ -616,8 +620,8 @@
 
 <!-- Modal Confirmation Restauration -->
 {#if showRestoreModal && selectedBackupForRestore}
-	<div class="modal-backdrop" onclick={() => (showRestoreModal = false)} role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} role="dialog">
+	<div class="modal-backdrop" onclick={() => (showRestoreModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
+		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
 			<div class="modal-header">
 				<h2 class="modal-title text-warning flex items-center gap-2">
 					<AlertTriangle size={18} />
@@ -850,15 +854,6 @@
 	}
 
 	.loading-state,
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-12);
-		gap: var(--space-3);
-		color: var(--text-muted);
-	}
 
 	/* Modals */
 	.modal-backdrop {

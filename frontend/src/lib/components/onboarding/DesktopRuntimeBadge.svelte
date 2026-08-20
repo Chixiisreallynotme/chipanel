@@ -1,6 +1,6 @@
 <script>
 	import { preferences } from '$lib/stores/preferences.svelte.js';
-	import { Laptop, Server, Cpu, ShieldCheck, Activity } from 'lucide-svelte';
+	import { Laptop, Server, Cpu, ShieldCheck, Activity } from '$lib/icons.js';
 
 	let { showDetails = false } = $props();
 

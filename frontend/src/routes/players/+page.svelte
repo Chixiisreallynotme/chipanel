@@ -18,7 +18,7 @@
 		UserX,
 		ShieldCheck,
 		Radio
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	// Page state
 	let players = $state([]);
@@ -381,6 +381,7 @@
 					if (e.key === 'Escape') closeQuickActionModal();
 				}}
 				role="dialog"
+				tabindex="-1"
 				aria-modal="true"
 				aria-labelledby="quick-action-title"
 			>

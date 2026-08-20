@@ -16,7 +16,7 @@
 		FilePlus,
 		AlertCircle,
 		AlertTriangle
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} FileTreeNode

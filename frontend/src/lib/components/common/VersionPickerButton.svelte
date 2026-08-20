@@ -1,5 +1,5 @@
 <script>
-	import { Layers, ChevronDown, Sparkles } from 'lucide-svelte';
+	import { Layers, ChevronDown, Sparkles } from '$lib/icons.js';
 	import VersionPickerModal from './VersionPickerModal.svelte';
 
 	let {

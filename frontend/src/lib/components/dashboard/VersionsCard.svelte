@@ -1,6 +1,6 @@
 <script>
 	import { serverState } from './serverState.js';
-	import { Sliders, CheckCircle2, XCircle, HelpCircle } from 'lucide-svelte';
+	import { Sliders, CheckCircle2, XCircle, HelpCircle } from '$lib/icons.js';
 
 	const UNKNOWN = 'inconnu';
 

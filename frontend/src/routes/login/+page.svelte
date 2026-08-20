@@ -1,7 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte.js';
-	import { Lock, User, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-svelte';
+	import { Lock, User, AlertCircle, ArrowRight, Eye, EyeOff } from '$lib/icons.js';
 	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 
 	let username = $state('');

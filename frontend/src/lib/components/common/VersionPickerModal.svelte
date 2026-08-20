@@ -9,7 +9,9 @@
 		Layers,
 		FlaskConical,
 		HelpCircle
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	let {
 		open = false,
@@ -109,30 +111,10 @@
 		}
 		onClose();
 	}
-
-	function handleKeyDown(e) {
-		if (e.key === 'Escape' && open) {
-			onClose();
-		}
-	}
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
-
-{#if open}
-	<div
-		class="modal-backdrop"
-		role="presentation"
-		onclick={onClose}
-	>
-		<div
-			class="modal-card version-picker-modal"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="modal-title"
-			tabindex="-1"
-			onclick={(e) => e.stopPropagation()}
-		>
+<Modal open={open} onclose={onClose} class="modal-card version-picker-modal" backdropClass="modal-backdrop--dim" ariaLabelledBy="modal-title">
+	{#snippet content()}
 			<!-- Header -->
 			<div class="modal-header">
 				<div class="header-title-box">
@@ -214,9 +196,7 @@
 						{/if}
 
 						{#if filteredReleases.length === 0}
-							<div class="empty-state">
-								<p>Aucune version stable trouvée pour "{searchQuery}".</p>
-							</div>
+							<EmptyState description={`Aucune version stable trouvée pour "${searchQuery}".`} />
 						{:else}
 							{#each groupedReleases as [groupName, versions]}
 								<div class="version-group">
@@ -274,13 +254,9 @@
 
 					<div class="version-list-scroll">
 						{#if filteredSnapshots.length === 0}
-							<div class="empty-state">
-								<p>
-									{safeSnapshots.length === 0
-										? 'Aucune snapshot disponible pour ce moteur.'
-										: `Aucune snapshot trouvée pour "${searchQuery}".`}
-								</p>
-							</div>
+							<EmptyState
+									description={safeSnapshots.length === 0 ? 'Aucune snapshot disponible pour ce moteur.' : `Aucune snapshot trouvée pour "${searchQuery}".`}
+								/>
 						{:else}
 							<div class="version-grid">
 								{#each filteredSnapshots as ver}
@@ -341,24 +317,10 @@
 					</button>
 				</div>
 			</div>
-		</div>
-	</div>
-{/if}
+		{/snippet}
+	</Modal>
 
 <style>
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		z-index: var(--z-modal);
-		background: rgba(8, 10, 15, 0.75);
-		backdrop-filter: blur(6px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 1.5rem;
-		animation: fadeIn var(--transition-fast);
-	}
-
 	.version-picker-modal {
 		display: flex;
 		flex-direction: column;
@@ -661,15 +623,7 @@
 		border: 1px solid var(--accent-purple-border);
 	}
 
-	.empty-state {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem 1rem;
-		color: var(--text-muted);
-		font-size: var(--font-size-sm);
-		text-align: center;
-	}
+	
 
 	/* Footer Bar */
 	.modal-footer {

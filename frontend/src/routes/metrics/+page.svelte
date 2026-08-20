@@ -21,7 +21,7 @@
 		Trash2,
 		Webhook,
 		Power
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	// Range Selector Presets (TSDB Multi-Tier Retention)
 	const rangePresets = [

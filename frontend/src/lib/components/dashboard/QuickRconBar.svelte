@@ -1,7 +1,7 @@
 <script>
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
 	import { apiPost } from '$lib/api/client.js';
-	import { Send, Terminal, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-svelte';
+	import { Send, Terminal, CheckCircle2, AlertTriangle, Trash2 } from '$lib/icons.js';
 
 	let commandInput = $state('');
 	let isSending = $state(false);

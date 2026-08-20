@@ -1,5 +1,5 @@
 <script>
-	import { Cpu } from 'lucide-svelte';
+	import { Cpu } from '$lib/icons.js';
 
 	let {
 		engine = '',

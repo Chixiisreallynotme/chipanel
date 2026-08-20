@@ -3,7 +3,8 @@
 	import { apiPost } from '$lib/api/client.js';
 	import { serverState, UNAVAILABLE } from './serverState.js';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-	import { Users, UserX, ShieldAlert, Search } from 'lucide-svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import { Users, UserX, ShieldAlert, Search } from '$lib/icons.js';
 
 	const USERNAME_REGEX = /^[a-zA-Z0-9_]{1,16}$/;
 
@@ -141,15 +142,15 @@
 
 	<div class="card-body player-card-body">
 		{#if filteredPlayers.length === 0}
-			<div class="empty-state">
-				<Users size={36} class="empty-icon" />
-				{#if searchQuery.trim()}
-					<p class="empty-title">No players matching "{searchQuery}"</p>
-				{:else}
-					<p class="empty-title">No players currently online</p>
-					<p class="empty-subtitle">Connect to the Minecraft server to see active players here.</p>
-				{/if}
-			</div>
+			<EmptyState
+					compact
+					title={searchQuery.trim() ? `No players matching "${searchQuery}"` : 'No players currently online'}
+					description={!searchQuery.trim() ? 'Connect to the Minecraft server to see active players here.' : ''}
+				>
+					{#snippet icon()}
+						<Users size={36} class="empty-icon" />
+					{/snippet}
+				</EmptyState>
 		{:else}
 			<div class="player-list">
 				{#each filteredPlayers as player (player.username)}
@@ -321,32 +322,5 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-	}
-
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-8) var(--space-4);
-		text-align: center;
-	}
-
-	.empty-icon {
-		color: var(--text-muted);
-		margin-bottom: var(--space-3);
-		opacity: 0.5;
-	}
-
-	.empty-title {
-		font-size: var(--font-size-base);
-		font-weight: var(--font-weight-medium);
-		color: var(--text-secondary);
-	}
-
-	.empty-subtitle {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-		margin-top: var(--space-1);
 	}
 </style>

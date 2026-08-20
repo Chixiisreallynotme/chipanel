@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		HardDrive,
 		RefreshCw,
@@ -16,7 +17,7 @@
 		X,
 		ShieldAlert,
 		Check
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} ServerProfile
@@ -210,11 +211,11 @@
 			<p>Chargement des profils du serveur…</p>
 		</div>
 	{:else if profiles.length === 0}
-		<div class="empty-state card">
-			<HardDrive size={44} class="empty-icon" />
-			<h3>Aucun profil sauvegardé</h3>
-			<p>Installez un modpack depuis l'onglet Modpacks pour créer automatiquement votre premier profil isolé.</p>
-		</div>
+		<EmptyState card title="Aucun profil sauvegardé" description="Installez un modpack depuis l'onglet Modpacks pour créer automatiquement votre premier profil isolé.">
+			{#snippet icon()}
+				<HardDrive size={44} class="empty-icon" />
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="profiles-grid">
 			{#each profiles as profile (profile.name)}
@@ -305,7 +306,7 @@
 {#if switchModalOpen && targetSwitchProfile}
 	<div class="modal-backdrop" onclick={closeSwitchModal} role="presentation">
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
 			<div class="modal-header">
 				<div class="modal-title-with-icon">
 					<div class="modal-icon-box icon-blue">
@@ -358,7 +359,7 @@
 {#if deleteModalOpen && targetDeleteProfile}
 	<div class="modal-backdrop" onclick={closeDeleteModal} role="presentation">
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
 			<div class="modal-header">
 				<div class="modal-title-with-icon">
 					<div class="modal-icon-box icon-danger">
@@ -548,7 +549,7 @@
 		flex: 1;
 	}
 
-	.loading-state, .empty-state {
+	.loading-state {
 		padding: var(--space-10);
 		text-align: center;
 		display: flex;
@@ -556,10 +557,6 @@
 		align-items: center;
 		justify-content: center;
 		color: var(--text-secondary);
-	}
-	.empty-icon {
-		color: var(--text-muted);
-		margin-bottom: var(--space-3);
 	}
 
 	/* Modal Backdrop */

@@ -29,7 +29,7 @@
 		Wrench,
 		ExternalLink,
 		Loader2
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	// Active tab state: 'plugins' | 'mods' | 'resourcepacks' | 'datapacks' | 'modpacks' | 'profiles'
 	let activeTab = $state('plugins');
@@ -513,7 +513,7 @@
 	{#if updatesModalOpen && updatesReport}
 		<div class="modal-backdrop" onclick={() => (updatesModalOpen = false)} role="presentation">
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div class="modal-card card shadow-xl updates-modal-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+			<div class="modal-card card shadow-xl updates-modal-card" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
 				<div class="modal-header">
 					<div class="title-with-icon">
 						<div class="modal-icon-box icon-blue">

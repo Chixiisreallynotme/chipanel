@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
-	import { Terminal, Share2, X, Send, CornerDownLeft, Sparkles, Check, ArrowDown } from 'lucide-svelte';
+	import { Terminal, Share2, X, Send, CornerDownLeft, Sparkles, Check, ArrowDown } from '$lib/icons.js';
 
 	let { open = $bindable(false), onclose } = $props();
 

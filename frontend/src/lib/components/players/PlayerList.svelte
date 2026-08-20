@@ -12,8 +12,9 @@
 		Eye,
 		RefreshCw,
 		Crown
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 	import { UNAVAILABLE } from '$lib/components/dashboard/serverState.js';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 
 	/**
 	 * @typedef {Object} PlayerSummary
@@ -207,17 +208,15 @@
 			<p>Loading player data from Minecraft server...</p>
 		</div>
 	{:else if filteredPlayers.length === 0}
-		<div class="empty-state card">
-			<Users size={48} class="empty-icon" />
-			<h3 class="empty-title">No Players Found</h3>
-			<p class="empty-subtitle">
-				{#if searchQuery.trim() || statusFilter !== 'all'}
-					No players match your active search query or status filter.
-				{:else}
-					No player data files have been recorded on this server yet.
-				{/if}
-			</p>
-		</div>
+		<EmptyState
+			card
+			title="No Players Found"
+			description={searchQuery.trim() || statusFilter !== 'all' ? 'No players match your active search query or status filter.' : 'No player data files have been recorded on this server yet.'}
+		>
+			{#snippet icon()}
+				<Users size={48} class="empty-icon" />
+			{/snippet}
+		</EmptyState>
 	{:else if viewMode === 'grid'}
 		<!-- Grid View -->
 		<div class="player-grid">
@@ -597,8 +596,7 @@
 	}
 
 	/* Loading & Empty States */
-	.loading-state,
-	.empty-state {
+	.loading-state {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -622,17 +620,6 @@
 	.empty-icon {
 		color: var(--text-muted);
 		opacity: 0.5;
-	}
-
-	.empty-title {
-		font-size: var(--font-size-lg);
-		color: var(--text-primary);
-	}
-
-	.empty-subtitle {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
-		max-width: 420px;
 	}
 
 	/* Grid View Styling */

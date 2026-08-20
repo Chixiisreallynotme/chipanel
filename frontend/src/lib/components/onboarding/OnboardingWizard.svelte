@@ -15,7 +15,7 @@
 		CheckCircle2,
 		Sparkles,
 		Terminal
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let { onCompleted = null } = $props();
 

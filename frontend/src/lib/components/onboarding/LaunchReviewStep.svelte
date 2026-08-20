@@ -9,7 +9,7 @@
 		Sliders,
 		ChevronDown,
 		RotateCw
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let {
 		selectedGame = 'JAVA',

@@ -19,7 +19,7 @@
 		HardDrive,
 		FileText,
 		Tag
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} ModpackVersion
@@ -480,6 +480,7 @@
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
+			tabindex="-1"
 			aria-modal="true"
 			aria-labelledby="modal-modpack-title"
 		>
@@ -687,48 +688,6 @@
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
 		white-space: nowrap;
-	}
-
-	.segmented-control {
-		display: flex;
-		background-color: var(--bg-base);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-input);
-		padding: 2px;
-		gap: 2px;
-	}
-
-	.segment-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		padding: 4px 12px;
-		font-family: var(--font-ui);
-		font-size: var(--font-size-xs);
-		font-weight: var(--font-weight-medium);
-		color: var(--text-muted);
-		background: transparent;
-		border: none;
-		border-radius: var(--radius-sm);
-		cursor: pointer;
-		transition: background-color var(--transition-fast), color var(--transition-fast);
-	}
-
-	.segment-btn:hover {
-		color: var(--text-primary);
-		background-color: rgba(255, 255, 255, 0.04);
-	}
-
-	.segment-btn:focus-visible {
-		outline: 2px solid var(--accent-blue);
-		outline-offset: -2px;
-	}
-
-	.segment-btn.active {
-		background-color: var(--accent-blue-bg);
-		color: var(--accent-blue-text);
-		border: 1px solid var(--accent-blue-border);
-		font-weight: var(--font-weight-semibold);
 	}
 
 	.alert-banner {

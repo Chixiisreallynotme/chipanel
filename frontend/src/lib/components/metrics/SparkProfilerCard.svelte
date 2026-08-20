@@ -1,6 +1,6 @@
 <script>
 	import { onDestroy } from 'svelte';
-	import { Zap, Play, Clock, Copy, Check, ExternalLink, FileText, CheckCircle2, Loader2 } from 'lucide-svelte';
+	import { Zap, Play, Clock, Copy, Check, ExternalLink, FileText, CheckCircle2, Loader2 } from '$lib/icons.js';
 
 	let { onTriggerSpark, onToast } = $props();
 

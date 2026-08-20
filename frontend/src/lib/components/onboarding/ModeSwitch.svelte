@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { preferences } from '$lib/stores/preferences.svelte.js';
-	import { Sparkles, Terminal } from 'lucide-svelte';
+	import { Sparkles, Terminal } from '$lib/icons.js';
 
 	let { compact = false } = $props();
 

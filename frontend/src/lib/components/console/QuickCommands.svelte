@@ -12,7 +12,7 @@
 		Check,
 		AlertTriangle,
 		X
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let { onFillCommand, onExecuteCommand } = $props();
 
@@ -146,6 +146,7 @@
 			{@const IconComponent = item.icon}
 			<div
 				class="chip-card"
+				role="button"
 				onclick={() => handleChipClick(item)}
 				tabindex="0"
 				onkeydown={(e) => {
@@ -185,11 +186,12 @@
 
 <!-- Confirmation Modal Dialog -->
 {#if confirmModalAction}
-	<div class="modal-backdrop" onclick={() => (confirmModalAction = null)} aria-hidden="true">
+	<div class="modal-backdrop" onclick={() => (confirmModalAction = null)} onkeydown={(e) => e.stopPropagation()}  aria-hidden="true">
 		<div
 			class="modal confirm-modal"
-			onclick={(e) => e.stopPropagation()}
+			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
+			tabindex="-1"
 			aria-modal="true"
 			aria-labelledby="confirm-modal-title"
 		>

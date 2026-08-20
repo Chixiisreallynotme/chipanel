@@ -1,5 +1,5 @@
 <script>
-	import { ArrowRight, LoaderCircle } from 'lucide-svelte';
+	import { ArrowRight, LoaderCircle } from '$lib/icons.js';
 
 	/**
 	 * @type {{

@@ -5,6 +5,7 @@
 	import InventoryVisualizer from './InventoryVisualizer.svelte';
 	import StatusEffectsPanel from './StatusEffectsPanel.svelte';
 	import BasicPermissionsPanel from './BasicPermissionsPanel.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		X,
 		Crown,
@@ -37,7 +38,7 @@
 		Check,
 		Gamepad2,
 		Sliders
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} PlayerDetail
@@ -498,29 +499,18 @@
 	}
 </script>
 
-<svelte:window
-	onkeydown={(e) => {
-		if (e.key === 'Escape' && open) onClose();
-	}}
-/>
-
 {#if open && (detail || player)}
 	{@const p = detail || player}
 	{@const healthPct = vitalPercent(p.health, p.max_health)}
 	{@const foodPct = vitalPercent(p.food, 20)}
 	{@const expPct = vitalPercent(p.exp_progress, 1)}
-	<div class="modal-backdrop" onclick={onClose}>
-		<div
-			class="modal profile-modal-drawer"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => {
-				e.stopPropagation();
-				if (e.key === 'Escape') onClose();
-			}}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="profile-modal-title"
-		>
+	<Modal
+		open={open}
+		onclose={onClose}
+		class="modal profile-modal-drawer"
+		ariaLabelledBy="profile-modal-title"
+	>
+		{#snippet content()}
 			<!-- Modal Header -->
 			<div class="modal-header">
 				<div class="player-header-info">
@@ -1395,8 +1385,8 @@
 					Close Drawer
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>

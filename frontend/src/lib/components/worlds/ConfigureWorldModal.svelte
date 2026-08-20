@@ -1,6 +1,7 @@
 <script>
-	import { CheckCircle2, X, Settings, Sliders } from 'lucide-svelte';
+	import { CheckCircle2, X, Settings, Sliders } from '$lib/icons.js';
 	import { apiPost } from '$lib/api/client.js';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	let {
 		isOpen = false,
@@ -86,16 +87,13 @@
 	}
 </script>
 
-{#if isOpen && world}
-	<div
-		class="modal-backdrop"
-		onclick={() => (savingProps || savingRules ? null : onClose())}
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="configure-world-title"
-		tabindex="-1"
+<Modal
+		open={isOpen && !!world}
+		onclose={() => (savingProps || savingRules ? null : onClose())}
+		class="modal world-modal"
+		ariaLabelledBy="configure-world-title"
 	>
-		<div class="modal world-modal" onclick={(e) => e.stopPropagation()}>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="m-title">
 					<Settings size={20} class="icon-blue" />
@@ -246,9 +244,8 @@
 					</button>
 				</div>
 			</div>
-		</div>
-	</div>
-{/if}
+		{/snippet}
+	</Modal>
 
 <style>
 	.world-modal {

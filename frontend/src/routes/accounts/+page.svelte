@@ -3,6 +3,7 @@
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
 	import { auth } from '$lib/stores/auth.svelte.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Users,
 		UserPlus,
@@ -27,7 +28,7 @@
 		Globe,
 		Activity,
 		KeyRound
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
 	/**
@@ -448,11 +449,11 @@
 						<span>{error}</span>
 					</div>
 				{:else if users.length === 0}
-					<div class="empty-state">
-						<Lock size={40} class="empty-icon" />
-						<h4>Aucun compte secondaire</h4>
-						<p>Cliquez sur « Nouveau compte sur-mesure » pour créer un profil utilisateur.</p>
-					</div>
+					<EmptyState title="Aucun compte secondaire" description="Cliquez sur « Nouveau compte sur-mesure » pour créer un profil utilisateur.">
+						{#snippet icon()}
+							<Lock size={40} class="empty-icon" />
+						{/snippet}
+					</EmptyState>
 				{:else}
 					<div class="table-wrapper">
 						<table class="table">
@@ -532,6 +533,7 @@
 				onclick={(e) => e.stopPropagation()}
 				onkeydown={(e) => e.stopPropagation()}
 				role="dialog"
+				tabindex="-1"
 				aria-modal="true"
 				aria-labelledby="create-user-modal-title"
 			>
@@ -1071,7 +1073,7 @@
 		margin-top: 1px;
 	}
 
-	.loading-state, .empty-state {
+	.loading-state {
 		display: flex;
 		flex-direction: column;
 		align-items: center;

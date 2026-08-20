@@ -1,5 +1,5 @@
 <script>
-	import { Zap, Cpu, Box, Sparkles, Sliders, ChevronDown, Check, Hammer } from 'lucide-svelte';
+	import { Zap, Cpu, Box, Sparkles, Sliders, ChevronDown, Check, Hammer } from '$lib/icons.js';
 
 	let {
 		selectedEngine = $bindable('PURPUR'),

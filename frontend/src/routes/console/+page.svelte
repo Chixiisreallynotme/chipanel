@@ -5,7 +5,7 @@
 	import CommandBar from '$lib/components/console/CommandBar.svelte';
 	import QuickCommands from '$lib/components/console/QuickCommands.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
-	import { Terminal, RefreshCw, Activity, Users } from 'lucide-svelte';
+	import { Terminal, RefreshCw, Activity, Users } from '$lib/icons.js';
 
 	let activeCommand = $state('');
 

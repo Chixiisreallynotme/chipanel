@@ -2,8 +2,8 @@
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
 	import FileTree from '$lib/components/files/FileTree.svelte';
-	import ConfigEditor from '$lib/components/files/ConfigEditor.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Spinner from '$lib/components/ui/Spinner.svelte';
 	import {
 		FileCode,
 		Settings,
@@ -18,7 +18,7 @@
 		RefreshCw,
 		FileText,
 		Folder
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	// Main Tree & File State
 	let fileTree = $state(null);
@@ -321,17 +321,24 @@
 				/>
 			</div>
 
-			<!-- Right Pane: CodeMirror Editor -->
+			<!-- Right Pane: CodeMirror Editor (lazy-loaded, CodeMirror ~320K only fetched when needed) -->
 			<div class="config-editor-pane">
-				<ConfigEditor
-					{fileData}
-					{isSaving}
-					error={fileError}
-					isLoading={isLoadingFile}
-					onSave={handleSaveFile}
-					onRetry={retryLoadFile}
-					onDirtyChange={(dirty) => (isEditorDirty = dirty)}
-				/>
+				{#await import('$lib/components/files/ConfigEditor.svelte')}
+					<div class="editor-loading-state">
+						<Spinner size={40} />
+						<h3>Chargement de l'éditeur…</h3>
+					</div>
+				{:then { default: ConfigEditor }}
+					<ConfigEditor
+						{fileData}
+						{isSaving}
+						error={fileError}
+						isLoading={isLoadingFile}
+						onSave={handleSaveFile}
+						onRetry={retryLoadFile}
+						onDirtyChange={(dirty) => (isEditorDirty = dirty)}
+					/>
+				{/await}
 			</div>
 		</div>
 	</div>
@@ -342,8 +349,9 @@
 	<div class="modal-backdrop" onclick={() => (createModalOpen = false)} onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} role="presentation">
 		<div
 			class="modal"
-			onclick={(e) => e.stopPropagation()}
+			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
+			tabindex="-1"
 			aria-labelledby="create-modal-title"
 			aria-modal="true"
 		>
@@ -419,8 +427,9 @@
 	<div class="modal-backdrop" onclick={() => (deleteModalOpen = false)} onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} role="presentation">
 		<div
 			class="modal"
-			onclick={(e) => e.stopPropagation()}
+			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
+			tabindex="-1"
 			aria-labelledby="delete-modal-title"
 			aria-modal="true"
 		>
@@ -465,8 +474,9 @@
 	<div class="modal-backdrop" onclick={() => (unsavedModalOpen = false)} onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} role="presentation">
 		<div
 			class="modal"
-			onclick={(e) => e.stopPropagation()}
+			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
 			role="dialog"
+			tabindex="-1"
 			aria-labelledby="unsaved-modal-title"
 			aria-modal="true"
 		>
@@ -636,6 +646,23 @@
 		flex: 1;
 		height: 100%;
 		min-width: 0;
+	}
+
+	.editor-loading-state {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-3);
+		padding: var(--space-8);
+		text-align: center;
+		color: var(--text-muted);
+	}
+
+	.editor-loading-state h3 {
+		font-size: var(--font-size-lg);
+		color: var(--text-primary);
 	}
 
 	/* Form & Modal Styling */

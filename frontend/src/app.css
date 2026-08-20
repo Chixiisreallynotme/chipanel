@@ -7,7 +7,7 @@
 
 /* ==========================================================================
    CSS Reset & Base Typography
-   ========================================================================== */============= */
+   ========================================================================== */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -654,6 +654,18 @@ code, kbd, samp, pre {
   z-index: var(--z-modal);
   padding: var(--space-4);
   animation: fadeIn var(--duration-fast) var(--ease-out);
+}
+
+.modal-backdrop--dim {
+  background: rgba(8, 10, 15, 0.75);
+  backdrop-filter: blur(6px);
+  padding: 1.5rem;
+}
+
+.modal-backdrop--deep {
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modal, 100);
 }
 
 .modal {

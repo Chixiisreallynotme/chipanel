@@ -1,6 +1,6 @@
 <script>
 	import { serverState, fmtNum, barWidth, UNAVAILABLE } from './serverState.js';
-	import { Activity, Users, Cpu, HardDrive, Gauge, Check, AlertTriangle, HelpCircle } from 'lucide-svelte';
+	import { Activity, Users, Cpu, HardDrive, Gauge, Check, AlertTriangle, HelpCircle } from '$lib/icons.js';
 
 	// Every tile below reads this one snapshot, so they cannot contradict each
 	// other the way "Arrêté" + "En ligne" + "Podman : Actif" used to (B1).

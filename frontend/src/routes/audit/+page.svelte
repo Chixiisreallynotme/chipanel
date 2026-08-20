@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { apiGet, apiFetch } from '$lib/api/client.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		ShieldAlert,
 		ShieldCheck,
@@ -25,7 +26,7 @@
 		Copy,
 		X,
 		Eye
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/** @type {Array<{ id: string, timestamp_secs: number, username: string, action: string, category: string, status: string, details: any, ip_address?: string }>} */
 	let events = $state([]);
@@ -280,13 +281,16 @@
 				<span>Chargement des événements d'audit...</span>
 			</div>
 		{:else if events.length === 0}
-			<div class="empty-state">
-				<ShieldCheck size={40} class="text-muted" />
-				<p>Aucun événement ne correspond aux critères de recherche.</p>
-				<button class="btn btn-secondary btn-sm" onclick={() => { searchQuery = ''; selectedCategory = 'all'; selectedStatus = 'ALL'; loadAuditLogs(); }}>
-					Réinitialiser les filtres
-				</button>
-			</div>
+			<EmptyState description="Aucun événement ne correspond aux critères de recherche.">
+				{#snippet icon()}
+					<ShieldCheck size={40} class="text-muted" />
+				{/snippet}
+				{#snippet action()}
+					<button class="btn btn-secondary btn-sm" onclick={() => { searchQuery = ''; selectedCategory = 'all'; selectedStatus = 'ALL'; loadAuditLogs(); }}>
+						Réinitialiser les filtres
+					</button>
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<div class="table-wrapper">
 				<table class="data-table">
@@ -355,8 +359,8 @@
 
 <!-- Modal Détail Événement JSON -->
 {#if showDetailModal && selectedEvent}
-	<div class="modal-backdrop" onclick={() => (showDetailModal = false)} role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} role="dialog">
+	<div class="modal-backdrop" onclick={() => (showDetailModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
+		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
 			<div class="modal-header">
 				<div class="modal-title-with-badge">
 					<h2 class="modal-title font-mono">{selectedEvent.action}</h2>
@@ -589,15 +593,6 @@
 	}
 
 	.loading-state,
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: var(--space-12);
-		gap: var(--space-3);
-		color: var(--text-muted);
-	}
 
 	/* Modal */
 	.modal-backdrop {

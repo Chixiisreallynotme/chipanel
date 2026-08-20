@@ -1,5 +1,6 @@
 <script>
 	import { apiPost, apiFetch } from '$lib/api/client.js';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		X,
 		Archive,
@@ -15,7 +16,7 @@
 		RefreshCw,
 		FileArchive,
 		ShieldAlert
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let {
 		isOpen = false,
@@ -415,17 +416,14 @@
 {/if}
 
 <!-- Double Confirmation Restore Dialog Overlay -->
-{#if backupToRestore}
-	<div
-		class="modal-backdrop sub-modal-backdrop"
-		onclick={cancelRestore}
-		onkeydown={(e) => e.key === 'Escape' && cancelRestore()}
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="restore-confirm-title"
-		tabindex="-1"
+<Modal
+		open={!!backupToRestore}
+		onclose={() => (isRestoring ? null : cancelRestore())}
+		class="modal confirm-modal"
+		backdropClass="sub-modal-backdrop"
+		ariaLabelledBy="restore-confirm-title"
 	>
-		<div class="modal confirm-modal" onclick={(e) => e.stopPropagation()}>
+		{#snippet content()}
 			<div class="modal-header danger-header">
 				<div class="confirm-title-row">
 					<ShieldAlert size={22} class="icon-danger" />
@@ -495,22 +493,18 @@
 					<span>Overwrite & Restore Backup</span>
 				</button>
 			</div>
-		</div>
-	</div>
-{/if}
+		{/snippet}
+	</Modal>
 
 <!-- Delete Confirmation Dialog Overlay -->
-{#if backupToDelete}
-	<div
-		class="modal-backdrop sub-modal-backdrop"
-		onclick={cancelDelete}
-		onkeydown={(e) => e.key === 'Escape' && cancelDelete()}
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="delete-confirm-title"
-		tabindex="-1"
+<Modal
+		open={!!backupToDelete}
+		onclose={() => (isDeleting ? null : cancelDelete())}
+		class="modal confirm-modal"
+		backdropClass="sub-modal-backdrop"
+		ariaLabelledBy="delete-confirm-title"
 	>
-		<div class="modal confirm-modal" onclick={(e) => e.stopPropagation()}>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="confirm-title-row">
 					<Trash2 size={20} class="icon-danger" />
@@ -556,9 +550,8 @@
 					<span>Confirm Delete</span>
 				</button>
 			</div>
-		</div>
-	</div>
-{/if}
+		{/snippet}
+	</Modal>
 
 <style>
 	.backup-modal {

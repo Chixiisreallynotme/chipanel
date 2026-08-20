@@ -1,6 +1,6 @@
 <script>
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
-	import { Terminal, AlertTriangle, XCircle, Inbox } from 'lucide-svelte';
+	import { Terminal, AlertTriangle, XCircle, Inbox } from '$lib/icons.js';
 
 	// Extract the 5 most recent console log events from live wsStore
 	let recentLogs = $derived.by(() => {

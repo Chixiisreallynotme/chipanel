@@ -1,6 +1,6 @@
 <script>
 	import { preferences } from '$lib/stores/preferences.svelte.js';
-	import { HardDrive, Zap, AlertTriangle, CheckCircle2, Info, Sparkles } from 'lucide-svelte';
+	import { HardDrive, Zap, AlertTriangle, CheckCircle2, Info, Sparkles } from '$lib/icons.js';
 
 	let {
 		allocatedRamGb = $bindable(4),

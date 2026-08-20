@@ -18,7 +18,7 @@
 		Palette,
 		ShieldCheck,
 		Radio
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 	import { apiPost, apiFetch } from '$lib/api/client.js';
 
 	/**
@@ -50,6 +50,7 @@
 
 	// Local filtering and modal states
 	let searchQuery = $state('');
+	// svelte-ignore state_referenced_locally — captures the initial folder filter only
 	let filterTargetDir = $state(initialTargetDir); // 'all', 'plugins', 'mods', 'resourcepacks', 'datapacks'
 	let filterStatus = $state('all'); // 'all', 'enabled', 'disabled'
 	let filterLoader = $state('all'); // 'all', 'paper', 'spigot', 'purpur', 'fabric', 'forge', 'neoforge', 'quilt'
@@ -718,7 +719,7 @@
 {#if deleteModalOpen && pluginToDelete}
 	<div class="modal-backdrop" onclick={closeDeleteModal} role="presentation">
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-lg" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+		<div class="modal-card card shadow-lg" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
 			<div class="modal-header">
 				<div class="modal-title-with-icon">
 					<div class="modal-icon-box icon-danger">

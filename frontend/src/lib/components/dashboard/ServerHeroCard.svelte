@@ -1,7 +1,7 @@
 <script>
 	import { browser } from '$app/environment';
 	import { serverState, UNAVAILABLE } from './serverState.js';
-	import { Copy, Check, Clock, Server, Globe } from 'lucide-svelte';
+	import { Copy, Check, Clock, Server, Globe } from '$lib/icons.js';
 
 	let {
 		serverTitle = 'Survie',

@@ -8,6 +8,7 @@
 	import ImportWorldModal from '$lib/components/worlds/ImportWorldModal.svelte';
 	import ConfigureWorldModal from '$lib/components/worlds/ConfigureWorldModal.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Globe,
 		Compass,
@@ -25,7 +26,7 @@
 		Play,
 		Trash2,
 		AlertTriangle
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	// Main Page Data States
 	let worlds = $state([]);
@@ -463,11 +464,11 @@
 				<p class="empty-title">Loading worlds...</p>
 			</div>
 		{:else if worlds.length === 0 && pendingWorlds.length === 0}
-			<div class="empty-state-card card">
-				<Globe size={36} class="empty-icon" />
-				<p class="empty-title">No worlds on the server</p>
-				<p class="empty-desc">Create a world to get started.</p>
-			</div>
+			<EmptyState card title="No worlds on the server" description="Create a world to get started.">
+				{#snippet icon()}
+					<Globe size={36} class="empty-icon" />
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<div class="worlds-grid">
 				{#each pendingWorlds as pending (pending.name)}
@@ -896,11 +897,6 @@
 		font-size: var(--font-size-md);
 		font-weight: var(--font-weight-semibold);
 		color: var(--text-primary);
-	}
-
-	.empty-desc {
-		font-size: var(--font-size-sm);
-		color: var(--text-muted);
 	}
 
 	/* Pending (not-yet-generated) world card */

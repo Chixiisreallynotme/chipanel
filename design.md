@@ -588,3 +588,56 @@ Playwright     → zéro overflow sur setup et toutes les pages cockpit
 Routes alias   → plugins → /addons?tab=plugins, modpacks → /addons?tab=modpacks,
                  profiles → /addons?tab=profiles
 ```
+
+## 15. Session Design Council IV — Kit UI Consolidé, Barrel d'Icones, Lazy-Load CodeMirror & A11y Modales (2026-08-20)
+
+### 15.1 Kit de Primitives `ui/`
+
+Répertoire `frontend/src/lib/components/ui/` — les primitives réutilisables du design system :
+
+| Composant | Rôle | Contrat |
+| :--- | :--- | :--- |
+| `Spinner.svelte` | Loading inline (`--spin` global) | `size`, `label` (aria-label), `class` |
+| `EmptyState.svelte` | État vide canonique | `title`, `description` (**string OU snippet**), `icon`/`action` (snippets), `variant: standard \| card \| compact \| dashed`, `class` |
+| `Modal.svelte` | Shell de modale accessible | `open`, `onclose`, `class` (classes du panneau), `backdropClass`, `role`/`ariaLabelledBy`, `initialFocus`, `closeOnBackdrop`, contenu via `{#snippet content()}` |
+| `PageHeader.svelte` | Header de page canonique (Design Council II) | `title`, `subtitle`, `actions` (snippet), `backLink` |
+| `RedirectState.svelte` | État de redirection | `to`, `message` |
+| `ConfirmDialog.svelte` | Confirmation accessible de référence | boutons `.btn-danger`/`.btn-secondary`, focus trap, ESC |
+
+Variants `EmptyState` calées sur des usages réels : `card` (bordure + bg-surface, ex-worlds), `compact` (titre base/medium, desc xs, icône opacity .5, ex-PlayerListCard), `dashed` (bg-base + bordure tirets `--border-focus`, ex-StatusEffectsPanel). Titre canonique `.empty-title` = `font-size-md` + `font-weight-semibold`.
+
+### 15.2 Barrel d'Icones `icons.js`
+
+`frontend/src/lib/icons.js` re-exporte les 133 icônes Lucide utilisées (seul fichier important `lucide-svelte`). Tous les composants importent depuis `$lib/icons.js` — permet un futur swap de librairie sans toucher 66 fichiers. Migration : `import { X } from 'lucide-svelte'` → `import { X } from '$lib/icons.js'`.
+
+### 15.3 Lazy-Load CodeMirror (`/files`)
+
+`routes/files/+page.svelte` charge `ConfigEditor` via `{#await import(...)}` — CodeMirror (296 Ko) n'est plus dans le chunk initial. Chunk JS non-lazy : **56 Ko** (était 103 Ko après barre-laterale, 320 Ko avant chantier). État `.editor-loading-state` avec `Spinner`.
+
+### 15.4 Contrat A11y Modal Unifié
+
+Toute modale passe par `Modal.svelte` (7 fichiers migrés : Create/Configure/ImportWorld, WorldBackup, ConfigDiff, VersionPicker, PlayerProfile) :
+
+- `role="dialog"` + `aria-modal="true"` + `aria-labelledby` + `tabindex="-1"` sur le panneau.
+- Focus initial sur le premier élément focusable à l'ouverture, focus restauré sur le déclencheur à la fermeture.
+- Fermeture ESC (`svelte:window`) et clic backdrop (`closeOnBackdrop`).
+- Tab trap : le focus reste dans la modale (cycle premier/dernier focusable).
+- Backdrops spécialisés externalisés : `.modal-backdrop--dim` (ex-VersionPicker) et `.modal-backdrop--deep` (ex-ConfigDiff) dans `app.css`.
+- Gardes busy dans `onclose` (ex. `submitting ? null : onClose()`) pour bloquer la fermeture pendant un traitement.
+
+### 15.5 Vérification
+
+```
+npm run check  → 0 erreur / 58 warnings (tous faux positifs "Unused CSS" :
+                 classes passées à des composants icônes ou via props de modale,
+                 requises à l'exécution — ne PAS supprimer)
+npm run build  → 2,1 Mo total, chunk non-lazy 56 Ko, CodeMirror lazy 296 Ko
+Playwright     → modales vérifiées (role/focus/ESC/backdrop/trap), zéro overflow
+                 16 pages × 4 viewports
+Micro-fixes    → 5 selecteurs segment-* morts supprimés (ModpackCatalogBrowser),
+                 18 role="dialog" sans tabindex corrigés, role="button" sur slots
+                 interactifs InventoryVisualizer + QuickCommands, handlers clavier
+                 sur divs cliquables (backdrops/panneaux), line-clamp standard,
+                 tabindex radiogroup ChunkyPanel, svelte-ignore state_referenced_locally
+                 (initialiseurs de props intentionnels)
+```

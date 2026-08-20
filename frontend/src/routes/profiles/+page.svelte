@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { HardDrive } from 'lucide-svelte';
+	import { HardDrive } from '$lib/icons.js';
 	import RedirectState from '$lib/components/ui/RedirectState.svelte';
 
 	onMount(() => {

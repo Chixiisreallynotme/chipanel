@@ -14,7 +14,7 @@
 		Terminal,
 		Share2,
 		ExternalLink
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	let severityFilter = $state('ALL'); // 'ALL' | 'INFO' | 'WARN' | 'ERROR'
 	let searchQuery = $state('');

@@ -4,6 +4,7 @@
 	import VersionPickerButton from '$lib/components/common/VersionPickerButton.svelte';
 	import EngineLogo from '$lib/components/common/EngineLogo.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Sliders,
 		RefreshCw,
@@ -26,7 +27,7 @@
 		Info,
 		Layers,
 		Activity
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	const UNKNOWN = 'Inconnu';
 
@@ -483,13 +484,16 @@
 			<p>Chargement des moteurs et versions...</p>
 		</div>
 	{:else if filteredEngines.length === 0}
-		<div class="empty-state">
-			<Info size={28} class="text-muted" />
-			<p>Aucun moteur ne correspond à "{searchQuery}".</p>
-			<button class="btn btn-secondary btn-sm" onclick={() => { searchQuery = ''; selectedCategory = 'ALL'; }}>
-				Réinitialiser les filtres
-			</button>
-		</div>
+		<EmptyState description={`Aucun moteur ne correspond à "${searchQuery}".`}>
+			{#snippet icon()}
+				<Info size={28} class="text-muted" />
+			{/snippet}
+			{#snippet action()}
+				<button class="btn btn-secondary btn-sm" onclick={() => { searchQuery = ''; selectedCategory = 'ALL'; }}>
+					Réinitialiser les filtres
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="engine-grid">
 			{#each filteredEngines as engine (engine.id)}
@@ -1725,7 +1729,7 @@
 		color: #94a3b8;
 	}
 
-	.empty-state, .loading-state {
+	.loading-state {
 		display: flex;
 		flex-direction: column;
 		align-items: center;

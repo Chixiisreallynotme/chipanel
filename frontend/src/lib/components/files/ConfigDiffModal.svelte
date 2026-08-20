@@ -1,6 +1,7 @@
 <script>
 	import { apiFetch } from '$lib/api/client.js';
-	import { FileCode, Plus, Minus, Check, X, AlertTriangle, Loader2 } from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import { FileCode, Plus, Minus, Check, X, AlertTriangle, Loader2 } from '$lib/icons.js';
 
 	/**
 	 * @type {{
@@ -50,9 +51,8 @@
 	}
 </script>
 
-{#if open}
-	<div class="modal-backdrop" onclick={onCancel} role="presentation">
-		<div class="modal-dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="diff-modal-title">
+<Modal open={open} onclose={onCancel} class="modal-dialog" backdropClass="modal-backdrop--deep" ariaLabelledBy="diff-modal-title">
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="header-left">
 					<div class="icon-badge">
@@ -132,22 +132,11 @@
 					<span>Confirmer & Enregistrer</span>
 				</button>
 			</div>
-		</div>
-	</div>
-{/if}
+		{/snippet}
+	</Modal>
 
 <style>
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.75);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal, 100);
-		padding: var(--space-4);
-	}
+	
 
 	.modal-dialog {
 		background-color: var(--bg-surface);

@@ -21,7 +21,7 @@
 		Palette,
 		Scroll,
 		Cpu
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} ModrinthProject
@@ -64,6 +64,7 @@
 	let searchQuery = $state('');
 	let selectedLoader = $state('all'); // 'all', 'paper', 'purpur', 'spigot', 'fabric', 'forge', 'neoforge', 'quilt'
 	let selectedGameVersion = $state('all');
+	// svelte-ignore state_referenced_locally — captures the initial project type filter only
 	let selectedProjectType = $state(initialProjectType); // 'all', 'plugin', 'mod', 'resourcepack', 'datapack'
 	let selectedSort = $state('downloads'); // 'relevance', 'downloads', 'follows', 'newest', 'updated'
 	let autoFilterServer = $state(true);
@@ -485,7 +486,7 @@
 {#if installModalOpen && selectedProject}
 	<div class="modal-backdrop" onclick={closeInstallModal} role="presentation">
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
 			<div class="modal-header">
 				<div class="modal-project-title-box">
 					{#if selectedProject.icon_url}
@@ -742,6 +743,7 @@
 		line-height: 1.45;
 		margin: 0;
 		display: -webkit-box;
+		line-clamp: 3;
 		-webkit-line-clamp: 3;
 		-webkit-box-orient: vertical;
 		overflow: hidden;

@@ -1,6 +1,6 @@
 <script>
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
-	import { Send, Terminal, CornerDownLeft, Sparkles } from 'lucide-svelte';
+	import { Send, Terminal, CornerDownLeft, Sparkles } from '$lib/icons.js';
 
 	let { commandValue = $bindable(''), onCommandExecuted } = $props();
 

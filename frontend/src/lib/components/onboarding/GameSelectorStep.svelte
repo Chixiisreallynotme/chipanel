@@ -1,5 +1,5 @@
 <script>
-	import { Monitor, Gamepad2, Layers, CheckCircle2 } from 'lucide-svelte';
+	import { Monitor, Gamepad2, Layers, CheckCircle2 } from '$lib/icons.js';
 
 	let { selectedGame = $bindable('JAVA') } = $props();
 

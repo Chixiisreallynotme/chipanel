@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import uPlot from 'uplot';
 	import 'uplot/dist/uPlot.min.css';
-	import { Activity, Gauge, Cpu, HardDrive, Users } from 'lucide-svelte';
+	import { Activity, Gauge, Cpu, HardDrive, Users } from '$lib/icons.js';
 
 	/**
 	 * @typedef {{

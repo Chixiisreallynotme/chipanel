@@ -10,7 +10,7 @@
 	import MetricsChart from '$lib/components/metrics/MetricsChart.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
-	import { Play, Moon, Power, RotateCw, AlertTriangle, X, Sparkles } from 'lucide-svelte';
+	import { Play, Moon, Power, RotateCw, AlertTriangle, X, Sparkles } from '$lib/icons.js';
 
 	const UNKNOWN = 'inconnu';
 	const EMPTY_HISTORY = { timestamps: [], tps: [], cpu: [], ram_mb: [], players: [] };

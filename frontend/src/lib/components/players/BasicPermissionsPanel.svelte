@@ -1,5 +1,6 @@
 <script>
 	import { apiGet, apiPost } from '$lib/api/client.js';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Shield,
 		ShieldAlert,
@@ -17,7 +18,7 @@
 		Clock,
 		ArrowRight,
 		X
-	} from 'lucide-svelte';
+	} from '$lib/icons.js';
 
 	/**
 	 * @typedef {Object} PermissionNodeInfo
@@ -261,16 +262,14 @@
 					<span>Querying LuckPerms permissions database...</span>
 				</div>
 			{:else if filteredPermissions.length === 0}
-				<div class="empty-state">
-					<Sliders size={36} class="icon-muted" />
-					{#if searchQuery}
-						<h4>No Matching Permissions</h4>
-						<p>No permission nodes match your search query "{searchQuery}".</p>
-					{:else}
-						<h4>No Permission Nodes Found</h4>
-						<p>No explicit permission nodes registered for this player or LuckPerms info not returned.</p>
-					{/if}
-				</div>
+				<EmptyState
+						title={searchQuery ? 'No Matching Permissions' : 'No Permission Nodes Found'}
+						description={searchQuery ? `No permission nodes match your search query "${searchQuery}".` : 'No explicit permission nodes registered for this player or LuckPerms info not returned.'}
+					>
+						{#snippet icon()}
+							<Sliders size={36} class="icon-muted" />
+						{/snippet}
+					</EmptyState>
 			{:else}
 				<div class="table-container nodes-table-container">
 					<table class="table nodes-table">
@@ -482,27 +481,6 @@
 	}
 
 	.loading-state,
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-2);
-		padding: var(--space-8);
-		color: var(--text-muted);
-		text-align: center;
-	}
-
-	.empty-state h4 {
-		color: var(--text-primary);
-		font-size: var(--font-size-md);
-	}
-
-	.empty-state p {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-	}
-
 	.nodes-table-container {
 		border-radius: var(--radius-input);
 	}
