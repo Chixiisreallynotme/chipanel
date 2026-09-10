@@ -1,5 +1,27 @@
 @import './lib/styles/tokens.css';
 
+/* Task 1 UI Kit: tokens Moteurs + echelle z-index design.md (override tokens.css via cascade). */
+:root {
+  --bg-surface-2: #111827;
+  --bg-inset: #0b0f19;
+  --accent-indigo: #4f46e5;
+  --accent-indigo-hover: #4338ca;
+  --accent-indigo-text: #818cf8;
+  --accent-indigo-bg: rgba(99, 102, 241, 0.15);
+  --accent-indigo-border: rgba(99, 102, 241, 0.3);
+  --accent-emerald-text: #34d399;
+  --accent-emerald-bg: rgba(16, 185, 129, 0.15);
+  --accent-emerald-border: rgba(16, 185, 129, 0.3);
+
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-drawer: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+}
+
 /* ==========================================================================
    ChiServ / ChiPanel Design System - Core UI Component Suite
    Dark-mode-first, Milled Monolith & Hyprland Physics engineering.
