@@ -9,11 +9,9 @@
 		UserPlus,
 		ShieldCheck,
 		Trash2,
-		X,
 		Loader2,
 		CheckCircle2,
 		AlertCircle,
-		Info,
 		Crown,
 		UserCheck,
 		Eye,
@@ -30,6 +28,8 @@
 		KeyRound
 	} from '$lib/icons.js';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import FormModal from '$lib/components/ui/FormModal.svelte';
+	import { toast } from '$lib/stores/toast.svelte.js';
 
 	/**
 	 * `apiGet` parses the body as JSON and rethrows whatever `res.json()` threw. When
@@ -129,7 +129,7 @@
 			id: 'operator',
 			title: 'Opérateur serveur',
 			desc: 'Gestion quotidienne du serveur, console, fichiers & mods',
-			badgeClass: 'badge-purple',
+			badgeClass: 'badge-blue',
 			icon: UserCheck,
 			permissions: [
 				'server.start', 'server.stop', 'server.console',
@@ -155,7 +155,7 @@
 			id: 'viewer',
 			title: 'Observateur audit',
 			desc: 'Consultation en lecture seule des fichiers et métriques',
-			badgeClass: 'badge-info',
+			badgeClass: 'badge-blue',
 			icon: Eye,
 			permissions: [
 				'files.read',
@@ -166,7 +166,7 @@
 			id: 'custom',
 			title: 'Profil personnalisé',
 			desc: 'Sélectionnez manuellement chaque autorisation individuelle',
-			badgeClass: 'badge-secondary',
+			badgeClass: '',
 			icon: Sliders,
 			permissions: []
 		}
@@ -195,20 +195,7 @@
 	/** @type {'forbidden' | 'error'} */
 	let errorKind = $state('error');
 
-	// Toast Notifications
-	let toasts = $state([]);
-
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		const toast = { id, type, title, message };
-		toasts = [...toasts, toast];
-		setTimeout(() => removeToast(id), 4500);
-	}
-
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
-	}
-
+	// Toasts via le store global (ToastHost monte dans le layout).
 	async function loadUsers() {
 		isLoading = true;
 		error = null;
@@ -306,7 +293,7 @@
 
 			closeCreateModal();
 			await loadUsers();
-			addToast('success', 'Compte créé', `Le compte utilisateur "${res.username}" a été créé avec succès.`);
+			toast.success('Compte créé', `Le compte utilisateur "${res.username}" a été créé avec succès.`);
 		} catch (err) {
 			console.error('Failed to create user account:', err);
 			createError = toDisplayError(err).message;
@@ -321,7 +308,7 @@
 	/** @param {any} userItem */
 	function requestDeleteUser(userItem) {
 		if (userItem.username.toLowerCase() === auth.user?.username?.toLowerCase()) {
-			addToast('error', 'Action interdite', 'Vous ne pouvez pas supprimer votre propre compte actuellement actif.');
+			toast.error('Action interdite', 'Vous ne pouvez pas supprimer votre propre compte actuellement actif.');
 			return;
 		}
 		userPendingDelete = userItem;
@@ -340,12 +327,11 @@
 			});
 
 			users = users.filter((u) => u.username !== userItem.username);
-			addToast('info', 'Compte supprimé', `Le compte "${userItem.username}" a été révoqué.`);
+			toast.info('Compte supprimé', `Le compte "${userItem.username}" a été révoqué.`);
 		} catch (err) {
 			console.error('Failed to delete user:', err);
 			const shown = toDisplayError(err);
-			addToast(
-				'error',
+			toast.error(
 				shown.kind === 'forbidden' ? 'Accès refusé' : 'Erreur de suppression',
 				shown.message
 			);
@@ -358,13 +344,13 @@
 				return { label: 'Administrateur', badgeClass: 'badge-danger', icon: Crown };
 			case 'operator':
 			case 'op':
-				return { label: 'Opérateur', badgeClass: 'badge-purple', icon: UserCheck };
+				return { label: 'Opérateur', badgeClass: 'badge-blue', icon: UserCheck };
 			case 'moderator':
 				return { label: 'Modérateur', badgeClass: 'badge-warning', icon: ShieldCheck };
 			case 'custom':
-				return { label: 'Sur mesure', badgeClass: 'badge-secondary', icon: Sliders };
+				return { label: 'Sur mesure', badgeClass: '', icon: Sliders };
 			default:
-				return { label: 'Lecteur', badgeClass: 'badge-info', icon: Eye };
+				return { label: 'Lecteur', badgeClass: 'badge-blue', icon: Eye };
 		}
 	}
 
@@ -493,9 +479,9 @@
 											{#if user.role.toLowerCase() === 'admin' || user.permissions?.includes('*')}
 												<span class="badge badge-success">Accès Total (Tous droits)</span>
 											{:else if permCount > 0}
-												<span class="badge badge-purple">{permCount} Autorisations activées</span>
+												<span class="badge badge-blue">{permCount} Autorisations activées</span>
 											{:else}
-												<span class="badge badge-info">Lecture seule</span>
+												<span class="badge badge-blue">Lecture seule</span>
 											{/if}
 										</td>
 										<td class="text-muted text-sm tabular-nums">
@@ -526,29 +512,12 @@
 	</div>
 
 	<!-- Modal: Create User Account with Custom Permissions -->
-	{#if createModalOpen}
-		<div class="modal-backdrop" onclick={closeCreateModal} aria-hidden="true">
-			<div
-				class="hardware-shell modal-hardware-shell"
-				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => e.stopPropagation()}
-				role="dialog"
-				tabindex="-1"
-				aria-modal="true"
-				aria-labelledby="create-user-modal-title"
-			>
-				<div class="hardware-core modal create-modal modal-lg">
-					<div class="modal-header">
-						<div class="modal-title-row">
-							<UserPlus size={22} class="text-accent" />
-							<h3 id="create-user-modal-title" class="modal-title">Créer un compte & personnaliser les droits</h3>
-						</div>
-						<button class="btn btn-ghost btn-icon btn-sm" onclick={closeCreateModal} disabled={isCreating} aria-label="Fermer">
-							<X size={18} />
-						</button>
-					</div>
-
-					<div class="modal-body font-ui">
+	<FormModal
+		open={createModalOpen}
+		title="Créer un compte & personnaliser les droits"
+		onClose={closeCreateModal}
+		style="max-width:720px"
+	>
 						{#if createError}
 							<div class="alert-banner alert-danger mb-4">
 								<AlertCircle size={18} />
@@ -671,53 +640,23 @@
 								</div>
 							{/each}
 						</div>
-					</div>
+		{#snippet footer()}
+			<button class="btn btn-secondary" onclick={closeCreateModal} disabled={isCreating}>
+				Annuler
+			</button>
+			<button
+				class="btn btn-primary {isCreating ? 'btn-loading' : ''}"
+				onclick={confirmCreateUser}
+				disabled={isCreating || !newUsername.trim() || !newPassword}
+			>
+				{#if !isCreating}
+					<UserPlus size={16} />
+				{/if}
+				<span>Créer le Compte ({selectedPermissions.length} droits)</span>
+			</button>
+		{/snippet}
+	</FormModal>
 
-					<div class="modal-footer">
-						<button class="btn btn-secondary" onclick={closeCreateModal} disabled={isCreating}>
-							Annuler
-						</button>
-						<button
-							class="btn btn-primary {isCreating ? 'btn-loading' : ''}"
-							onclick={confirmCreateUser}
-							disabled={isCreating || !newUsername.trim() || !newPassword}
-						>
-							{#if !isCreating}
-								<UserPlus size={16} />
-							{/if}
-							<span>Créer le Compte ({selectedPermissions.length} droits)</span>
-						</button>
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Toast Notifications -->
-	{#if toasts.length > 0}
-		<div class="toast-container">
-			{#each toasts as toast (toast.id)}
-				<div class="toast-item toast-{toast.type}">
-					<div class="toast-icon">
-						{#if toast.type === 'success'}
-							<CheckCircle2 size={18} />
-						{:else if toast.type === 'error'}
-							<AlertCircle size={18} />
-						{:else}
-							<Info size={18} />
-						{/if}
-					</div>
-					<div class="toast-body">
-						<h4 class="toast-title">{toast.title}</h4>
-						<p class="toast-message">{toast.message}</p>
-					</div>
-					<button class="btn btn-ghost btn-icon btn-sm toast-close-btn" onclick={() => removeToast(toast.id)}>
-						<X size={14} />
-					</button>
-				</div>
-			{/each}
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -867,44 +806,8 @@
 		gap: 5px;
 	}
 
-	.badge-purple {
-		background-color: var(--accent-purple-bg);
-		color: var(--accent-purple-text);
-		border: 1px solid var(--accent-purple-border);
-	}
-
-	.badge-danger {
-		background-color: var(--danger-bg);
-		color: var(--danger-text);
-		border: 1px solid var(--danger-border);
-	}
-
-	.badge-warning {
-		background-color: var(--warning-bg);
-		color: var(--warning);
-		border: 1px solid var(--warning-border);
-	}
-
-	.badge-info {
-		background-color: var(--accent-blue-bg);
-		color: var(--accent-blue-text);
-		border: 1px solid var(--accent-blue-border);
-	}
-
-	.badge-secondary {
-		background-color: var(--bg-elevated);
-		color: var(--text-secondary);
-		border: 1px solid var(--border-subtle);
-	}
-
 	.text-right {
 		text-align: right;
-	}
-
-	/* Modal Styling */
-	.modal-lg {
-		max-width: 760px;
-		width: 95vw;
 	}
 
 	.form-grid-2 {
@@ -1096,35 +999,4 @@
 		to { transform: rotate(360deg); }
 	}
 
-	.toast-container {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		z-index: var(--z-toast);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		max-width: 380px;
-		width: 100%;
-	}
-
-	.toast-item {
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-card);
-		padding: var(--space-4);
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		box-shadow: var(--elevation-shadow);
-	}
-
-	.toast-success { border-color: var(--accent-green-border); }
-	.toast-error { border-color: var(--danger-border); }
-	.toast-info { border-color: var(--accent-purple-border); }
-
-	.toast-body { flex: 1; }
-	.toast-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-primary); }
-	.toast-message { font-size: var(--font-size-xs); color: var(--text-secondary); margin-top: 2px; }
-	.toast-close-btn { color: var(--text-muted); }
 </style>
