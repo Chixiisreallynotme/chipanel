@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import PlayerList from '$lib/components/players/PlayerList.svelte';
 	import PlayerProfileModal from '$lib/components/players/PlayerProfileModal.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
@@ -11,13 +12,8 @@
 		ShieldAlert,
 		Crown,
 		RefreshCw,
-		CheckCircle2,
-		AlertCircle,
-		Info,
 		X,
-		UserX,
-		ShieldCheck,
-		Radio
+		UserX
 	} from '$lib/icons.js';
 
 	// Page state
@@ -37,30 +33,6 @@
 	let targetPlayerForQuickAction = $state(null);
 	let quickActionReason = $state('');
 	let isExecutingQuickAction = $state(false);
-
-	// Toast Notification state
-	/**
-	 * @typedef {Object} ToastItem
-	 * @property {string} id
-	 * @property {'success' | 'error' | 'info'} type
-	 * @property {string} title
-	 * @property {string} message
-	 */
-	let toasts = $state([]);
-
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		const toast = { id, type, title, message };
-		toasts = [...toasts, toast];
-
-		setTimeout(() => {
-			removeToast(id);
-		}, 4500);
-	}
-
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
-	}
 
 	function updateTimestamp() {
 		const now = new Date();
@@ -86,8 +58,7 @@
 		} catch (err) {
 			console.error('Failed to load players:', err);
 			if (showFullLoader) {
-				addToast(
-					'error',
+				toast.error(
 					'Failed to Load Players',
 					err.message || 'Could not fetch player list from server.'
 				);
@@ -140,8 +111,7 @@
 		const execEvent = wsStore.lastPendingExecution;
 		if (execEvent && execEvent.timestamp !== previousExecutionStamp) {
 			previousExecutionStamp = execEvent.timestamp;
-			addToast(
-				'success',
+			toast.success(
 				'Commandes différées appliquées',
 				`${execEvent.commandsCount} commande(s) exécutée(s) avec succès pour ${execEvent.playerName} !`
 			);
@@ -207,8 +177,7 @@
 			});
 
 			const actionFormatted = action.toUpperCase();
-			addToast(
-				'success',
+			toast.success(
 				`Player ${actionFormatted}`,
 				res.message || `Successfully executed ${action} for ${username}`
 			);
@@ -217,7 +186,7 @@
 			await loadPlayers(false);
 		} catch (err) {
 			console.error(`Failed quick ${action} action:`, err);
-			addToast('error', `Action Failed`, err.message || `Failed to ${action} ${username}`);
+			toast.error(`Action Failed`, err.message || `Failed to ${action} ${username}`);
 		} finally {
 			isExecutingQuickAction = false;
 		}
@@ -245,7 +214,7 @@
 			permissions: 'Permissions Updated'
 		};
 
-		addToast('success', actionTitleMap[actionType] || 'Action Executed', message);
+		toast.success(actionTitleMap[actionType] || 'Action Executed', message);
 		loadPlayers(false);
 	}
 
@@ -455,37 +424,6 @@
 		</div>
 	{/if}
 
-	<!-- Toast Notifications Container -->
-	{#if toasts.length > 0}
-		<div class="toast-container">
-			{#each toasts as toast (toast.id)}
-				<div class="toast-item toast-{toast.type}">
-					<div class="toast-icon">
-						{#if toast.type === 'success'}
-							<CheckCircle2 size={18} />
-						{:else if toast.type === 'error'}
-							<AlertCircle size={18} />
-						{:else}
-							<Info size={18} />
-						{/if}
-					</div>
-
-					<div class="toast-body">
-						<h4 class="toast-title">{toast.title}</h4>
-						<p class="toast-message">{toast.message}</p>
-					</div>
-
-					<button
-						class="btn btn-ghost btn-icon btn-sm toast-close-btn"
-						onclick={() => removeToast(toast.id)}
-						aria-label="Close notification"
-					>
-						<X size={14} />
-					</button>
-				</div>
-			{/each}
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -673,111 +611,4 @@
 		margin-bottom: 0;
 	}
 
-	/* Toast Notification Container */
-	.toast-container {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		z-index: var(--z-toast);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		max-width: 380px;
-		width: 100%;
-		pointer-events: none;
-	}
-
-	.toast-item {
-		pointer-events: auto;
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border-focus);
-		border-radius: var(--radius-card);
-		padding: var(--space-4);
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		box-shadow: var(--elevation-shadow);
-		animation: toastSlideIn var(--transition-fast) ease-out;
-	}
-
-	@keyframes toastSlideIn {
-		from {
-			opacity: 0;
-			transform: translateY(16px) scale(0.96);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0) scale(1);
-		}
-	}
-
-	.toast-success {
-		border-color: var(--accent-green-border);
-		background: linear-gradient(
-			135deg,
-			var(--bg-surface) 0%,
-			rgba(74, 222, 128, 0.05) 100%
-		);
-	}
-
-	.toast-success .toast-icon {
-		color: var(--accent-green);
-	}
-
-	.toast-error {
-		border-color: var(--danger-border);
-		background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(244, 63, 94, 0.05) 100%);
-	}
-
-	.toast-error .toast-icon {
-		color: var(--danger-text);
-	}
-
-	.toast-info {
-		border-color: var(--accent-blue-border);
-		background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(99, 102, 241, 0.05) 100%);
-	}
-
-	.toast-info .toast-icon {
-		color: var(--accent-blue-text);
-	}
-
-	.toast-body {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.toast-title {
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
-		line-height: 1.3;
-	}
-
-	.toast-message {
-		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
-		margin-top: 2px;
-		word-break: break-word;
-	}
-
-	.toast-close-btn {
-		color: var(--text-muted);
-		padding: 2px;
-		margin-top: -2px;
-		margin-right: -4px;
-	}
-
-	.toast-close-btn:hover {
-		color: var(--text-primary);
-	}
-
-	@media (max-width: 640px) {
-		.toast-container {
-			left: var(--space-4);
-			right: var(--space-4);
-			bottom: var(--space-4);
-			max-width: none;
-		}
-	}
 </style>
