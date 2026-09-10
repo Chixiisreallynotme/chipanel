@@ -38,6 +38,7 @@
 	} from '$lib/icons.js';
 	import ChiPanelLogo from '$lib/components/common/ChiPanelLogo.svelte';
 	import ModeSwitch from '$lib/components/onboarding/ModeSwitch.svelte';
+	import ToastHost from '$lib/components/ui/ToastHost.svelte';
 	import QuakeTerminalHUD from '$lib/components/console/QuakeTerminalHUD.svelte';
 
 	let { children } = $props();
@@ -402,6 +403,7 @@
 			<!-- Page Body Render Slot -->
 			<main class="main-body">
 				{@render children()}
+				<ToastHost />
 			</main>
 		</div>
 	</div>
