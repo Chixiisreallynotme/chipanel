@@ -5,18 +5,15 @@
 	import GroupEditorModal from '$lib/components/permissions/GroupEditorModal.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		ShieldCheck,
 		Plus,
-		CheckCircle2,
 		AlertCircle,
-		Info,
-		X,
 		RefreshCw,
 		Layers,
 		Key,
-		Crown,
-		Sparkles
+		Crown
 	} from '$lib/icons.js';
 
 	/**
@@ -38,21 +35,12 @@
 	 * @property {LuckPermsPermissionNode[]} [permissions]
 	 */
 
-	/**
-	 * @typedef {Object} ToastNotification
-	 * @property {string} id
-	 * @property {string} title
-	 * @property {string} message
-	 * @property {'success' | 'danger' | 'warning' | 'info'} type
-	 */
-
 	// Component Reactive State
 	let groups = $state([]);
 	let loading = $state(false);
 	let loadError = $state('');
 	let isModalOpen = $state(false);
 	let editingGroup = $state(null);
-	let toasts = $state([]);
 
 	// Statistics Derivations
 	let totalGroupsCount = $derived(groups.length);
@@ -76,21 +64,6 @@
 	onMount(() => {
 		loadGroups();
 	});
-
-	// Toast Notification Dispatcher
-	function addToast(title, message, type = 'success') {
-		const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-		const toast = { id, title, message, type };
-		toasts = [toast, ...toasts];
-
-		setTimeout(() => {
-			removeToast(id);
-		}, 4000);
-	}
-
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
-	}
 
 	/**
 	 * DELETE helper. `apiFetch` only throws on 401, so a rejected delete would otherwise
@@ -147,10 +120,9 @@
 			};
 			isModalOpen = true;
 		} catch (err) {
-			addToast(
+			toast.error(
 				'Group Unavailable',
-				err?.message || `Could not read group "${group.name}" from the server.`,
-				'danger'
+				err?.message || `Could not read group "${group.name}" from the server.`
 			);
 		} finally {
 			loading = false;
@@ -172,10 +144,10 @@
 
 		try {
 			const res = await apiDelete(`/api/permissions/groups/${encodeURIComponent(gName)}`);
-			addToast('Group Deleted', res?.message || `LuckPerms group "${gName}" was removed.`, 'danger');
+			toast.error('Group Deleted', res?.message || `LuckPerms group "${gName}" was removed.`);
 		} catch (err) {
 			// The group still exists on the server - it stays in the list.
-			addToast('Deletion Failed', err?.message || `Failed to delete group "${gName}".`, 'danger');
+			toast.error('Deletion Failed', err?.message || `Failed to delete group "${gName}".`);
 		} finally {
 			// Re-read: the list must reflect the server, never an assumed outcome.
 			await loadGroups();
@@ -258,16 +230,15 @@
 				await applyGroupChanges(gName, editingGroup, updatedGroup);
 			}
 
-			addToast(
+			toast.success(
 				isNew ? 'Group Created' : 'Group Saved',
-				`LuckPerms group "${gName}" was ${isNew ? 'created' : 'updated'} on the server.`,
-				'success'
+				`LuckPerms group "${gName}" was ${isNew ? 'created' : 'updated'} on the server.`
 			);
 			isModalOpen = false;
 		} catch (err) {
 			// The server rejected part of the change. Report its message verbatim, keep the
 			// editor open, and never patch the list with an outcome that did not happen.
-			addToast('Save Failed', err?.message || `Failed to save LuckPerms group "${gName}".`, 'danger');
+			toast.error('Save Failed', err?.message || `Failed to save LuckPerms group "${gName}".`);
 		} finally {
 			// Re-read: whatever did or did not apply, the list shows the server's state.
 			await loadGroups();
@@ -286,38 +257,6 @@
 />
 
 <div class="permissions-page">
-	<!-- Toast Notifications Container -->
-	<div class="toast-container" aria-live="polite" aria-atomic="true">
-		{#each toasts as toast (toast.id)}
-			<div class="toast toast-{toast.type}">
-				<div class="toast-icon">
-					{#if toast.type === 'success'}
-						<CheckCircle2 size={18} />
-					{:else if toast.type === 'danger'}
-						<AlertCircle size={18} />
-					{:else if toast.type === 'warning'}
-						<AlertCircle size={18} />
-					{:else}
-						<Info size={18} />
-					{/if}
-				</div>
-
-				<div class="toast-body">
-					<h4 class="toast-title">{toast.title}</h4>
-					<p class="toast-message">{toast.message}</p>
-				</div>
-
-				<button
-					class="btn btn-ghost btn-icon btn-sm toast-close"
-					onclick={() => removeToast(toast.id)}
-					aria-label="Close notification"
-				>
-					<X size={14} />
-				</button>
-			</div>
-		{/each}
-	</div>
-
 	<!-- Page Header -->
 	<PageHeader
 		title="LuckPerms Visual Editor"
@@ -330,7 +269,7 @@
 			{#if loadError}
 				<span class="badge badge-danger font-mono">Unavailable</span>
 			{:else}
-				<span class="badge badge-purple font-mono">{totalGroupsCount} Groups</span>
+				<span class="badge badge-blue font-mono">{totalGroupsCount} Groups</span>
 			{/if}
 		{/snippet}
 		<button class="btn btn-ghost btn-sm" onclick={loadGroups} disabled={loading} title="Refresh LuckPerms groups">
@@ -445,101 +384,6 @@
 		position: relative;
 	}
 
-	/* Toast Notifications */
-	.toast-container {
-		position: fixed;
-		top: var(--space-6);
-		right: var(--space-6);
-		z-index: var(--z-toast);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		max-width: 380px;
-		width: calc(100vw - 32px);
-		pointer-events: none;
-	}
-
-	.toast {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-card);
-		box-shadow: var(--elevation-shadow);
-		pointer-events: auto;
-		animation: toastSlideIn var(--transition-fast) cubic-bezier(0.16, 1, 0.3, 1);
-	}
-
-	@keyframes toastSlideIn {
-		from {
-			opacity: 0;
-			transform: translateX(30px) scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: translateX(0) scale(1);
-		}
-	}
-
-	.toast-success {
-		border-color: var(--accent-green-border);
-	}
-
-	.toast-success .toast-icon {
-		color: var(--accent-green-text);
-	}
-
-	.toast-danger {
-		border-color: var(--danger-border);
-	}
-
-	.toast-danger .toast-icon {
-		color: var(--danger-text);
-	}
-
-	.toast-warning {
-		border-color: var(--accent-orange-border);
-	}
-
-	.toast-warning .toast-icon {
-		color: var(--accent-orange-text);
-	}
-
-	.toast-info {
-		border-color: var(--accent-blue-border);
-	}
-
-	.toast-info .toast-icon {
-		color: var(--accent-blue-text);
-	}
-
-	.toast-body {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.toast-title {
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
-		line-height: 1.3;
-	}
-
-	.toast-message {
-		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
-		margin-top: 2px;
-	}
-
-	.toast-close {
-		color: var(--text-muted);
-		padding: 0;
-		width: 24px;
-		height: 24px;
-	}
-
 	/* Quick Stats Bar */
 	.stats-grid {
 		display: grid;
@@ -640,12 +484,6 @@
 		font-size: var(--font-size-xs);
 		color: var(--text-muted);
 		margin-top: var(--space-1);
-	}
-
-	.badge-purple {
-		background-color: rgba(139, 92, 246, 0.12);
-		color: var(--accent-purple-text);
-		border-color: rgba(139, 92, 246, 0.25);
 	}
 
 	.font-mono {
