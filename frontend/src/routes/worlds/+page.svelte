@@ -9,23 +9,18 @@
 	import ConfigureWorldModal from '$lib/components/worlds/ConfigureWorldModal.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import FormModal from '$lib/components/ui/FormModal.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		Globe,
-		Compass,
 		Archive,
 		RefreshCw,
 		CheckCircle2,
-		AlertCircle,
-		Info,
-		X,
-		Maximize2,
-		Shield,
-		Sliders,
 		Plus,
 		Upload,
 		Play,
-		Trash2,
-		AlertTriangle
+		Trash2
 	} from '$lib/icons.js';
 
 	// Main Page Data States
@@ -72,29 +67,22 @@
 	let borderWarning = $state(5);
 	let isSavingBorder = $state(false);
 
-	// Toast Notification State
-	/**
-	 * @typedef {Object} ToastItem
-	 * @property {string} id
-	 * @property {'success' | 'error' | 'info'} type
-	 * @property {string} title
-	 * @property {string} message
-	 */
-	let toasts = $state([]);
-
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		const toast = { id, type, title, message };
-		toasts = [...toasts, toast];
-
-		setTimeout(() => {
-			removeToast(id);
-		}, 4500);
+	// Toasts via le store global (ToastHost monte dans le layout).
+	/** @param {'success' | 'error' | 'warning' | 'info'} type @param {string} title @param {string} message */
+	function forwardToast(type, title, message) {
+		toast.show(type, title, message);
 	}
 
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
-	}
+	// Message de confirmation de suppression (inclut l'avertissement monde actif).
+	let deleteMessage = $derived.by(() => {
+		if (!deleteTarget) return '';
+		let msg = `This will permanently delete the world folder ${deleteTarget.folder_name}. A safety ZIP backup is created automatically first and kept in the backups list.`;
+		if (activeWorld === deleteTarget.folder_name) {
+			msg +=
+				' This is the active world. The server will be stopped, and it will have no world to load until you create or switch to another one.';
+		}
+		return msg;
+	});
 
 	// Chunky status polling timer reference
 	let chunkyPollTimer = null;
@@ -170,7 +158,7 @@
 			}
 		} catch (err) {
 			console.error('Failed to load worlds data:', err);
-			addToast('error', 'Failed to Load Worlds', err.message || 'Could not fetch worlds data from server.');
+			toast.error( 'Failed to Load Worlds', err.message || 'Could not fetch worlds data from server.');
 		} finally {
 			loading = false;
 		}
@@ -268,11 +256,11 @@
 				warning_distance: Number(borderWarning)
 			};
 
-			addToast('success', 'Worldborder Updated', res.message || `Worldborder for '${worldName}' updated to ${borderSize.toLocaleString()} blocks.`);
+			toast.success( 'Worldborder Updated', res.message || `Worldborder for '${worldName}' updated to ${borderSize.toLocaleString()} blocks.`);
 			closeBorderModal();
 		} catch (err) {
 			console.error('Failed to update worldborder:', err);
-			addToast('error', 'Update Failed', err.message || `Could not update worldborder for '${worldName}'.`);
+			toast.error( 'Update Failed', err.message || `Could not update worldborder for '${worldName}'.`);
 		} finally {
 			isSavingBorder = false;
 		}
@@ -280,7 +268,7 @@
 
 	function handleStartPregenFromCard(world) {
 		pregenTargetWorld = world.folder_name;
-		addToast('info', 'Pre-generator Target Selected', `Selected '${world.level_name}' in Chunky pre-generator below.`);
+		toast.info( 'Pre-generator Target Selected', `Selected '${world.level_name}' in Chunky pre-generator below.`);
 		// Scroll smoothly to chunky panel
 		const element = document.getElementById('chunky-panel-section');
 		if (element) {
@@ -302,12 +290,12 @@
 			// restart generates/loads it asynchronously (polled into place).
 			activeWorld = name;
 			const res = await apiPost('/api/worlds/switch', { name });
-			addToast('success', 'World Switched', res.message || `Active world set to '${name}'.`);
-			if (res.warning) addToast('info', 'Warning', res.warning);
-			addToast('info', 'Generating in background', 'The server is restarting on this world in the background.');
+			toast.success( 'World Switched', res.message || `Active world set to '${name}'.`);
+			if (res.warning) toast.info( 'Warning', res.warning);
+			toast.info( 'Generating in background', 'The server is restarting on this world in the background.');
 			await loadWorldsData();
 		} catch (err) {
-			addToast('error', 'Switch Failed', err.message || `Could not switch to '${name}'.`);
+			toast.error( 'Switch Failed', err.message || `Could not switch to '${name}'.`);
 			await loadWorldsData();
 		} finally {
 			switchInFlight = false;
@@ -334,12 +322,12 @@
 			if (!res.ok) {
 				throw new Error(data?.error || `Delete failed (HTTP ${res.status})`);
 			}
-			addToast('success', 'World Deleted', data?.message || `World '${world.folder_name}' deleted.`);
-			if (data?.warning) addToast('info', 'Warning', data.warning);
+			toast.success( 'World Deleted', data?.message || `World '${world.folder_name}' deleted.`);
+			if (data?.warning) toast.info( 'Warning', data.warning);
 			deleteTarget = null;
 			await loadWorldsData();
 		} catch (err) {
-			addToast('error', 'Delete Failed', err.message || `Could not delete '${world.folder_name}'.`);
+			toast.error( 'Delete Failed', err.message || `Could not delete '${world.folder_name}'.`);
 		} finally {
 			deleteInFlight = false;
 		}
@@ -352,7 +340,7 @@
 				world.folder_name + '.zip'
 			);
 		} catch (err) {
-			addToast('error', 'Download Failed', err.message || `Could not download '${world.folder_name}'.`);
+			toast.error( 'Download Failed', err.message || `Could not download '${world.folder_name}'.`);
 		}
 	}
 
@@ -459,10 +447,11 @@
 		</div>
 
 		{#if loading && worlds.length === 0 && pendingWorlds.length === 0}
-			<div class="empty-state-card card">
-				<RefreshCw size={36} class="spin-slow empty-icon" />
-				<p class="empty-title">Loading worlds...</p>
-			</div>
+			<EmptyState card title="Loading worlds..." description="Fetching worlds data from the server.">
+				{#snippet icon()}
+					<RefreshCw size={36} class="spin-slow empty-icon" />
+				{/snippet}
+			</EmptyState>
 		{:else if worlds.length === 0 && pendingWorlds.length === 0}
 			<EmptyState card title="No worlds on the server" description="Create a world to get started.">
 				{#snippet icon()}
@@ -546,7 +535,7 @@
 			{worlds}
 			selectedWorldName={pregenTargetWorld}
 			onActionSuccess={handleChunkyActionSuccess}
-			onToast={addToast}
+			onToast={forwardToast}
 		/>
 	</div>
 
@@ -558,127 +547,99 @@
 		{loading}
 		onClose={() => (backupModalOpen = false)}
 		onRefresh={loadWorldsData}
-		onToast={addToast}
+		onToast={forwardToast}
 	/>
 
 	<!-- Edit Worldborder Modal -->
-	{#if borderModalOpen && targetWorldForBorder}
-		<div
-			class="modal-backdrop"
-			onclick={closeBorderModal}
-			onkeydown={handleKeydown}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="border-modal-title"
-			tabindex="-1"
-		>
-			<div class="modal border-modal" role="presentation" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
-				<div class="modal-header">
-					<div class="title-with-icon">
-						<Maximize2 size={20} class="icon-blue" />
-						<h3 id="border-modal-title" class="modal-title">
-							Edit Worldborder: <span class="font-mono text-blue">{targetWorldForBorder.level_name}</span>
-						</h3>
-					</div>
-					<button
-						type="button"
-						class="btn btn-ghost btn-icon btn-sm"
-						onclick={closeBorderModal}
-						disabled={isSavingBorder}
-						aria-label="Close Worldborder Modal"
-					>
-						<X size={18} />
-					</button>
+	<FormModal
+		open={borderModalOpen}
+		title={targetWorldForBorder ? `Edit Worldborder: ${targetWorldForBorder.level_name}` : 'Edit Worldborder'}
+		onClose={closeBorderModal}
+	>
+		<form id="border-form" class="border-modal-body" onsubmit={saveWorldborder}>
+			<div class="form-group">
+				<label for="border-size-input" class="label label-required">Worldborder Diameter / Size (Blocks)</label>
+				<input
+					id="border-size-input"
+					type="number"
+					class="input font-mono"
+					min="10"
+					step="100"
+					bind:value={borderSize}
+					required
+				/>
+				<span class="field-hint">Sets boundary diameter. Common values: 60000000 (Default Unbounded), 10000, 25000.</span>
+			</div>
+
+			<div class="form-grid-2">
+				<div class="form-group">
+					<label for="border-center-x" class="label">Center X Coordinate</label>
+					<input
+						id="border-center-x"
+						type="number"
+						class="input font-mono"
+						bind:value={borderCenterX}
+					/>
 				</div>
 
-				<form onsubmit={saveWorldborder}>
-					<div class="modal-body border-modal-body">
-						<div class="form-group">
-							<label for="border-size-input" class="label label-required">Worldborder Diameter / Size (Blocks)</label>
-							<input
-								id="border-size-input"
-								type="number"
-								class="input font-mono"
-								min="10"
-								step="100"
-								bind:value={borderSize}
-								required
-							/>
-							<span class="field-hint">Sets boundary diameter. Common values: 60000000 (Default Unbounded), 10000, 25000.</span>
-						</div>
-
-						<div class="form-grid-2">
-							<div class="form-group">
-								<label for="border-center-x" class="label">Center X Coordinate</label>
-								<input
-									id="border-center-x"
-									type="number"
-									class="input font-mono"
-									bind:value={borderCenterX}
-								/>
-							</div>
-
-							<div class="form-group">
-								<label for="border-center-z" class="label">Center Z Coordinate</label>
-								<input
-									id="border-center-z"
-									type="number"
-									class="input font-mono"
-									bind:value={borderCenterZ}
-								/>
-							</div>
-						</div>
-
-						<div class="form-grid-2">
-							<div class="form-group">
-								<label for="border-damage" class="label">Damage Per Block (Outside Border)</label>
-								<input
-									id="border-damage"
-									type="number"
-									step="0.05"
-									min="0"
-									class="input font-mono"
-									bind:value={borderDamage}
-								/>
-							</div>
-
-							<div class="form-group">
-								<label for="border-warning" class="label">Warning Distance (Blocks)</label>
-								<input
-									id="border-warning"
-									type="number"
-									min="0"
-									class="input font-mono"
-									bind:value={borderWarning}
-								/>
-							</div>
-						</div>
-					</div>
-
-					<div class="modal-footer">
-						<button
-							type="button"
-							class="btn btn-secondary"
-							onclick={closeBorderModal}
-							disabled={isSavingBorder}
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							class="btn btn-primary {isSavingBorder ? 'btn-loading' : ''}"
-							disabled={isSavingBorder}
-						>
-							{#if !isSavingBorder}
-								<CheckCircle2 size={16} />
-							{/if}
-							<span>Save Worldborder</span>
-						</button>
-					</div>
-				</form>
+				<div class="form-group">
+					<label for="border-center-z" class="label">Center Z Coordinate</label>
+					<input
+						id="border-center-z"
+						type="number"
+						class="input font-mono"
+						bind:value={borderCenterZ}
+					/>
+				</div>
 			</div>
-		</div>
-	{/if}
+
+			<div class="form-grid-2">
+				<div class="form-group">
+					<label for="border-damage" class="label">Damage Per Block (Outside Border)</label>
+					<input
+						id="border-damage"
+						type="number"
+						step="0.05"
+						min="0"
+						class="input font-mono"
+						bind:value={borderDamage}
+					/>
+				</div>
+
+				<div class="form-group">
+					<label for="border-warning" class="label">Warning Distance (Blocks)</label>
+					<input
+						id="border-warning"
+						type="number"
+						min="0"
+						class="input font-mono"
+						bind:value={borderWarning}
+					/>
+				</div>
+			</div>
+		</form>
+		{#snippet footer()}
+			<button
+				type="button"
+				class="btn btn-secondary"
+				onclick={closeBorderModal}
+				disabled={isSavingBorder}
+			>
+				Cancel
+			</button>
+			<button
+				type="submit"
+				form="border-form"
+				class="btn btn-primary {isSavingBorder ? 'btn-loading' : ''}"
+				disabled={isSavingBorder}
+			>
+				{#if !isSavingBorder}
+					<CheckCircle2 size={16} />
+				{/if}
+				<span>Save Worldborder</span>
+			</button>
+		{/snippet}
+	</FormModal>
 
 	<!-- Create / Import / Configure world modals -->
 	<CreateWorldModal
@@ -688,7 +649,7 @@
 			createModalOpen = false;
 			await loadWorldsData();
 		}}
-		onToast={addToast}
+		onToast={forwardToast}
 	/>
 
 	<ImportWorldModal
@@ -699,120 +660,27 @@
 			importModalOpen = false;
 			await loadWorldsData();
 		}}
-		onToast={addToast}
+		onToast={forwardToast}
 	/>
 
 	<ConfigureWorldModal
 		isOpen={configureModalOpen}
 		world={configureTarget}
 		onClose={() => (configureModalOpen = false)}
-		onToast={addToast}
+		onToast={forwardToast}
 	/>
 
 	<!-- Delete world confirmation -->
-	{#if deleteTarget}
-		<div
-			class="modal-backdrop"
-			onclick={() => (deleteInFlight ? null : (deleteTarget = null))}
-			onkeydown={(e) => e.key === 'Escape' && !deleteInFlight && (deleteTarget = null)}
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="delete-modal-title"
-			tabindex="-1"
-		>
-			<div class="modal border-modal" role="presentation" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
-				<div class="modal-header">
-					<div class="title-with-icon">
-						<AlertCircle size={20} class="text-danger" />
-						<h3 id="delete-modal-title" class="modal-title">
-							Delete World: <span class="font-mono text-blue">{deleteTarget.level_name}</span>
-						</h3>
-					</div>
-					<button
-						type="button"
-						class="btn btn-ghost btn-icon btn-sm"
-						onclick={() => (deleteTarget = null)}
-						disabled={deleteInFlight}
-						aria-label="Close Delete Modal"
-					>
-						<X size={18} />
-					</button>
-				</div>
+	<ConfirmDialog
+		open={deleteTarget !== null}
+		title={`Delete World: ${deleteTarget?.level_name ?? ''}`}
+		message={deleteMessage}
+		confirmLabel="Delete World"
+		busy={deleteInFlight}
+		onconfirm={confirmDelete}
+		oncancel={() => (deleteInFlight ? null : (deleteTarget = null))}
+	/>
 
-				<div class="modal-body border-modal-body">
-					<p class="delete-warning-text">
-						This will permanently delete the world folder
-						<span class="font-mono">{deleteTarget.folder_name}</span>. A safety ZIP backup is
-						created automatically first and kept in the backups list.
-					</p>
-					{#if activeWorld === deleteTarget.folder_name}
-						<div class="delete-warning-strong flex items-start gap-2">
-							<AlertTriangle size={16} class="flex-shrink-0" />
-							<p class="delete-warning-text m-0">
-								This is the <strong>active world</strong>. The server will be stopped, and it
-								will have no world to load until you create or switch to another one.
-							</p>
-						</div>
-					{/if}
-				</div>
-
-				<div class="modal-footer">
-					<button
-						type="button"
-						class="btn btn-secondary"
-						onclick={() => (deleteTarget = null)}
-						disabled={deleteInFlight}
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						class="btn btn-danger {deleteInFlight ? 'btn-loading' : ''}"
-						onclick={confirmDelete}
-						disabled={deleteInFlight}
-					>
-						{#if !deleteInFlight}
-							<AlertCircle size={16} />
-						{/if}
-						<span>Delete World</span>
-					</button>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Toast Notifications Stack Container -->
-	{#if toasts.length > 0}
-		<div class="toast-container">
-			{#each toasts as toast (toast.id)}
-				<div class="toast-item toast-{toast.type}">
-					<div class="toast-icon">
-						{#if toast.type === 'success'}
-							<CheckCircle2 size={18} />
-						{:else if toast.type === 'error'}
-							<AlertCircle size={18} />
-						{:else}
-							<Info size={18} />
-						{/if}
-					</div>
-
-					<div class="toast-body">
-						<h4 class="toast-title">{toast.title}</h4>
-						<p class="toast-message">{toast.message}</p>
-					</div>
-
-					<button
-						type="button"
-						class="btn btn-ghost btn-icon btn-sm toast-close-btn"
-						onclick={() => removeToast(toast.id)}
-						aria-label="Close Notification"
-					>
-						<X size={14} />
-					</button>
-				</div>
-			{/each}
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -877,26 +745,8 @@
 		gap: var(--space-6);
 	}
 
-	/* Empty State Card */
-	.empty-state-card {
-		padding: var(--space-12) var(--space-6);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-3);
-		text-align: center;
-		color: var(--text-muted);
-	}
-
 	.empty-icon {
 		color: var(--text-muted);
-	}
-
-	.empty-title {
-		font-size: var(--font-size-md);
-		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
 	}
 
 	/* Pending (not-yet-generated) world card */
@@ -944,40 +794,6 @@
 		margin-top: 2px;
 	}
 
-	/* Border Modal */
-	.border-modal {
-		max-width: 540px;
-		width: 90vw;
-	}
-
-	.title-with-icon {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.text-blue {
-		color: var(--accent-blue-text);
-	}
-
-	.text-danger {
-		color: var(--danger-text);
-	}
-
-	.delete-warning-text {
-		font-size: var(--font-size-sm);
-		color: var(--text-secondary);
-		line-height: 1.6;
-	}
-
-	.delete-warning-strong {
-		color: var(--accent-orange-text);
-		background-color: var(--accent-orange-bg);
-		border: 1px solid var(--accent-orange-border);
-		border-radius: var(--radius-sm);
-		padding: var(--space-2) var(--space-3);
-	}
-
 	.border-modal-body {
 		display: flex;
 		flex-direction: column;
@@ -1005,101 +821,6 @@
 		to { transform: rotate(360deg); }
 	}
 
-	/* Toast Container */
-	.toast-container {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		z-index: var(--z-toast);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		max-width: 380px;
-		width: 100%;
-		pointer-events: none;
-	}
-
-	.toast-item {
-		pointer-events: auto;
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border-focus);
-		border-radius: var(--radius-card);
-		padding: var(--space-4);
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		box-shadow: var(--elevation-shadow);
-		animation: toastSlideIn var(--transition-fast) ease-out;
-	}
-
-	@keyframes toastSlideIn {
-		from {
-			opacity: 0;
-			transform: translateY(16px) scale(0.96);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0) scale(1);
-		}
-	}
-
-	.toast-success {
-		border-color: var(--accent-green-border);
-		background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(74, 222, 128, 0.05) 100%);
-	}
-
-	.toast-success .toast-icon {
-		color: var(--accent-green);
-	}
-
-	.toast-error {
-		border-color: var(--danger-border);
-		background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(244, 63, 94, 0.05) 100%);
-	}
-
-	.toast-error .toast-icon {
-		color: var(--danger-text);
-	}
-
-	.toast-info {
-		border-color: var(--accent-blue-border);
-		background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(99, 102, 241, 0.05) 100%);
-	}
-
-	.toast-info .toast-icon {
-		color: var(--accent-blue-text);
-	}
-
-	.toast-body {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.toast-title {
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
-		line-height: 1.3;
-	}
-
-	.toast-message {
-		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
-		margin-top: 2px;
-		word-break: break-word;
-	}
-
-	.toast-close-btn {
-		color: var(--text-muted);
-		padding: 2px;
-		margin-top: -2px;
-		margin-right: -4px;
-	}
-
-	.toast-close-btn:hover {
-		color: var(--text-primary);
-	}
-
 	@media (max-width: 640px) {
 		.buttons-group {
 			justify-content: stretch;
@@ -1111,13 +832,6 @@
 
 		.form-grid-2 {
 			grid-template-columns: 1fr;
-		}
-
-		.toast-container {
-			left: var(--space-4);
-			right: var(--space-4);
-			bottom: var(--space-4);
-			max-width: none;
 		}
 	}
 </style>
