@@ -19,7 +19,8 @@
 </Modal>
 
 <style>
-	.fm-panel {
+	/* :global car .fm-panel s'applique au div rendu par Modal.svelte (hors scope de ce composant) */
+	:global(.fm-panel) {
 		width: 100%; max-width: 600px;
 		background: var(--bg-surface-2);
 		border: 1px solid var(--border);
