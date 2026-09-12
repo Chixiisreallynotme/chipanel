@@ -1,12 +1,12 @@
 <script>
 	/** @import { Snippet } from 'svelte'; */
-	/** @type {{ badge: string, title: string, visual?: Snippet, meta?: Snippet, kpis?: Snippet }} */
+	/** @type {{ badge?: Snippet, title: string, visual?: Snippet, meta?: Snippet, kpis?: Snippet }} */
 	let { badge, title, visual, meta, kpis } = $props();
 </script>
 
 <section class="banner-card">
 	<div class="banner-primary">
-		<div class="banner-badge"><span>{badge}</span></div>
+		{#if badge}<div class="banner-badge">{@render badge()}</div>{/if}
 		<div class="banner-identity">
 			{#if visual}{@render visual()}{/if}
 			<div class="identity-info">
@@ -24,9 +24,9 @@
 		grid-template-columns: 1.35fr 1fr;
 		gap: 1.5rem;
 		padding: 1.75rem;
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-engine-lg);
 		background: var(--bg-surface-2);
-		border: 1px solid var(--border);
+		border: 1px solid var(--border-engine-08);
 		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 	}
 	.banner-primary { display: flex; flex-direction: column; gap: 0.875rem; }
@@ -37,6 +37,6 @@
 	}
 	.banner-identity { display: flex; align-items: flex-start; gap: 1.25rem; }
 	.identity-info { display: flex; flex-direction: column; gap: 0.5rem; }
-	.banner-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
+	.banner-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: var(--engine-slate-50); }
 	@media (max-width: 960px) { .banner-card { grid-template-columns: 1fr; } }
 </style>

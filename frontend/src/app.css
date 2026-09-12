@@ -13,6 +13,26 @@
   --accent-emerald-bg: rgba(16, 185, 129, 0.15);
   --accent-emerald-border: rgba(16, 185, 129, 0.3);
 
+  /* engine-exact */
+  --engine-slate-50: #f8fafc;
+  --engine-slate-100: #f1f5f9;
+  --engine-slate-200: #e2e8f0;
+  --engine-slate-300: #cbd5e1;
+  --engine-slate-400: #94a3b8;
+  --engine-slate-500: #64748b;
+  --engine-slate-600: #475569;
+  --engine-white: #ffffff;
+  --engine-emerald: #10b981;
+  --engine-emerald-bg: rgba(16, 185, 129, 0.12);
+  --engine-emerald-border: rgba(16, 185, 129, 0.25);
+  --engine-amber: #f59e0b;
+  --engine-indigo: #6366f1;
+  --engine-red-300: #fca5a5;
+  --border-engine-05: rgba(255, 255, 255, 0.05);
+  --border-engine-06: rgba(255, 255, 255, 0.06);
+  --border-engine-08: rgba(255, 255, 255, 0.08);
+  --radius-engine-lg: 16px;
+
   --z-dropdown: 10;
   --z-sticky: 20;
   --z-drawer: 30;

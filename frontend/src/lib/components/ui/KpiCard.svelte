@@ -17,12 +17,12 @@
 		padding: 0.875rem 1.125rem;
 		border-radius: var(--radius-card);
 		background: var(--bg-inset);
-		border: 1px solid var(--border-subtle);
+		border: 1px solid var(--border-engine-05);
 	}
-	.kpi-label { font-size: var(--font-size-xs); color: var(--text-muted); font-weight: 500; }
+	.kpi-label { font-size: var(--font-size-xs); color: var(--engine-slate-500); font-weight: 500; }
 	.kpi-val {
 		display: flex; align-items: center; gap: 0.45rem;
-		font-size: 0.9375rem; font-weight: 600; color: var(--text-primary);
+		font-size: 0.9375rem; font-weight: 600; color: var(--engine-slate-100);
 		font-variant-numeric: tabular-nums;
 	}
 </style>

@@ -23,21 +23,22 @@
 		background: var(--bg-surface-2);
 		padding: 0.35rem;
 		border-radius: var(--radius-card);
-		border: 1px solid var(--border-subtle);
+		border: 1px solid var(--border-engine-06);
 		overflow-x: auto;
 	}
 	.tab-item {
 		padding: 0.5rem 1rem;
-		font-size: var(--font-size-sm);
+		font-size: var(--font-size-xs);
 		font-weight: 600;
 		border-radius: var(--radius-btn);
 		border: none;
 		background: transparent;
 		color: var(--text-secondary);
 		cursor: pointer;
+		transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 		white-space: nowrap;
 	}
 	.tab-item:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.04); }
-	.tab-active { background: var(--accent-indigo) !important; color: #ffffff !important; }
+	.tab-active { background: var(--accent-blue-solid) !important; color: #ffffff !important; }
 	.tab-item:active:not(:disabled) { transform: scale(0.97); }
 </style>
