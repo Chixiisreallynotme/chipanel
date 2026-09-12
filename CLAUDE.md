@@ -42,6 +42,11 @@ podman run -d --name chipanel-local -p 127.0.0.1:25501:25500 \
 
 Then open **http://localhost:25501** (login `admin` / `preview`). Port `25501` on the host maps to `25500` inside the container. `HOST=0.0.0.0` is required inside the container or the port mapping silently can't reach it (the app's own default is `127.0.0.1`, only overridden to `0.0.0.0` in the real deployed quadlet). No Podman socket, RCON, or Minecraft data volumes are mounted, so container/player/telemetry data reads as disconnected/default — this is for reviewing UI, routing, and auth, not for exercising real server integration. Stop it with `podman rm -f chipanel-local`.
 
+Two preview-only gotchas (the deployed quadlet mounts real host dirs, so it never hits these):
+- `/app/data` is root-owned in the image and the runtime runs as `USER 1000` — without a writable `DATA_DIR` the boot dies with `Failed to create telemetry DB dir: Permission denied`. Always mount a volume on `/app/data` (or set `DATA_DIR` to a writable path).
+- A fresh named volume is root-owned too — `chown -R 1000:1000` it once from a throwaway container before first run.
+- Browser calls go to `:25501` but the default `ALLOWED_ORIGINS` only lists `:25500` — pass `-e ALLOWED_ORIGINS=*` for local preview or API calls get CORS-rejected.
+
 ## Architecture
 
 **One container serves both halves.** The Axum backend serves `/api/*` and the `/ws` WebSocket, and falls back to `ServeDir`/`ServeFile` of the SvelteKit static build for everything else (`main.rs`) — there's no separate web server or reverse proxy for the frontend in production. `vite.config.js`'s dev proxy is what lets `npm run dev` and `cargo run` work together locally.
