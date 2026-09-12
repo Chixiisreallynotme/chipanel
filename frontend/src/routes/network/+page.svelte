@@ -343,17 +343,17 @@
 
 	.kpi-success {
 		background-color: rgba(16, 185, 129, 0.15);
-		color: #10B981;
+		color: var(--engine-emerald);
 	}
 
 	.kpi-warning {
 		background-color: rgba(245, 158, 11, 0.15);
-		color: #F59E0B;
+		color: var(--engine-amber);
 	}
 
 	.kpi-info {
 		background-color: rgba(59, 130, 246, 0.15);
-		color: #60A5FA;
+		color: var(--accent-blue-text);
 	}
 
 	.kpi-content {
