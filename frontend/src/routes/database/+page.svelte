@@ -407,17 +407,17 @@
 
 	.kpi-warning {
 		background-color: rgba(245, 158, 11, 0.15);
-		color: #F59E0B;
+		color: var(--engine-amber);
 	}
 
 	.kpi-info {
 		background-color: rgba(59, 130, 246, 0.15);
-		color: #60A5FA;
+		color: var(--accent-blue-text);
 	}
 
 	.kpi-danger {
 		background-color: rgba(239, 68, 68, 0.15);
-		color: #EF4444;
+		color: var(--danger);
 	}
 
 	.kpi-content {
@@ -584,7 +584,7 @@
 		border: 1px solid rgba(239, 68, 68, 0.3);
 		border-radius: var(--radius-sm);
 		font-size: var(--font-size-sm);
-		color: #FCA5A5;
+		color: var(--engine-red-300);
 	}
 
 	.warning-callout p {
