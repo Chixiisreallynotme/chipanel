@@ -444,9 +444,9 @@
 	}
 
 	.kpi-primary { background-color: var(--accent-blue-bg); color: var(--accent-blue-text); }
-	.kpi-success { background-color: rgba(16, 185, 129, 0.15); color: #10B981; }
-	.kpi-info { background-color: rgba(59, 130, 246, 0.15); color: #60A5FA; }
-	.kpi-danger { background-color: rgba(239, 68, 68, 0.15); color: #EF4444; }
+	.kpi-success { background-color: rgba(16, 185, 129, 0.15); color: var(--engine-emerald); }
+	.kpi-info { background-color: rgba(59, 130, 246, 0.15); color: var(--accent-blue-text); }
+	.kpi-danger { background-color: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
 	.kpi-content {
 		display: flex;
@@ -573,12 +573,12 @@
 
 	.status-success {
 		background-color: rgba(16, 185, 129, 0.15);
-		color: #10B981;
+		color: var(--engine-emerald);
 	}
 
 	.status-danger {
 		background-color: rgba(239, 68, 68, 0.15);
-		color: #EF4444;
+		color: var(--danger);
 	}
 
 	.details-cell {
