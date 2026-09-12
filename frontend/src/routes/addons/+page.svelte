@@ -8,6 +8,7 @@
 	import ModpackCatalogBrowser from '$lib/components/modpacks/ModpackCatalogBrowser.svelte';
 	import ProfileManager from '$lib/components/modpacks/ProfileManager.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		Package,
 		Boxes,
@@ -15,9 +16,7 @@
 		HardDrive,
 		Sparkles,
 		CheckCircle2,
-		AlertCircle,
 		AlertTriangle,
-		Info,
 		X,
 		Layers,
 		Cpu,
@@ -64,28 +63,9 @@
 		}
 	});
 
-	// Floating Toasts Notification System State
-	/**
-	 * @typedef {Object} ToastItem
-	 * @property {string} id
-	 * @property {'success' | 'error' | 'info'} type
-	 * @property {string} title
-	 * @property {string} message
-	 */
-	let toasts = $state([]);
-
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		const toast = { id, type, title, message };
-		toasts = [...toasts, toast];
-
-		setTimeout(() => {
-			removeToast(id);
-		}, 4500);
-	}
-
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
+	// Relais vers le store toast global pour les composants enfants (même signature qu'avant).
+	function forwardToast(type, title, message) {
+		toast.show(type, title, message);
 	}
 
 	// Fetch Server Context
@@ -117,7 +97,7 @@
 			installedPlugins = Array.isArray(data) ? data : [];
 		} catch (err) {
 			console.error('Error fetching installed addons:', err);
-			addToast('error', 'Échec du chargement', err.message || 'Impossible de charger les extensions installées.');
+			toast.error('Échec du chargement', err.message || 'Impossible de charger les extensions installées.');
 		} finally {
 			isLoadingInstalled = false;
 		}
@@ -133,21 +113,19 @@
 			updatesModalOpen = true;
 
 			if (availableUpdatesCount > 0) {
-				addToast(
-					'info',
+				toast.info(
 					'Mises à jour trouvées',
 					`${availableUpdatesCount} extension(s) peuvent être mise(s) à jour.`
 				);
 			} else {
-				addToast(
-					'success',
+				toast.success(
 					'Extensions à jour',
 					'Toutes vos extensions installées sont compatibles et à jour.'
 				);
 			}
 		} catch (err) {
 			console.error('Erreur vérification mises à jour:', err);
-			addToast('error', 'Erreur de vérification', err.message || 'Impossible de vérifier les mises à jour.');
+			toast.error('Erreur de vérification', err.message || 'Impossible de vérifier les mises à jour.');
 		} finally {
 			isCheckingUpdates = false;
 		}
@@ -171,14 +149,12 @@
 		try {
 			const res = await apiPost('/api/plugins/updates/apply', payload);
 			if (res.success) {
-				addToast(
-					'success',
+				toast.success(
 					'Mise à jour réussie',
 					`${res.updated_count} extension(s) mise(s) à jour avec succès. Pensez à redémarrer le serveur.`
 				);
 			} else if (res.errors && res.errors.length > 0) {
-				addToast(
-					'error',
+				toast.error(
 					'Mise à jour partielle',
 					res.errors.join(' | ')
 				);
@@ -191,7 +167,7 @@
 			availableUpdatesCount = refreshed.updates_available_count || 0;
 		} catch (err) {
 			console.error('Erreur application mises à jour:', err);
-			addToast('error', 'Erreur de mise à jour', err.message || 'Échec de la mise à jour.');
+			toast.error('Erreur de mise à jour', err.message || 'Échec de la mise à jour.');
 		} finally {
 			isApplyingUpdates = false;
 		}
@@ -215,15 +191,13 @@
 			);
 
 			const statusText = res.enabled ? 'activée' : 'désactivée';
-			addToast(
-				'success',
+			toast.success(
 				'Extension mise à jour',
 				`"${res.name}" a été ${statusText}. Redémarrez le serveur pour appliquer.`
 			);
 		} catch (err) {
 			console.error('Failed to toggle extension:', err);
-			addToast(
-				'error',
+			toast.error(
 				'Erreur de modification',
 				err.message || `Échec du changement d'état pour ${plugin.name}`
 			);
@@ -246,15 +220,13 @@
 				(p) => !(p.filename === plugin.filename && p.target_dir === plugin.target_dir)
 			);
 
-			addToast(
-				'success',
+			toast.success(
 				'Extension supprimée',
 				`"${plugin.name}" a été supprimée du serveur.`
 			);
 		} catch (err) {
 			console.error('Failed to delete extension:', err);
-			addToast(
-				'error',
+			toast.error(
 				'Erreur de suppression',
 				err.message || `Échec de la suppression de ${plugin.name}`
 			);
@@ -271,8 +243,7 @@
 				target_dir: targetDir
 			});
 
-			addToast(
-				'success',
+			toast.success(
 				'Installation réussie !',
 				`"${projectTitle || res.filename}" a été installé dans /${res.target_dir}/`
 			);
@@ -282,8 +253,7 @@
 			activeTab = targetDir;
 		} catch (err) {
 			console.error('Failed to install addon:', err);
-			addToast(
-				'error',
+			toast.error(
 				"Échec de l'installation",
 				err.message || `Impossible d'installer ${projectTitle || 'l\'extension'}.`
 			);
@@ -292,8 +262,7 @@
 
 	// Modpack Deploy handler
 	async function handleDeployModpack({ modpackTitle, profileName, loader, gameVersion }) {
-		addToast(
-			'success',
+		toast.success(
 			'Modpack déployé !',
 			`"${modpackTitle}" déployé dans le profil "${profileName}" (${loader} MC ${gameVersion || '1.20.4'}).`
 		);
@@ -306,8 +275,7 @@
 
 	// Profile Switch Handler
 	async function handleProfileSwitched(profile) {
-		addToast(
-			'success',
+		toast.success(
 			'Profil actif mis à jour',
 			`Le profil du serveur a été basculé vers "${profile.name}".`
 		);
@@ -317,8 +285,7 @@
 
 	// Profile Delete Handler
 	async function handleProfileDeleted(profile) {
-		addToast(
-			'info',
+		toast.info(
 			'Profil supprimé',
 			`Le profil "${profile.name}" a été supprimé.`
 		);
@@ -472,7 +439,7 @@
 			</div>
 
 			{#if activeTab === 'plugins' || activeTab === 'mods'}
-				<ToolsSyncPanel onToast={addToast} />
+				<ToolsSyncPanel onToast={forwardToast} />
 			{/if}
 
 			{#if subView === 'installed'}
@@ -484,7 +451,7 @@
 					onToggle={handleToggle}
 					onDelete={handleDelete}
 					onRefresh={loadInstalledPlugins}
-					onToast={addToast}
+					onToast={forwardToast}
 					{serverResourcePack}
 					onResourcePackChanged={(newRp) => (serverResourcePack = newRp)}
 				/>
@@ -624,33 +591,6 @@
 		</div>
 	{/if}
 
-	<!-- Floating Toast Notifications System -->
-	{#if toasts.length > 0}
-		<div class="toast-container">
-			{#each toasts as toast (toast.id)}
-				<div class="toast-item toast-{toast.type}">
-					<div class="toast-icon">
-						{#if toast.type === 'success'}
-							<CheckCircle2 size={18} />
-						{:else if toast.type === 'error'}
-							<AlertCircle size={18} />
-						{:else}
-							<Info size={18} />
-						{/if}
-					</div>
-
-					<div class="toast-body">
-						<div class="toast-title">{toast.title}</div>
-						<div class="toast-msg">{toast.message}</div>
-					</div>
-
-					<button class="toast-close" onclick={() => removeToast(toast.id)}>
-						<X size={14} />
-					</button>
-				</div>
-			{/each}
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -850,61 +790,6 @@
 	}
 	.ver-arrow {
 		color: var(--text-muted);
-	}
-
-	/* Toast Container */
-	.toast-container {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		z-index: var(--z-toast);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		max-width: 380px;
-	}
-	.toast-item {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-card);
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		box-shadow: var(--shadow-lg);
-		color: var(--text-primary);
-		font-size: var(--font-size-sm);
-	}
-	.toast-success {
-		border-color: var(--accent-green-border);
-		background-color: var(--bg-surface);
-	}
-	.toast-success .toast-icon {
-		color: var(--accent-green-text);
-	}
-	.toast-error {
-		border-color: var(--danger-border);
-		background-color: var(--bg-surface);
-	}
-	.toast-error .toast-icon {
-		color: var(--danger-text);
-	}
-	.toast-info {
-		border-color: var(--accent-blue-border);
-		background-color: var(--bg-surface);
-	}
-	.toast-info .toast-icon {
-		color: var(--accent-blue-text);
-	}
-	.toast-body { flex: 1; }
-	.toast-title { font-weight: var(--font-weight-semibold); margin-bottom: 2px; }
-	.toast-msg { font-size: var(--font-size-xs); color: var(--text-secondary); }
-	.toast-close {
-		background: none;
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		padding: 0;
 	}
 
 	/* Modal generic backdrop */
