@@ -6,14 +6,11 @@
 	import SparkProfilerCard from '$lib/components/metrics/SparkProfilerCard.svelte';
 	import AlertSettingsModal from '$lib/components/metrics/AlertSettingsModal.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		RefreshCw,
 		Sliders,
-		X,
-		CheckCircle2,
-		AlertCircle,
 		AlertTriangle,
-		Info,
 		CalendarClock,
 		Play,
 		Check,
@@ -45,20 +42,10 @@
 		alerts_enabled: true
 	});
 
-	// Toast Stack State
-	/** @type {Array<{ id: string, type: 'success' | 'danger' | 'warning' | 'info', title: string, message: string }>} */
-	let toasts = $state([]);
-
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		toasts = [...toasts, { id, type, title, message }];
-		setTimeout(() => {
-			removeToast(id);
-		}, 4000);
-	}
-
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
+	// Relais vers le store toast global pour le composant enfant (mappe 'danger' -> error, store sans type danger).
+	function forwardToast(type, title, message) {
+		if (type === 'danger') toast.error(title, message);
+		else toast.show(type, title, message);
 	}
 
 	// History Telemetry State — populated only from /api/metrics/history.
@@ -126,9 +113,9 @@
 				// Fallback local save if endpoint not mounted
 			});
 			alertConfig = { ...newConfig };
-			addToast('success', 'Alert Rules Saved', 'Telemetry threshold alert configurations updated.');
+			toast.success('Alert Rules Saved', 'Telemetry threshold alert configurations updated.');
 		} catch (err) {
-			addToast('danger', 'Save Failed', err.message || 'Could not save alert settings.');
+			toast.error('Save Failed', err.message || 'Could not save alert settings.');
 			throw err;
 		}
 	}
@@ -138,9 +125,9 @@
 			await apiPost('/api/metrics/alerts/test', { webhook_url: alertConfig.discord_webhook_url }).catch(() => {
 				// Fallback demo response
 			});
-			addToast('success', 'Test Dispatched', 'Test alert message sent to Discord Webhook.');
+			toast.success('Test Dispatched', 'Test alert message sent to Discord Webhook.');
 		} catch (err) {
-			addToast('danger', 'Test Failed', err.message || 'Could not dispatch webhook test.');
+			toast.error('Test Failed', err.message || 'Could not dispatch webhook test.');
 			throw err;
 		}
 	}
@@ -163,10 +150,10 @@
 		runningJobId = id;
 		try {
 			const res = await apiPost(`/api/scheduler/jobs/${encodeURIComponent(id)}/run`, {});
-			addToast('success', 'Tâche Exécutée', res.message);
+			toast.success('Tâche Exécutée', res.message);
 			await loadSchedulerJobs();
 		} catch (err) {
-			addToast('danger', 'Échec de la tâche', err.message || 'Erreur lors de l\'exécution.');
+			toast.error('Échec de la tâche', err.message || 'Erreur lors de l\'exécution.');
 		} finally {
 			runningJobId = null;
 		}
@@ -175,10 +162,10 @@
 	async function handleToggleJob(id) {
 		try {
 			const res = await apiPost(`/api/scheduler/jobs/${encodeURIComponent(id)}/toggle`, {});
-			addToast('success', res.enabled ? 'Tâche activée' : 'Tâche désactivée', res.message);
+			toast.success(res.enabled ? 'Tâche activée' : 'Tâche désactivée', res.message);
 			await loadSchedulerJobs();
 		} catch (err) {
-			addToast('danger', 'Erreur de basculement', err.message || 'Action impossible');
+			toast.error('Erreur de basculement', err.message || 'Action impossible');
 		}
 	}
 
@@ -198,9 +185,9 @@
 				channel_type: 'discord',
 				secret: null
 			});
-			addToast('success', 'Notification expédiée', res.message);
+			toast.success('Notification expédiée', res.message);
 		} catch (err) {
-			addToast('danger', 'Échec du test', err.message || 'Erreur lors du test.');
+			toast.error('Échec du test', err.message || 'Erreur lors du test.');
 		}
 	}
 
@@ -316,7 +303,7 @@
 		<div class="grid-column-2">
 			<SparkProfilerCard
 				onTriggerSpark={handleTriggerSpark}
-				onToast={addToast}
+				onToast={forwardToast}
 			/>
 		</div>
 
@@ -404,34 +391,6 @@
 		onTestWebhook={handleTestWebhook}
 		onClose={() => (isAlertModalOpen = false)}
 	/>
-
-	<!-- Toast Notification Stack -->
-	{#if toasts.length > 0}
-		<div class="toast-stack" role="status" aria-live="polite">
-			{#each toasts as toast (toast.id)}
-				<div class="toast toast-{toast.type}">
-					<div class="toast-icon">
-						{#if toast.type === 'success'}
-							<CheckCircle2 size={16} class="text-green" />
-						{:else if toast.type === 'danger'}
-							<AlertCircle size={16} class="text-danger" />
-						{:else if toast.type === 'warning'}
-							<AlertTriangle size={16} class="text-warning" />
-						{:else}
-							<Info size={16} class="text-blue" />
-						{/if}
-					</div>
-					<div class="toast-content">
-						<span class="toast-title">{toast.title}</span>
-						<span class="toast-message">{toast.message}</span>
-					</div>
-					<button type="button" class="btn btn-ghost btn-icon btn-sm toast-close" onclick={() => removeToast(toast.id)} aria-label="Dismiss toast notification">
-						<X size={14} />
-					</button>
-				</div>
-			{/each}
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -527,106 +486,6 @@
 		color: var(--danger-text);
 		font-size: var(--font-size-sm);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-	}
-
-	/* Toast Notification Stack */
-	.toast-stack {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		z-index: var(--z-toast);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		max-width: 380px;
-		width: 100%;
-		pointer-events: none;
-	}
-
-	.toast {
-		pointer-events: auto;
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-card);
-		box-shadow: var(--elevation-shadow);
-		padding: var(--space-3) var(--space-4);
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		animation: toastSlide 200ms cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	.toast-success {
-		border-color: var(--accent-green-border);
-	}
-
-	.toast-danger {
-		border-color: var(--danger-border);
-	}
-
-	.toast-warning {
-		border-color: var(--accent-orange-border);
-	}
-
-	.toast-info {
-		border-color: var(--accent-blue-border);
-	}
-
-	.toast-icon {
-		margin-top: 2px;
-		flex-shrink: 0;
-	}
-
-	.toast-content {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.toast-title {
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
-	}
-
-	.toast-message {
-		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
-		word-break: break-word;
-	}
-
-	.toast-close {
-		color: var(--text-muted);
-		flex-shrink: 0;
-	}
-
-	@keyframes toastSlide {
-		from {
-			opacity: 0;
-			transform: translateY(10px) scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0) scale(1);
-		}
-	}
-
-	.text-green {
-		color: var(--accent-green);
-	}
-
-	.text-blue {
-		color: var(--accent-blue-text);
-	}
-
-	.text-warning {
-		color: var(--warning);
-	}
-
-	.text-danger {
-		color: var(--danger-text);
 	}
 
 	.cron-scheduler-card,
