@@ -1000,3 +1000,15 @@ Une session parallele a deja centralise : `PageHeader.svelte` (`{title, subtitle
 
 - **T8 reduite a ChecklistCard (code inchange) + FormModal wrapper ci-dessus.** Commit : `chipanel(ui): ChecklistCard + FormModal (wrapper Modal)`.
 - **T10 step 3** : mapper vers `EmptyState` existant (`title`/`description`/`action`), pas le composant du plan.
+
+---
+
+## Amendement A2 — Migration totale, engine en canonique
+
+Constat : le kit reprend le langage Moteurs mais la page `engine` elle-meme n'est pas dessus (74 hex en dur, 904 lignes de style local), et 6+ pages ont encore leur plomberie locale. La DA Moteurs doit etre INCARNEE par la page engine sur le kit, puis propagee partout.
+
+- **E0 — Rewrite engine en premier (canonique, pixel-identique).** `routes/engine/+page.svelte` : `banner-card` -> `HeroBanner` + `KpiGrid`/`KpiCard`, toolbar -> `SearchBar` + `CategoryTabs`, `engine-card` garde sa structure (pas de carte generique au kit) mais hex -> tokens, modale confirm garde sa structure (diff + checklist via `ChecklistCard`) mais hex -> tokens, toasts -> store (`toast.*`, table de correspondance), `VersionPickerButton`/`EngineLogo` inchanges. Zero changement visuel, que de la centralisation. Verif : `npm run check` + screenshot preview avant/apres.
+- **E1 — Plomberie restante** : `addons`, `backups`, `diagnostics`, `files`, `metrics` (toast-container/stack/center locaux -> store, grep zero match).
+- **E2 — Pages denses** : `database`, `audit`, `network`, `console`, `dashboard` (modales -> `Modal`/`FormModal`/`ConfirmDialog`, badges -> centraux, headers -> `PageHeader` existant, hex -> tokens).
+- **E3 — Finitions** : `setup`, `login`, `modpacks`, `plugins`, `profiles` (verifier, micro-nettoyage si besoin).
+- Methode par page identique a la vague 1 : un commit par page, `npm run check` zero nouvelle erreur, grep zero match, push en fin de vague. Final : rebuild image `localhost/chipanel:latest` + restart `chipanel-local` pour preview.
