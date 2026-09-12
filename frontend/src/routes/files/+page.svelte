@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import FileTree from '$lib/components/files/FileTree.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Spinner from '$lib/components/ui/Spinner.svelte';
@@ -8,9 +9,7 @@
 		FileCode,
 		Settings,
 		Sparkles,
-		CheckCircle2,
 		AlertCircle,
-		Info,
 		X,
 		Plus,
 		Trash2,
@@ -55,30 +54,6 @@
 
 	let unsavedModalOpen = $state(false);
 	let pendingSwitchPath = $state('');
-
-	// Toast Notification Stack
-	/**
-	 * @typedef {Object} ToastItem
-	 * @property {string} id
-	 * @property {'success' | 'error' | 'info'} type
-	 * @property {string} title
-	 * @property {string} message
-	 */
-	let toasts = $state([]);
-
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		const toast = { id, type, title, message };
-		toasts = [...toasts, toast];
-
-		setTimeout(() => {
-			removeToast(id);
-		}, 4500);
-	}
-
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
-	}
 
 	/**
 	 * DELETE helper. `apiFetch` only throws on 401, so a failed delete would otherwise
@@ -168,10 +143,10 @@
 			};
 			isEditorDirty = false;
 
-			addToast('success', 'File Saved', res?.message || `Saved "${selectedPath}".`);
+			toast.success('File Saved', res?.message || `Saved "${selectedPath}".`);
 		} catch (err) {
 			// No in-memory "save": the buffer stays dirty and the file on disk is unchanged.
-			addToast('error', 'Save Failed', err?.message || `Failed to save "${selectedPath}". The file on disk was not modified.`);
+			toast.error('Save Failed', err?.message || `Failed to save "${selectedPath}". The file on disk was not modified.`);
 		} finally {
 			isSaving = false;
 		}
@@ -187,7 +162,7 @@
 
 	async function handleCreateItemSubmit() {
 		if (!newItemName.trim()) {
-			addToast('error', 'Invalid Name', 'Please enter a valid filename or directory name.');
+			toast.error('Invalid Name', 'Please enter a valid filename or directory name.');
 			return;
 		}
 
@@ -200,7 +175,7 @@
 				is_dir: newItemIsDir
 			});
 
-			addToast('success', 'Item Created', res?.message || `Created ${newItemIsDir ? 'folder' : 'file'} "${fullPath}"`);
+			toast.success('Item Created', res?.message || `Created ${newItemIsDir ? 'folder' : 'file'} "${fullPath}"`);
 			createModalOpen = false;
 			await loadTree();
 
@@ -209,7 +184,7 @@
 			}
 		} catch (err) {
 			// Nothing was created on disk, so nothing is added to the tree or opened.
-			addToast('error', 'Create Failed', err?.message || `Failed to create "${fullPath}".`);
+			toast.error('Create Failed', err?.message || `Failed to create "${fullPath}".`);
 		} finally {
 			isCreating = false;
 		}
@@ -228,7 +203,7 @@
 		try {
 			const res = await apiDelete(`/api/files/delete?path=${encodeURIComponent(deleteTargetPath)}`);
 
-			addToast('success', 'Item Deleted', res?.message || `Deleted "${deleteTargetPath}"`);
+			toast.success('Item Deleted', res?.message || `Deleted "${deleteTargetPath}"`);
 			deleteModalOpen = false;
 
 			if (selectedPath === deleteTargetPath) {
@@ -240,7 +215,7 @@
 			await loadTree();
 		} catch (err) {
 			// The file is still on disk - leave it in the tree and say so.
-			addToast('error', 'Deletion Failed', err?.message || `Failed to delete "${deleteTargetPath}".`);
+			toast.error('Deletion Failed', err?.message || `Failed to delete "${deleteTargetPath}".`);
 		} finally {
 			isDeleting = false;
 		}
@@ -508,35 +483,6 @@
 	</div>
 {/if}
 
-<!-- Toast Notification Stack -->
-<div class="toast-stack" role="region" aria-label="Notifications Stack">
-	{#each toasts as toast (toast.id)}
-		<div class="toast toast-{toast.type}">
-			{#if toast.type === 'success'}
-				<CheckCircle2 size={18} class="toast-icon text-success" />
-			{:else if toast.type === 'error'}
-				<AlertCircle size={18} class="toast-icon text-danger" />
-			{:else}
-				<Info size={18} class="toast-icon text-info" />
-			{/if}
-
-			<div class="toast-content">
-				<strong class="toast-title">{toast.title}</strong>
-				<p class="toast-message">{toast.message}</p>
-			</div>
-
-			<button
-				type="button"
-				class="btn btn-ghost btn-icon toast-close-btn"
-				onclick={() => removeToast(toast.id)}
-				aria-label="Close notification"
-			>
-				<X size={14} />
-			</button>
-		</div>
-	{/each}
-</div>
-
 <style>
 	.files-page-container {
 		display: flex;
@@ -717,78 +663,11 @@
 		flex-shrink: 0;
 	}
 
-	/* Toast Notification Stack */
-	.toast-stack {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		z-index: var(--z-toast);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		max-width: 400px;
-		pointer-events: none;
-	}
-
-	.toast {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-elevated);
-		border: 1px solid var(--border-focus);
-		border-radius: var(--radius-card);
-		box-shadow: var(--elevation-shadow);
-		color: var(--text-primary);
-		pointer-events: auto;
-		animation: toastSlideIn 200ms ease-out;
-	}
-
-	@keyframes toastSlideIn {
-		from {
-			transform: translateY(20px);
-			opacity: 0;
-		}
-		to {
-			transform: translateY(0);
-			opacity: 1;
-		}
-	}
-
-	.toast-success {
-		border-color: var(--accent-green-border);
-	}
-
-	.toast-error {
-		border-color: var(--danger-border);
-	}
-
+	/* Utilitaires :global conservés — utilisés par les modales locales et ConfigDiffModal.svelte. */
 	:global(.text-success) { color: var(--accent-green); }
 	:global(.text-danger) { color: var(--danger-text); }
 	:global(.text-info) { color: var(--accent-blue-text); }
 	:global(.text-warning) { color: var(--warning); }
-
-	.toast-content {
-		flex: 1;
-	}
-
-	.toast-title {
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-semibold);
-		display: block;
-	}
-
-	.toast-message {
-		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
-		margin-top: 2px;
-	}
-
-	:global(.toast-close-btn) {
-		width: 24px !important;
-		height: 24px !important;
-		color: var(--text-muted);
-	}
 
 	@media (max-width: 900px) {
 		.files-dual-pane {
