@@ -360,18 +360,18 @@
 			<Radio size={12} class="pulse-dot" />
 			<span>MOTEUR EN COURS D'EXÉCUTION</span>
 		{/snippet}
+		{#snippet titleExtra()}
+			<span class="tag tag-version">{currentVersion ?? UNKNOWN}</span>
+			{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
+				<span class="tag tag-loader">Loader {currentLoaderVersion}</span>
+			{/if}
+		{/snippet}
 		{#snippet visual()}
 			{#if currentType}
 				<EngineLogo engine={currentType} size={52} class="banner-logo" />
 			{/if}
 		{/snippet}
 		{#snippet meta()}
-			<div class="identity-header">
-				<span class="tag tag-version">{currentVersion ?? UNKNOWN}</span>
-				{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
-					<span class="tag tag-loader">Loader {currentLoaderVersion}</span>
-				{/if}
-			</div>
 			<p class="identity-desc">
 				{#if currentType && currentVersion}
 					Le conteneur exécute <strong>{currentType}</strong> sur Minecraft <strong>{currentVersion}</strong>.
@@ -862,13 +862,6 @@
 		font-size: 0.8125rem;
 		font-family: var(--font-mono, monospace);
 		font-weight: 600;
-	}
-
-	.identity-header {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
 	}
 
 	.tag-version {
