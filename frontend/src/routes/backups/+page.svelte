@@ -3,6 +3,7 @@
 	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		Archive,
 		HardDrive,
@@ -13,8 +14,6 @@
 		Settings2,
 		CloudUpload,
 		ShieldCheck,
-		CheckCircle2,
-		AlertCircle,
 		AlertTriangle,
 		RefreshCw,
 		Check,
@@ -61,16 +60,6 @@
 	let isExportingS3 = $state({});
 	let isSavingSettings = $state(false);
 
-	// Toasts
-	let toasts = $state([]);
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		toasts = [...toasts, { id, type, title, message }];
-		setTimeout(() => {
-			toasts = toasts.filter((t) => t.id !== id);
-		}, 4500);
-	}
-
 	onMount(() => {
 		loadBackups();
 		loadSettings();
@@ -103,10 +92,10 @@
 	async function handleToggleLock(filename) {
 		try {
 			const res = await apiPost(`/api/backups/${encodeURIComponent(filename)}/lock`, {});
-			addToast('success', res?.is_locked ? 'Sauvegarde verrouillée' : 'Sauvegarde déverrouillée', res?.message || '');
+			toast.success(res?.is_locked ? 'Sauvegarde verrouillée' : 'Sauvegarde déverrouillée', res?.message || '');
 			await loadBackups();
 		} catch (err) {
-			addToast('danger', 'Erreur de verrouillage', err.message || 'Action impossible');
+			toast.error('Erreur de verrouillage', err.message || 'Action impossible');
 		}
 	}
 
@@ -118,12 +107,12 @@
 				scope: newBackupScope,
 				format: newBackupFormat
 			});
-			addToast('success', 'Sauvegarde créée', `L'archive "${res.filename}" a été générée avec succès.`);
+			toast.success('Sauvegarde créée', `L'archive "${res.filename}" a été générée avec succès.`);
 			showCreateModal = false;
 			newBackupName = '';
 			await loadBackups();
 		} catch (err) {
-			addToast('danger', 'Échec de la sauvegarde', err.message || 'Erreur lors de la création de la sauvegarde.');
+			toast.error('Échec de la sauvegarde', err.message || 'Erreur lors de la création de la sauvegarde.');
 		} finally {
 			isCreating = false;
 		}
@@ -136,11 +125,11 @@
 			const res = await apiPost('/api/backups/restore', {
 				filename: selectedBackupForRestore.filename
 			});
-			addToast('success', 'Restauration réussie', res.message);
+			toast.success('Restauration réussie', res.message);
 			showRestoreModal = false;
 			selectedBackupForRestore = null;
 		} catch (err) {
-			addToast('danger', 'Échec de la restauration', err.message || 'Erreur lors de la restauration.');
+			toast.error('Échec de la restauration', err.message || 'Erreur lors de la restauration.');
 		} finally {
 			isRestoring = false;
 		}
@@ -152,10 +141,10 @@
 		}
 		try {
 			await apiFetch(`/api/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
-			addToast('success', 'Sauvegarde supprimée', `L'archive "${filename}" a été supprimée.`);
+			toast.success('Sauvegarde supprimée', `L'archive "${filename}" a été supprimée.`);
 			backups = backups.filter((b) => b.filename !== filename);
 		} catch (err) {
-			addToast('danger', 'Échec de la suppression', err.message || 'Impossible de supprimer la sauvegarde.');
+			toast.error('Échec de la suppression', err.message || 'Impossible de supprimer la sauvegarde.');
 		}
 	}
 
@@ -163,9 +152,9 @@
 		isExportingS3[filename] = true;
 		try {
 			const res = await apiPost('/api/backups/export/s3', { filename });
-			addToast('success', 'Export S3 terminé', res.message);
+			toast.success('Export S3 terminé', res.message);
 		} catch (err) {
-			addToast('danger', 'Échec de l\'export S3', err.message || 'Impossible d\'exporter vers S3/MinIO.');
+			toast.error('Échec de l\'export S3', err.message || 'Impossible d\'exporter vers S3/MinIO.');
 		} finally {
 			isExportingS3[filename] = false;
 		}
@@ -175,10 +164,10 @@
 		isSavingSettings = true;
 		try {
 			await apiPost('/api/backups/settings', settings);
-			addToast('success', 'Paramètres enregistrés', 'La politique de rétention et d\'exclusion a été mise à jour.');
+			toast.success('Paramètres enregistrés', 'La politique de rétention et d\'exclusion a été mise à jour.');
 			showSettingsModal = false;
 		} catch (err) {
-			addToast('danger', 'Erreur d\'enregistrement', err.message || 'Impossible de sauvegarder les paramètres.');
+			toast.error('Erreur d\'enregistrement', err.message || 'Impossible de sauvegarder les paramètres.');
 		} finally {
 			isSavingSettings = false;
 		}
@@ -664,22 +653,6 @@
 	</div>
 {/if}
 
-<!-- Floating Toasts -->
-{#if toasts.length > 0}
-	<div class="toast-stack">
-		{#each toasts as toast (toast.id)}
-			<div class="toast toast-{toast.type} card">
-				{#if toast.type === 'success'}<CheckCircle2 size={16} class="text-success" />{/if}
-				{#if toast.type === 'danger'}<AlertCircle size={16} class="text-danger" />{/if}
-				<div>
-					<strong>{toast.title}</strong>
-					<p>{toast.message}</p>
-				</div>
-			</div>
-		{/each}
-	</div>
-{/if}
-
 <style>
 	.backups-page-layout {
 		display: flex;
@@ -977,42 +950,4 @@
 		gap: var(--space-3);
 	}
 
-	/* Toast stack */
-	.toast-stack {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		z-index: var(--z-toast);
-	}
-
-	.toast {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-surface);
-		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-		border: 1px solid var(--border);
-	}
-
-	.toast-success { border-color: var(--accent-green-border); }
-	.toast-danger { border-color: var(--danger-border); }
-
-	.toast p {
-		margin: 2px 0 0 0;
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-	}
-
-	.spin {
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
 </style>
