@@ -1,6 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
@@ -8,7 +9,6 @@
 		ShieldCheck,
 		ShieldAlert,
 		AlertTriangle,
-		AlertCircle,
 		CheckCircle2,
 		Cpu,
 		Zap,
@@ -42,16 +42,6 @@
 	let selectedCrash = $state(null);
 	let copiedJvm = $state(false);
 
-	// Toasts
-	let toasts = $state([]);
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		toasts = [...toasts, { id, type, title, message }];
-		setTimeout(() => {
-			toasts = toasts.filter((t) => t.id !== id);
-		}, 4500);
-	}
-
 	onMount(() => {
 		loadDiagnostics();
 	});
@@ -79,10 +69,10 @@
 		applyingAutotune = true;
 		try {
 			const res = await apiPost('/api/autotune/apply', { apply_properties: true });
-			addToast('success', 'Auto-Tuning Appliqué', res.message);
+			toast.success('Auto-Tuning Appliqué', res.message);
 			await loadDiagnostics();
 		} catch (err) {
-			addToast('danger', 'Erreur Auto-Tuning', err.message || 'Impossible d\'appliquer les optimisations.');
+			toast.error('Erreur Auto-Tuning', err.message || 'Impossible d\'appliquer les optimisations.');
 		} finally {
 			applyingAutotune = false;
 		}
@@ -92,10 +82,10 @@
 		remediatingCrashId = id;
 		try {
 			const res = await apiPost(`/api/diagnostics/crashes/${encodeURIComponent(id)}/remediate`, {});
-			addToast('success', 'Action Corrective Exécutée', res.message);
+			toast.success('Action Corrective Exécutée', res.message);
 			await loadDiagnostics();
 		} catch (err) {
-			addToast('danger', 'Échec de la correction', err.message || 'Erreur lors de la remédiation.');
+			toast.error('Échec de la correction', err.message || 'Erreur lors de la remédiation.');
 		} finally {
 			remediatingCrashId = null;
 		}
@@ -382,22 +372,6 @@
 				<button class="btn btn-secondary" onclick={() => (selectedCrash = null)}>Fermer</button>
 			</div>
 		</div>
-	</div>
-{/if}
-
-<!-- Toasts -->
-{#if toasts.length > 0}
-	<div class="toast-stack">
-		{#each toasts as toast (toast.id)}
-			<div class="toast toast-{toast.type} card">
-				{#if toast.type === 'success'}<CheckCircle2 size={16} class="text-success" />{/if}
-				{#if toast.type === 'danger'}<AlertCircle size={16} class="text-danger" />{/if}
-				<div>
-					<strong>{toast.title}</strong>
-					<p>{toast.message}</p>
-				</div>
-			</div>
-		{/each}
 	</div>
 {/if}
 
@@ -722,34 +696,5 @@
 	@keyframes spin {
 		from { transform: rotate(0deg); }
 		to { transform: rotate(360deg); }
-	}
-
-	.toast-stack {
-		position: fixed;
-		bottom: var(--space-6);
-		right: var(--space-6);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		z-index: var(--z-toast);
-	}
-
-	.toast {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-surface);
-		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-		border: 1px solid var(--border);
-	}
-
-	.toast-success { border-color: var(--accent-green-border); }
-	.toast-danger { border-color: var(--danger-border); }
-
-	.toast p {
-		margin: 2px 0 0 0;
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
 	}
 </style>
