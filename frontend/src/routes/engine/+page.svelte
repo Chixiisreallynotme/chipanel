@@ -5,12 +5,17 @@
 	import EngineLogo from '$lib/components/common/EngineLogo.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import HeroBanner from '$lib/components/ui/HeroBanner.svelte';
+	import KpiCard from '$lib/components/ui/KpiCard.svelte';
+	import KpiGrid from '$lib/components/ui/KpiGrid.svelte';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
+	import CategoryTabs from '$lib/components/ui/CategoryTabs.svelte';
+	import ChecklistCard from '$lib/components/ui/ChecklistCard.svelte';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
-		Sliders,
 		RefreshCw,
 		Check,
 		RotateCw,
-		Search,
 		Users,
 		ShieldCheck,
 		HardDrive,
@@ -25,7 +30,6 @@
 		AlertTriangle,
 		Sparkles,
 		Info,
-		Layers,
 		Activity
 	} from '$lib/icons.js';
 
@@ -73,22 +77,6 @@
 	let autoBackupWorld = $state(true);
 	/** @type {{ detail: string, serverMessage: string } | null} */
 	let switchError = $state(null);
-
-	// Toasts Notification Queue State
-	let toasts = $state([]);
-
-	function addToast(type, title, message) {
-		const id = Math.random().toString(36).substring(2, 9);
-		const toast = { id, type, title, message };
-		toasts = [...toasts, toast];
-		setTimeout(() => {
-			removeToast(id);
-		}, 5000);
-	}
-
-	function removeToast(id) {
-		toasts = toasts.filter((t) => t.id !== id);
-	}
 
 	async function fetchLoaderVersions(engineId, gameVersion) {
 		if (!LOADER_SUPPORTED_ENGINES.includes(engineId)) return;
@@ -172,7 +160,7 @@
 			}
 		} catch (err) {
 			console.error('Échec du chargement des moteurs:', err);
-			addToast('error', 'Erreur de chargement', err.message || 'Impossible de récupérer la liste des moteurs.');
+			toast.error('Erreur de chargement', err.message || 'Impossible de récupérer la liste des moteurs.');
 		} finally {
 			isLoading = false;
 		}
@@ -257,13 +245,13 @@
 			if (data?.backup_file) {
 				successMsg += ` · Sauvegarde : ${data.backup_file}`;
 			}
-			addToast('success', 'Configuration mise à jour', successMsg);
+			toast.success('Configuration mise à jour', successMsg);
 
 			currentType = targetType;
 			currentVersion = data?.resolved_version ?? targetVersion;
 			currentLoaderVersion = data?.resolved_loader_version ?? targetLoader;
 			if (data?.warning) {
-				addToast('warning', 'Avertissement', data.warning);
+				toast.warning('Avertissement', data.warning);
 			}
 			closeConfirmModal();
 			await loadEngineData();
@@ -367,41 +355,35 @@
 	{/if}
 
 	<!-- Current Engine Status Bento Card -->
-	<section class="banner-card">
-		<div class="banner-primary">
-			<div class="banner-badge">
-				<Radio size={12} class="pulse-dot" />
-				<span>MOTEUR EN COURS D'EXÉCUTION</span>
-			</div>
-
-			<div class="banner-identity">
-				{#if currentType}
-					<EngineLogo engine={currentType} size={52} class="banner-logo" />
+	<HeroBanner title={currentType ?? UNKNOWN}>
+		{#snippet badge()}
+			<Radio size={12} class="pulse-dot" />
+			<span>MOTEUR EN COURS D'EXÉCUTION</span>
+		{/snippet}
+		{#snippet visual()}
+			{#if currentType}
+				<EngineLogo engine={currentType} size={52} class="banner-logo" />
+			{/if}
+		{/snippet}
+		{#snippet meta()}
+			<div class="identity-header">
+				<span class="tag tag-version">{currentVersion ?? UNKNOWN}</span>
+				{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
+					<span class="tag tag-loader">Loader {currentLoaderVersion}</span>
 				{/if}
-				<div class="identity-info">
-					<div class="identity-header">
-						<span class="engine-title {currentType ? '' : 'text-muted'}">{currentType ?? UNKNOWN}</span>
-						<span class="tag tag-version">{currentVersion ?? UNKNOWN}</span>
-						{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
-							<span class="tag tag-loader">Loader {currentLoaderVersion}</span>
-						{/if}
-					</div>
-					<p class="identity-desc">
-						{#if currentType && currentVersion}
-							Le conteneur exécute <strong>{currentType}</strong> sur Minecraft <strong>{currentVersion}</strong>.
-							Les modifications de version ou de loader s'appliquent avec migration automatique des permissions et des outils.
-						{:else}
-							La configuration actuelle n'a pas pu être extraite. Sélectionner un moteur réinitialisera proprement l'environnement.
-						{/if}
-					</p>
-				</div>
 			</div>
-		</div>
-
-		<div class="banner-kpis">
-			<div class="kpi-card">
-				<span class="kpi-label">État du Serveur</span>
-				<div class="kpi-val">
+			<p class="identity-desc">
+				{#if currentType && currentVersion}
+					Le conteneur exécute <strong>{currentType}</strong> sur Minecraft <strong>{currentVersion}</strong>.
+					Les modifications de version ou de loader s'appliquent avec migration automatique des permissions et des outils.
+				{:else}
+					La configuration actuelle n'a pas pu être extraite. Sélectionner un moteur réinitialisera proprement l'environnement.
+				{/if}
+			</p>
+		{/snippet}
+		{#snippet kpis()}
+			<KpiGrid>
+				<KpiCard label="État du Serveur">
 					{#if serverState === 'running'}
 						<span class="status-indicator status-online"></span>
 						<span class="text-emerald">En ligne</span>
@@ -412,69 +394,49 @@
 						<span class="status-indicator status-stopped"></span>
 						<span class="text-muted">Arrêté</span>
 					{/if}
-				</div>
-			</div>
+				</KpiCard>
 
-			<div class="kpi-card">
-				<span class="kpi-label">Joueurs en ligne</span>
-				<div class="kpi-val text-primary">
-					<Users size={14} />
-					<span>{onlinePlayersCount}</span>
-				</div>
-			</div>
+				<KpiCard label="Joueurs en ligne">
+					<span class="kpi-inline text-primary">
+						<Users size={14} />
+						<span>{onlinePlayersCount}</span>
+					</span>
+				</KpiCard>
 
-			<div class="kpi-card">
-				<span class="kpi-label">Monde Actif</span>
-				<div class="kpi-val" title="Data Version: {worldDataVersion ?? 'N/A'}">
-					<HardDrive size={14} class="text-muted" />
-					<span class="truncate">{activeWorld}</span>
-				</div>
-			</div>
+				<KpiCard label="Monde Actif">
+					<span class="kpi-inline" title="Data Version: {worldDataVersion ?? 'N/A'}">
+						<HardDrive size={14} class="text-muted" />
+						<span class="truncate">{activeWorld}</span>
+					</span>
+				</KpiCard>
 
-			<div class="kpi-card">
-				<span class="kpi-label">Outils Synchronisés</span>
-				<div class="kpi-val text-emerald">
-					<ShieldCheck size={14} />
-					<span>Spark, Chunky, LP</span>
-				</div>
-			</div>
-		</div>
-	</section>
+				<KpiCard label="Outils Synchronisés">
+					<span class="kpi-inline text-emerald">
+						<ShieldCheck size={14} />
+						<span>Spark, Chunky, LP</span>
+					</span>
+				</KpiCard>
+			</KpiGrid>
+		{/snippet}
+	</HeroBanner>
 
 	<!-- Filters & Search Toolbar -->
 	<nav class="toolbar" aria-label="Filtres des moteurs">
-		<div class="search-wrap">
-			<Search size={15} class="search-icon" />
-			<input
-				type="text"
-				class="search-input"
-				placeholder="Rechercher un moteur (ex: Fabric, Purpur, Forge, Folia, SMP)..."
-				bind:value={searchQuery}
-			/>
-			{#if searchQuery}
-				<button class="clear-search-btn" onclick={() => (searchQuery = '')} aria-label="Effacer la recherche">
-					Effacer
-				</button>
-			{/if}
-		</div>
+		<SearchBar
+			bind:value={searchQuery}
+			placeholder="Rechercher un moteur (ex: Fabric, Purpur, Forge, Folia, SMP)..."
+		/>
 
-		<div class="category-tabs">
-			<button class="tab-item {selectedCategory === 'ALL' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'ALL')}>
-				Tous ({availableTypes.length})
-			</button>
-			<button class="tab-item {selectedCategory === 'MODS' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'MODS')}>
-				Moddé (Fabric, Forge, NeoForge, Quilt)
-			</button>
-			<button class="tab-item {selectedCategory === 'PERFORMANCE' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'PERFORMANCE')}>
-				Performance & SMP (Purpur, Paper, Folia)
-			</button>
-			<button class="tab-item {selectedCategory === 'HYBRID' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'HYBRID')}>
-				Hybride (Mohist, Arclight)
-			</button>
-			<button class="tab-item {selectedCategory === 'VANILLA' ? 'tab-active' : ''}" onclick={() => (selectedCategory = 'VANILLA')}>
-				Vanilla (Officiel)
-			</button>
-		</div>
+		<CategoryTabs
+			bind:active={selectedCategory}
+			options={[
+				{ id: 'ALL', label: 'Tous', count: availableTypes.length },
+				{ id: 'MODS', label: 'Moddé (Fabric, Forge, NeoForge, Quilt)' },
+				{ id: 'PERFORMANCE', label: 'Performance & SMP (Purpur, Paper, Folia)' },
+				{ id: 'HYBRID', label: 'Hybride (Mohist, Arclight)' },
+				{ id: 'VANILLA', label: 'Vanilla (Officiel)' }
+			]}
+		/>
 	</nav>
 
 	<!-- Engine Cards Grid -->
@@ -760,60 +722,47 @@
 				<div class="checklist-section">
 					<h4 class="checklist-heading">Actions exécutées automatiquement :</h4>
 
-					<div class="checklist-items">
-						<!-- 1. World Safety Backup -->
-						<div class="checklist-card {autoBackupWorld ? 'card-checked' : ''}">
-							<div class="checklist-toggle">
-								<input
-									type="checkbox"
-									id="modal-backup-cb"
-									class="system-checkbox"
-									bind:checked={autoBackupWorld}
-								/>
-								<label for="modal-backup-cb" class="checklist-label">
-									<FolderArchive size={15} class="text-primary" />
-									<span>Sauvegarde de sécurité du monde actif (<strong>{activeWorld}</strong>)</span>
-								</label>
-							</div>
-							<p class="checklist-detail">Archive compressée créée avant modification pour prévenir toute corruption.</p>
-						</div>
+				<div class="checklist-items">
+					<ChecklistCard
+						title={`Sauvegarde de sécurité du monde actif (${activeWorld})`}
+						detail="Archive compressée créée avant modification pour prévenir toute corruption."
+						bind:checked={autoBackupWorld}
+					>
+						{#snippet icon()}
+							<FolderArchive size={15} class="text-primary" />
+						{/snippet}
+					</ChecklistCard>
 
-						<!-- 2. LuckPerms -->
-						<div class="checklist-card">
-							<div class="checklist-row">
-								<div class="checklist-title-wrap">
-									<ShieldCheck size={15} class="text-emerald" />
-									<span class="checklist-title">Permissions LuckPerms</span>
-								</div>
-								<span class="tag-auto">Auto</span>
-							</div>
-							<p class="checklist-detail">Préservation et réinjection automatique des groupes et permissions.</p>
-						</div>
+					<ChecklistCard
+						title="Permissions LuckPerms"
+						badge="Auto"
+						detail="Préservation et réinjection automatique des groupes et permissions."
+					>
+						{#snippet icon()}
+							<ShieldCheck size={15} class="text-emerald" />
+						{/snippet}
+					</ChecklistCard>
 
-						<!-- 3. Tools Sync -->
-						<div class="checklist-card">
-							<div class="checklist-row">
-								<div class="checklist-title-wrap">
-									<Wrench size={15} class="text-emerald" />
-									<span class="checklist-title">Outils Spark & Chunky</span>
-								</div>
-								<span class="tag-auto">Auto</span>
-							</div>
-							<p class="checklist-detail">Téléchargement et configuration des binaires compatibles {selectedEngine.name} {targetVersion}.</p>
-						</div>
+					<ChecklistCard
+						title="Outils Spark & Chunky"
+						badge="Auto"
+						detail={`Téléchargement et configuration des binaires compatibles ${selectedEngine.name} ${targetVersion}.`}
+					>
+						{#snippet icon()}
+							<Wrench size={15} class="text-emerald" />
+						{/snippet}
+					</ChecklistCard>
 
-						<!-- 4. Environment & Restart -->
-						<div class="checklist-card">
-							<div class="checklist-row">
-								<div class="checklist-title-wrap">
-									<RotateCw size={15} class="text-primary" />
-									<span class="checklist-title">Conteneur & Proxy lazymc</span>
-								</div>
-								<span class="tag-auto">Auto</span>
-							</div>
-							<p class="checklist-detail">Écriture des variables système et redémarrage propre.</p>
-						</div>
-					</div>
+					<ChecklistCard
+						title="Conteneur & Proxy lazymc"
+						badge="Auto"
+						detail="Écriture des variables système et redémarrage propre."
+					>
+						{#snippet icon()}
+							<RotateCw size={15} class="text-primary" />
+						{/snippet}
+					</ChecklistCard>
+				</div>
 				</div>
 
 				{#if switchError}
@@ -847,25 +796,6 @@
 	</div>
 {/if}
 
-<!-- Toast Notification Center -->
-<div class="toast-center">
-	{#each toasts as toast (toast.id)}
-		<div class="toast-item toast-{toast.type}">
-			{#if toast.type === 'success'}
-				<CheckCircle2 size={16} class="text-emerald" />
-			{:else if toast.type === 'warning'}
-				<AlertTriangle size={16} class="text-amber" />
-			{:else}
-				<AlertCircle size={16} class="text-danger" />
-			{/if}
-			<div class="toast-copy">
-				<span class="toast-head">{toast.title}</span>
-				<span class="toast-body">{toast.message}</span>
-			</div>
-		</div>
-	{/each}
-</div>
-
 <style>
 	.engine-page {
 		display: flex;
@@ -888,14 +818,14 @@
 
 	.release-banner {
 		background: rgba(16, 185, 129, 0.08);
-		border: 1px solid rgba(16, 185, 129, 0.25);
-		color: #34d399;
+		border: 1px solid var(--engine-emerald-border);
+		color: var(--accent-emerald-text);
 	}
 
 	.snapshot-banner {
 		background: rgba(99, 102, 241, 0.08);
 		border: 1px solid rgba(99, 102, 241, 0.25);
-		color: #a5b4fc;
+		color: var(--text-code);
 	}
 
 	.version-banner-text {
@@ -905,7 +835,7 @@
 	}
 
 	.banner-sub {
-		color: #94a3b8;
+		color: var(--engine-slate-400);
 		font-size: 0.8125rem;
 	}
 
@@ -917,66 +847,13 @@
 		border-radius: 10px;
 		background: rgba(245, 158, 11, 0.08);
 		border: 1px solid rgba(245, 158, 11, 0.25);
-		color: #fbbf24;
+		color: var(--warning-text);
 		font-size: 0.875rem;
 	}
 
-	/* Hero Bento Card */
-	.banner-card {
-		display: grid;
-		grid-template-columns: 1.35fr 1fr;
-		gap: 1.5rem;
-		padding: 1.75rem;
-		border-radius: 16px;
-		background: #111827;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-	}
-
-	.banner-primary {
-		display: flex;
-		flex-direction: column;
-		gap: 0.875rem;
-	}
-
-	.banner-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.45rem;
-		font-size: 0.6875rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		color: #818cf8;
-	}
-
+	/* Reliure HeroBanner : badge + meta restes locaux (valeurs exactes engine) */
 	.pulse-dot {
-		color: #818cf8;
-	}
-
-	.banner-identity {
-		display: flex;
-		align-items: flex-start;
-		gap: 1.25rem;
-	}
-
-	.identity-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.identity-header {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-	}
-
-	.engine-title {
-		font-size: 1.75rem;
-		font-weight: 800;
-		color: #f8fafc;
-		letter-spacing: -0.02em;
+		color: var(--accent-indigo-text);
 	}
 
 	.tag {
@@ -987,56 +864,38 @@
 		font-weight: 600;
 	}
 
+	.identity-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
 	.tag-version {
-		background: rgba(99, 102, 241, 0.15);
-		color: #a5b4fc;
-		border: 1px solid rgba(99, 102, 241, 0.3);
+		background: var(--accent-indigo-bg);
+		color: var(--text-code);
+		border: 1px solid var(--accent-indigo-border);
 	}
 
 	.tag-loader {
-		background: rgba(16, 185, 129, 0.15);
-		color: #34d399;
-		border: 1px solid rgba(16, 185, 129, 0.3);
+		background: var(--accent-emerald-bg);
+		color: var(--accent-emerald-text);
+		border: 1px solid var(--accent-emerald-border);
 	}
 
 	.identity-desc {
 		font-size: 0.875rem;
-		color: #94a3b8;
+		color: var(--engine-slate-400);
 		line-height: 1.5;
 		margin: 0;
 		max-width: 60ch;
 	}
 
-	.banner-kpis {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
-	}
-
-	.kpi-card {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		gap: 0.35rem;
-		padding: 0.875rem 1.125rem;
-		border-radius: 12px;
-		background: #0b0f19;
-		border: 1px solid rgba(255, 255, 255, 0.05);
-	}
-
-	.kpi-label {
-		font-size: 0.75rem;
-		color: #64748b;
-		font-weight: 500;
-	}
-
-	.kpi-val {
-		display: flex;
+	/* Contenu KpiCard : pastille statut + aligneur icone/texte (sans couleur) */
+	.kpi-inline {
+		display: inline-flex;
 		align-items: center;
 		gap: 0.45rem;
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: #f1f5f9;
 	}
 
 	.status-indicator {
@@ -1046,100 +905,15 @@
 		flex-shrink: 0;
 	}
 
-	.status-online { background: #10b981; box-shadow: 0 0 8px #10b981; }
-	.status-hibernating { background: #f59e0b; }
-	.status-stopped { background: #64748b; }
+	.status-online { background: var(--engine-emerald); box-shadow: 0 0 8px var(--engine-emerald); }
+	.status-hibernating { background: var(--engine-amber); }
+	.status-stopped { background: var(--engine-slate-500); }
 
 	/* Toolbar */
 	.toolbar {
 		display: flex;
 		flex-direction: column;
 		gap: 0.875rem;
-	}
-
-	.search-wrap {
-		position: relative;
-		display: flex;
-		align-items: center;
-		width: 100%;
-	}
-
-	:global(.search-icon) {
-		position: absolute;
-		left: 1.125rem;
-		color: #64748b;
-		pointer-events: none;
-	}
-
-	.search-input {
-		width: 100%;
-		padding: 0.75rem 4.5rem 0.75rem 2.85rem;
-		background: #111827;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 12px;
-		color: #f8fafc;
-		font-size: 0.875rem;
-		outline: none;
-		transition: border-color 0.2s, box-shadow 0.2s;
-	}
-
-	.search-input:focus {
-		border-color: #6366f1;
-		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-	}
-
-	.clear-search-btn {
-		position: absolute;
-		right: 1rem;
-		background: transparent;
-		border: none;
-		color: #94a3b8;
-		cursor: pointer;
-		font-size: 0.75rem;
-		font-weight: 500;
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-	}
-
-	.clear-search-btn:hover {
-		color: #ffffff;
-	}
-
-	.category-tabs {
-		display: flex;
-		gap: 0.5rem;
-		background: #111827;
-		padding: 0.35rem;
-		border-radius: 12px;
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		overflow-x: auto;
-	}
-
-	.tab-item {
-		padding: 0.5rem 1rem;
-		font-size: var(--font-size-xs);
-		font-weight: 600;
-		border-radius: var(--radius-btn);
-		border: none;
-		background: transparent;
-		color: var(--text-secondary);
-		cursor: pointer;
-		transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
-		white-space: nowrap;
-	}
-
-	.tab-item:hover {
-		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.04);
-	}
-
-	.tab-item:active {
-		transform: scale(0.97);
-	}
-
-	.tab-active {
-		background: var(--accent-blue-solid) !important;
-		color: #ffffff !important;
 	}
 
 	/* Engine Grid */
@@ -1155,8 +929,8 @@
 		justify-content: space-between;
 		padding: 1.75rem;
 		border-radius: 16px;
-		background: #111827;
-		border: 1px solid rgba(255, 255, 255, 0.07);
+		background: var(--bg-surface-2);
+		border: 1px solid var(--border-subtle);
 		transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 		gap: 1.125rem;
 	}
@@ -1169,7 +943,7 @@
 
 	.card-active {
 		border-color: rgba(16, 185, 129, 0.4);
-		background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), #111827 40%);
+		background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), var(--bg-surface-2) 40%);
 	}
 
 	.card-header {
@@ -1194,7 +968,7 @@
 	.title-row h3 {
 		font-size: 1.15rem;
 		font-weight: 700;
-		color: #f8fafc;
+		color: var(--engine-slate-50);
 		letter-spacing: -0.01em;
 		margin: 0;
 	}
@@ -1208,7 +982,7 @@
 
 	.tag-meta {
 		font-size: 0.75rem;
-		color: #94a3b8;
+		color: var(--engine-slate-400);
 		font-weight: 500;
 	}
 
@@ -1218,7 +992,7 @@
 		padding: 0.1rem 0.45rem;
 		border-radius: 4px;
 		background: rgba(99, 102, 241, 0.1);
-		color: #a5b4fc;
+		color: var(--text-code);
 		border: 1px solid rgba(99, 102, 241, 0.2);
 	}
 
@@ -1230,9 +1004,9 @@
 		border-radius: 6px;
 		font-size: 0.6875rem;
 		font-weight: 700;
-		background: rgba(16, 185, 129, 0.15);
-		color: #34d399;
-		border: 1px solid rgba(16, 185, 129, 0.3);
+		background: var(--accent-emerald-bg);
+		color: var(--accent-emerald-text);
+		border: 1px solid var(--accent-emerald-border);
 	}
 
 	/* Minimal Specs */
@@ -1241,20 +1015,20 @@
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.8125rem;
-		color: #64748b;
+		color: var(--engine-slate-500);
 	}
 
 	.spec-meta strong {
-		color: #cbd5e1;
+		color: var(--engine-slate-300);
 	}
 
 	.spec-dot {
-		color: #475569;
+		color: var(--engine-slate-600);
 	}
 
 	.card-description {
 		font-size: 0.875rem;
-		color: #94a3b8;
+		color: var(--engine-slate-400);
 		line-height: 1.5;
 		margin: 0;
 		min-height: 2.75rem;
@@ -1275,11 +1049,11 @@
 	}
 
 	.highlight-pro span {
-		color: #cbd5e1;
+		color: var(--engine-slate-300);
 	}
 
 	.highlight-con span {
-		color: #fbbf24;
+		color: var(--warning-text);
 	}
 
 	.tools-pill {
@@ -1290,7 +1064,7 @@
 		border-radius: 8px;
 		background: rgba(16, 185, 129, 0.06);
 		border: 1px solid rgba(16, 185, 129, 0.15);
-		color: #34d399;
+		color: var(--accent-emerald-text);
 		font-size: 0.75rem;
 		font-weight: 500;
 	}
@@ -1325,7 +1099,7 @@
 	.input-label {
 		font-size: 0.8125rem;
 		font-weight: 500;
-		color: #94a3b8;
+		color: var(--engine-slate-400);
 	}
 
 	.select-wrapper {
@@ -1338,10 +1112,10 @@
 	.select-control {
 		width: 100%;
 		padding: 0.55rem 2rem 0.55rem 0.875rem;
-		background: #0b0f19;
+		background: var(--bg-inset);
 		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: 8px;
-		color: #f1f5f9;
+		color: var(--engine-slate-100);
 		font-size: 0.8125rem;
 		font-weight: 500;
 		outline: none;
@@ -1351,13 +1125,13 @@
 	}
 
 	.select-control:focus {
-		border-color: #6366f1;
+		border-color: var(--engine-indigo);
 	}
 
 	.select-arrow {
 		position: absolute;
 		right: 0.75rem;
-		color: #64748b;
+		color: var(--engine-slate-500);
 		pointer-events: none;
 	}
 
@@ -1391,24 +1165,25 @@
 		font-size: 0.8125rem;
 	}
 
+	/* Boutons secondaires : gris d'origine sans token exact (rgb a valeur strictement identique, zero approximation) */
 	.btn-secondary {
-		background: #1f2937;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		color: #cbd5e1;
+		background: rgb(31, 41, 55);
+		border: 1px solid var(--border-engine-08);
+		color: var(--engine-slate-300);
 	}
 
 	.btn-secondary:hover:not(:disabled) {
-		background: #374151;
-		color: #ffffff;
+		background: rgb(55, 65, 81);
+		color: var(--engine-white);
 	}
 
 	.btn-primary {
-		background: #4f46e5;
-		color: #ffffff;
+		background: var(--accent-indigo);
+		color: var(--engine-white);
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		background: #4338ca;
+		background: var(--accent-indigo-hover);
 		transform: translateY(-1px);
 	}
 
@@ -1433,9 +1208,9 @@
 	.modal-dialog {
 		width: 100%;
 		max-width: 600px;
-		background: #111827;
+		background: var(--bg-surface-2);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--radius-modal, 12px);
+		border-radius: var(--radius-lg);
 		padding: 1.75rem;
 		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 		max-height: 90vh;
@@ -1452,13 +1227,13 @@
 	.modal-header h2 {
 		font-size: 1.25rem;
 		font-weight: 700;
-		color: #f8fafc;
+		color: var(--engine-slate-50);
 		margin: 0;
 	}
 
 	.modal-subtitle {
 		font-size: 0.8125rem;
-		color: #94a3b8;
+		color: var(--engine-slate-400);
 		margin: 0.2rem 0 0 0;
 	}
 
@@ -1475,8 +1250,8 @@
 		gap: 1rem;
 		padding: 1rem 1.25rem;
 		border-radius: 12px;
-		background: #0b0f19;
-		border: 1px solid rgba(255, 255, 255, 0.06);
+		background: var(--bg-inset);
+		border: 1px solid var(--border-engine-06);
 	}
 
 	.diff-pane {
@@ -1495,14 +1270,14 @@
 		font-size: 0.6875rem;
 		font-weight: 700;
 		text-transform: uppercase;
-		color: #64748b;
+		color: var(--engine-slate-500);
 		display: block;
 	}
 
 	.diff-name {
 		font-size: 1.05rem;
 		font-weight: 700;
-		color: #f1f5f9;
+		color: var(--engine-slate-100);
 	}
 
 	.diff-ver-line {
@@ -1521,7 +1296,7 @@
 	}
 
 	.diff-separator {
-		color: #64748b;
+		color: var(--engine-slate-500);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1534,8 +1309,8 @@
 		gap: 1rem;
 		padding: 0.75rem 1rem;
 		border-radius: 10px;
-		background: #0b0f19;
-		border: 1px solid rgba(255, 255, 255, 0.06);
+		background: var(--bg-inset);
+		border: 1px solid var(--border-engine-06);
 	}
 
 	.modal-field-label {
@@ -1544,7 +1319,7 @@
 		gap: 0.4rem;
 		font-size: 0.8125rem;
 		font-weight: 600;
-		color: #e2e8f0;
+		color: var(--engine-slate-200);
 		white-space: nowrap;
 	}
 
@@ -1564,11 +1339,11 @@
 	.callout-danger {
 		background: rgba(239, 68, 68, 0.1);
 		border: 1px solid rgba(239, 68, 68, 0.25);
-		color: #fca5a5;
+		color: var(--engine-red-300);
 	}
 
 	.callout-danger strong {
-		color: #ffffff;
+		color: var(--engine-white);
 	}
 
 	.callout-danger p {
@@ -1584,7 +1359,7 @@
 	.checklist-heading {
 		font-size: 0.8125rem;
 		font-weight: 700;
-		color: #cbd5e1;
+		color: var(--engine-slate-300);
 		margin: 0;
 	}
 
@@ -1594,87 +1369,20 @@
 		gap: 0.5rem;
 	}
 
-	.checklist-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		padding: 0.75rem 0.875rem;
-		border-radius: 10px;
-		background: #0b0f19;
-		border: 1px solid rgba(255, 255, 255, 0.05);
-	}
-
-	.card-checked {
-		border-color: rgba(99, 102, 241, 0.3);
-	}
-
-	.checklist-toggle, .checklist-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-
-	.checklist-toggle {
-		justify-content: flex-start;
-	}
-
-	.checklist-title-wrap {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-
-	.checklist-label, .checklist-title {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		color: #f1f5f9;
-		cursor: pointer;
-	}
-
-	.system-checkbox {
-		width: 16px;
-		height: 16px;
-		accent-color: #6366f1;
-		cursor: pointer;
-	}
-
-	.checklist-detail {
-		font-size: 0.75rem;
-		color: #64748b;
-		margin: 0;
-		padding-left: 1.4rem;
-	}
-
-	.tag-auto {
-		font-size: 0.625rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		background: rgba(16, 185, 129, 0.12);
-		color: #34d399;
-		border: 1px solid rgba(16, 185, 129, 0.25);
-		padding: 0.1rem 0.35rem;
-		border-radius: 4px;
-	}
-
 	.modal-footer {
 		display: flex;
 		justify-content: flex-end;
 		gap: 0.75rem;
 		margin-top: 1.25rem;
 		padding-top: 1rem;
-		border-top: 1px solid rgba(255, 255, 255, 0.06);
+		border-top: 1px solid var(--border-engine-06);
 	}
 
 	/* Helpers */
-	.text-emerald { color: #34d399 !important; }
-	.text-primary { color: #818cf8 !important; }
-	.text-amber { color: #fbbf24 !important; }
-	.text-danger { color: #f87171 !important; }
-	.text-muted { color: #64748b !important; }
+	.text-emerald { color: var(--accent-emerald-text) !important; }
+	.text-primary { color: var(--accent-indigo-text) !important; }
+	.text-amber { color: var(--warning-text) !important; }
+	.text-muted { color: var(--engine-slate-500) !important; }
 	.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 	.spin {
@@ -1685,50 +1393,6 @@
 		from { transform: rotate(0deg); }
 	}
 
-	/* Toast Center */
-	.toast-center {
-		position: fixed;
-		bottom: 1.5rem;
-		right: 1.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		z-index: var(--z-toast);
-	}
-
-	.toast-item {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-card);
-		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-		color: var(--text-primary);
-		min-width: 320px;
-	}
-
-	.toast-success { border-color: var(--accent-green-border); }
-	.toast-warning { border-color: var(--accent-orange-border); }
-	.toast-error { border-color: var(--danger-border); }
-
-	.toast-copy {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-	}
-
-	.toast-head {
-		font-weight: 700;
-		font-size: 0.8125rem;
-	}
-
-	.toast-body {
-		font-size: 0.75rem;
-		color: #94a3b8;
-	}
-
 	.loading-state {
 		display: flex;
 		flex-direction: column;
@@ -1736,16 +1400,7 @@
 		justify-content: center;
 		padding: 4rem 1rem;
 		gap: 0.875rem;
-		color: #64748b;
+		color: var(--engine-slate-500);
 		text-align: center;
-	}
-
-	@media (max-width: 960px) {
-		.banner-card {
-			grid-template-columns: 1fr;
-		}
-		.banner-kpis {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>
