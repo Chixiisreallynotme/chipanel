@@ -4,6 +4,7 @@
 	import { toast } from '$lib/stores/toast.svelte.js';
 	import FileTree from '$lib/components/files/FileTree.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Spinner from '$lib/components/ui/Spinner.svelte';
 	import {
 		FileCode,
@@ -246,7 +247,7 @@
 
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} />
 
-<div class="files-page-container">
+<div class="page-stack files-page-container">
 	<!-- Page Header with Preset Chips -->
 	<PageHeader
 		title="Éditeur de Fichiers & Configurations"
@@ -320,16 +321,13 @@
 </div>
 
 <!-- Modal 1: Create File/Folder -->
-{#if createModalOpen}
-	<div class="modal-backdrop" onclick={() => (createModalOpen = false)} onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} role="presentation">
-		<div
-			class="modal"
-			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			tabindex="-1"
-			aria-labelledby="create-modal-title"
-			aria-modal="true"
-		>
+<Modal
+	open={createModalOpen}
+	onclose={() => (createModalOpen = false)}
+	class="modal"
+	ariaLabelledBy="create-modal-title"
+>
+	{#snippet content()}
 			<header class="modal-header">
 				<h3 id="create-modal-title" class="modal-title">
 					<Plus size={18} />
@@ -393,21 +391,17 @@
 					</button>
 				</footer>
 			</form>
-		</div>
-	</div>
-{/if}
+	{/snippet}
+</Modal>
 
 <!-- Modal 2: Delete Confirmation -->
-{#if deleteModalOpen}
-	<div class="modal-backdrop" onclick={() => (deleteModalOpen = false)} onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} role="presentation">
-		<div
-			class="modal"
-			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			tabindex="-1"
-			aria-labelledby="delete-modal-title"
-			aria-modal="true"
-		>
+<Modal
+	open={deleteModalOpen}
+	onclose={() => (deleteModalOpen = false)}
+	class="modal"
+	ariaLabelledBy="delete-modal-title"
+>
+	{#snippet content()}
 			<header class="modal-header">
 				<h3 id="delete-modal-title" class="modal-title text-danger">
 					<Trash2 size={18} />
@@ -440,21 +434,17 @@
 					Delete Item
 				</button>
 			</footer>
-		</div>
-	</div>
-{/if}
+	{/snippet}
+</Modal>
 
 <!-- Modal 3: Unsaved Changes Guard -->
-{#if unsavedModalOpen}
-	<div class="modal-backdrop" onclick={() => (unsavedModalOpen = false)} onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} role="presentation">
-		<div
-			class="modal"
-			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			tabindex="-1"
-			aria-labelledby="unsaved-modal-title"
-			aria-modal="true"
-		>
+<Modal
+	open={unsavedModalOpen}
+	onclose={() => (unsavedModalOpen = false)}
+	class="modal"
+	ariaLabelledBy="unsaved-modal-title"
+>
+	{#snippet content()}
 			<header class="modal-header">
 				<h3 id="unsaved-modal-title" class="modal-title">
 					<AlertCircle size={18} class="text-warning" />
@@ -479,17 +469,14 @@
 					Discard & Switch
 				</button>
 			</footer>
-		</div>
-	</div>
-{/if}
+	{/snippet}
+</Modal>
 
 <style>
 	.files-page-container {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
 		flex: 1;
 		min-height: calc(100dvh - 60px - 48px);
+		padding-bottom: 0;
 	}
 
 	/* Preset Chips (Milled Capsule) */

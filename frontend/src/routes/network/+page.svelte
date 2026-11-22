@@ -1,7 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
-	import { apiFetch, apiGet, apiPost } from '$lib/api/client.js';
+	import { apiGet, apiPost } from '$lib/api/client.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import KpiCard from '$lib/components/ui/KpiCard.svelte';
+	import KpiGrid from '$lib/components/ui/KpiGrid.svelte';
 	import {
 		Network,
 		Smartphone,
@@ -9,7 +12,6 @@
 		ShieldCheck,
 		Key,
 		CheckCircle2,
-		AlertCircle,
 		AlertTriangle,
 		RefreshCw,
 		Copy,
@@ -81,7 +83,7 @@
 	<title>Cross-Play Bedrock & Réseau | ChiPanel</title>
 </svelte:head>
 
-<div class="network-page-layout">
+<div class="page-stack">
 	<!-- Page Header -->
 	<PageHeader
 		title="Cross-Play Bedrock & Réseau"
@@ -100,81 +102,51 @@
 	</PageHeader>
 
 	{#if error}
-		<div class="alert alert-danger card">
-			<AlertCircle size={20} />
-			<span>{error}</span>
-			<button class="btn btn-secondary btn-sm" onclick={loadGeyserStatus}>Réessayer</button>
-		</div>
+		<Callout tone="danger" title="Pont Bedrock indisponible">
+			{error}
+			{#snippet action()}
+				<button class="btn btn-secondary btn-sm" onclick={loadGeyserStatus}>Réessayer</button>
+			{/snippet}
+		</Callout>
 	{/if}
 
 	<!-- Status KPI Grid -->
-	<div class="status-grid">
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper {geyserStatus?.is_geyser_installed ? 'kpi-success' : 'kpi-warning'}">
-				<Smartphone size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Plugin Geyser</span>
-				<span class="kpi-value">
-					{#if loading}
-						—
-					{:else if geyserStatus?.is_geyser_installed}
-						Installé ({geyserStatus.geyser_jar_name})
-					{:else}
-						Non Détecté
-					{/if}
-				</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper {geyserStatus?.is_floodgate_installed ? 'kpi-success' : 'kpi-info'}">
-				<ShieldCheck size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Floodgate (Auth Bedrock)</span>
-				<span class="kpi-value">
-					{#if loading}
-						—
-					{:else if geyserStatus?.is_floodgate_installed}
-						Installé ({geyserStatus.floodgate_jar_name})
-					{:else}
-						Non Détecté
-					{/if}
-				</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper {geyserStatus?.has_encryption_key ? 'kpi-success' : 'kpi-warning'}">
-				<Key size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Clé de Chiffrement (key.pem)</span>
-				<span class="kpi-value">
-					{#if loading}
-						—
-					{:else if geyserStatus?.has_encryption_key}
-						Générée & Active
-					{:else}
-						En attente de boot
-					{/if}
-				</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-primary">
-				<Gamepad2 size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Port UDP Bedrock</span>
-				<span class="kpi-value font-mono">
-					{geyserStatus?.bedrock_port ?? 19132} / UDP
-				</span>
-			</div>
-		</div>
-	</div>
+	<KpiGrid>
+		<KpiCard label="Plugin Geyser" tone={geyserStatus?.is_geyser_installed ? 'success' : 'warning'}>
+			{#snippet icon()}<Smartphone size={22} />{/snippet}
+			{#if loading}
+				—
+			{:else if geyserStatus?.is_geyser_installed}
+				Installé ({geyserStatus.geyser_jar_name})
+			{:else}
+				Non Détecté
+			{/if}
+		</KpiCard>
+		<KpiCard label="Floodgate (Auth Bedrock)" tone={geyserStatus?.is_floodgate_installed ? 'success' : 'info'}>
+			{#snippet icon()}<ShieldCheck size={22} />{/snippet}
+			{#if loading}
+				—
+			{:else if geyserStatus?.is_floodgate_installed}
+				Installé ({geyserStatus.floodgate_jar_name})
+			{:else}
+				Non Détecté
+			{/if}
+		</KpiCard>
+		<KpiCard label="Clé de Chiffrement (key.pem)" tone={geyserStatus?.has_encryption_key ? 'success' : 'warning'}>
+			{#snippet icon()}<Key size={22} />{/snippet}
+			{#if loading}
+				—
+			{:else if geyserStatus?.has_encryption_key}
+				Générée & Active
+			{:else}
+				En attente de boot
+			{/if}
+		</KpiCard>
+		<KpiCard label="Port UDP Bedrock" mono>
+			{#snippet icon()}<Gamepad2 size={22} />{/snippet}
+			{geyserStatus?.bedrock_port ?? 19132} / UDP
+		</KpiCard>
+	</KpiGrid>
 
 	<!-- Two Column Layout: Wizard & Client Connection Card -->
 	<div class="columns-grid">
@@ -304,76 +276,6 @@
 </div>
 
 <style>
-	.network-page-layout {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding-bottom: var(--space-8);
-	}
-
-	/* Status Grid */
-	.status-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-		gap: var(--space-4);
-	}
-
-	.kpi-card {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		padding: var(--space-4);
-		background-color: var(--bg-surface);
-	}
-
-	.kpi-icon-wrapper {
-		width: 42px;
-		height: 42px;
-		border-radius: var(--radius-md);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-
-	.kpi-primary {
-		background-color: var(--accent-blue-bg);
-		color: var(--accent-blue-text);
-	}
-
-	.kpi-success {
-		background-color: rgba(16, 185, 129, 0.15);
-		color: var(--engine-emerald);
-	}
-
-	.kpi-warning {
-		background-color: rgba(245, 158, 11, 0.15);
-		color: var(--engine-amber);
-	}
-
-	.kpi-info {
-		background-color: rgba(59, 130, 246, 0.15);
-		color: var(--accent-blue-text);
-	}
-
-	.kpi-content {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.kpi-label {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-	}
-
-	.kpi-value {
-		font-size: var(--font-size-base);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-	}
 
 	/* Columns Grid */
 	.columns-grid {
@@ -463,7 +365,7 @@
 	/* Param boxes */
 	.param-box {
 		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-sm);
 		display: flex;
@@ -499,7 +401,7 @@
 
 	.note-text {
 		font-size: var(--font-size-xs);
-		color: #93C5FD;
+		color: var(--accent-blue-text);
 		line-height: 1.4;
 	}
 

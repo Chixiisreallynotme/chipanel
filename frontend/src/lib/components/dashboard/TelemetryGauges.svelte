@@ -307,7 +307,7 @@
 	}
 
 	.text-green { color: var(--accent-green-text); }
-	.text-warning { color: var(--warning-text, #FBBF24); }
+	.text-warning { color: var(--warning-text); }
 	.text-danger { color: var(--danger-text); }
 	.text-muted { color: var(--text-muted); }
 </style>

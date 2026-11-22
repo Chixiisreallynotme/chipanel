@@ -256,7 +256,7 @@
 	oncancel={() => (groupPendingDelete = null)}
 />
 
-<div class="permissions-page">
+<div class="page-stack permissions-page">
 	<!-- Page Header -->
 	<PageHeader
 		title="LuckPerms Visual Editor"
@@ -378,9 +378,6 @@
 
 <style>
 	.permissions-page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
 		position: relative;
 	}
 

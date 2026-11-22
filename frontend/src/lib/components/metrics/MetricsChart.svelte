@@ -247,21 +247,21 @@
 	}
 
 	.chart-header-icon.icon-tps {
-		color: #0fa968;
+		color: var(--accent-green);
 	}
 
 	.chart-header-icon.icon-cpu {
-		color: #3b82f6;
+		color: var(--accent-blue);
 	}
 
 	.chart-header-icon.icon-ram {
-		color: #d97706;
+		color: var(--accent-orange);
 	}
 
 	/* Non-text icon (3:1), deliberately kept identical to the `players` SERIES
 	   colour above so the header matches the plotted line. Not the UI text token. */
 	.chart-header-icon.icon-players {
-		color: #8b5cf6;
+		color: var(--accent-purple);
 	}
 
 	.chart-card-body {

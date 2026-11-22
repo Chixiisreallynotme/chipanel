@@ -609,7 +609,7 @@
 		width: 32px;
 		height: 32px;
 		border-radius: 6px;
-		background: #5C4033;
+		background: var(--mc-steve-skin);
 		border: 1px solid rgba(255, 255, 255, 0.15);
 		display: flex;
 		align-items: center;

@@ -392,7 +392,7 @@
 	.step-progress-item.active .step-badge {
 		background-color: var(--accent-blue-solid);
 		border-color: var(--accent-blue-solid);
-		color: #FFFFFF;
+		color: var(--text-on-solid);
 		box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
 	}
 
@@ -465,7 +465,7 @@
 	.next-btn {
 		background-color: var(--accent-blue-solid);
 		border-color: var(--accent-blue-solid);
-		color: #FFFFFF;
+		color: var(--text-on-solid);
 		box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2);
 		transition: transform 160ms var(--ease-out), background-color 150ms ease, box-shadow 150ms ease;
 	}

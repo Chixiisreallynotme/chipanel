@@ -1,6 +1,6 @@
 <script>
 	import { toast } from '$lib/stores/toast.svelte.js';
-	import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-svelte';
+	import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from '$lib/icons.js';
 </script>
 
 {#if toast.items.length > 0}
@@ -41,14 +41,14 @@
 	.toast-item {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.875rem 1.25rem;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-card);
 		background: var(--bg-elevated);
 		border: 1px solid var(--border);
 		box-shadow: var(--elevation-shadow);
 		color: var(--text-primary);
-		min-width: 320px;
+		width: min(360px, calc(100vw - var(--space-8)));
 	}
 	.toast-success { border-left: 3px solid var(--accent-green); }
 	.toast-error { border-left: 3px solid var(--danger); }

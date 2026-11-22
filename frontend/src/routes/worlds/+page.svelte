@@ -1,6 +1,6 @@
-<script>
+﻿<script>
 	import { onMount, onDestroy } from 'svelte';
-	import { apiGet, apiPost, apiFetch, apiDownload } from '$lib/api/client.js';
+	import { apiGet, apiPost, apiDelete, apiDownload } from '$lib/api/client.js';
 	import WorldCard from '$lib/components/worlds/WorldCard.svelte';
 	import ChunkyPanel from '$lib/components/worlds/ChunkyPanel.svelte';
 	import WorldBackupModal from '$lib/components/worlds/WorldBackupModal.svelte';
@@ -68,10 +68,6 @@
 	let isSavingBorder = $state(false);
 
 	// Toasts via le store global (ToastHost monte dans le layout).
-	/** @param {'success' | 'error' | 'warning' | 'info'} type @param {string} title @param {string} message */
-	function forwardToast(type, title, message) {
-		toast.show(type, title, message);
-	}
 
 	// Message de confirmation de suppression (inclut l'avertissement monde actif).
 	let deleteMessage = $derived.by(() => {
@@ -315,13 +311,7 @@
 		deleteInFlight = true;
 		const world = deleteTarget;
 		try {
-			const res = await apiFetch('/api/worlds/' + encodeURIComponent(world.folder_name), {
-				method: 'DELETE'
-			});
-			const data = await res.json().catch(() => ({}));
-			if (!res.ok) {
-				throw new Error(data?.error || `Delete failed (HTTP ${res.status})`);
-			}
+			const data = await apiDelete('/api/worlds/' + encodeURIComponent(world.folder_name));
 			toast.success( 'World Deleted', data?.message || `World '${world.folder_name}' deleted.`);
 			if (data?.warning) toast.info( 'Warning', data.warning);
 			deleteTarget = null;
@@ -377,7 +367,7 @@
 </svelte:head>
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="worlds-page">
+<div class="page-stack worlds-page">
 	<!-- Top Hero Header Banner -->
 	<PageHeader
 		title="World Management & Chunky Pre-generation"
@@ -535,7 +525,7 @@
 			{worlds}
 			selectedWorldName={pregenTargetWorld}
 			onActionSuccess={handleChunkyActionSuccess}
-			onToast={forwardToast}
+			onToast={toast.forward}
 		/>
 	</div>
 
@@ -547,7 +537,7 @@
 		{loading}
 		onClose={() => (backupModalOpen = false)}
 		onRefresh={loadWorldsData}
-		onToast={forwardToast}
+		onToast={toast.forward}
 	/>
 
 	<!-- Edit Worldborder Modal -->
@@ -649,7 +639,7 @@
 			createModalOpen = false;
 			await loadWorldsData();
 		}}
-		onToast={forwardToast}
+		onToast={toast.forward}
 	/>
 
 	<ImportWorldModal
@@ -660,14 +650,14 @@
 			importModalOpen = false;
 			await loadWorldsData();
 		}}
-		onToast={forwardToast}
+		onToast={toast.forward}
 	/>
 
 	<ConfigureWorldModal
 		isOpen={configureModalOpen}
 		world={configureTarget}
 		onClose={() => (configureModalOpen = false)}
-		onToast={forwardToast}
+		onToast={toast.forward}
 	/>
 
 	<!-- Delete world confirmation -->
@@ -685,9 +675,6 @@
 
 <style>
 	.worlds-page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
 		position: relative;
 	}
 

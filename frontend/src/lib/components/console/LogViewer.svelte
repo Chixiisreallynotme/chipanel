@@ -1,8 +1,8 @@
 <script>
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
 	import { apiFetch } from '$lib/api/client.js';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 	import {
-		Search,
 		Download,
 		Trash2,
 		ArrowDown,
@@ -226,24 +226,12 @@
 	<div class="log-viewer-toolbar">
 		<div class="toolbar-left">
 			<div class="search-input-wrapper">
-				<Search size={14} class="search-icon" />
-				<input
-					type="text"
-					class="input input-sm search-input"
-					placeholder="Search console logs..."
+				<SearchBar
+					compact
 					bind:value={searchQuery}
-					aria-label="Filter console logs"
+					placeholder="Rechercher dans les logs…"
+					label="Filtrer les logs de la console"
 				/>
-				{#if searchQuery}
-					<button
-						class="btn-clear-search"
-						onclick={() => (searchQuery = '')}
-						title="Clear search filter"
-						aria-label="Clear search filter"
-					>
-						&times;
-					</button>
-				{/if}
 			</div>
 
 			<!-- Severity Filter Chips -->
@@ -425,40 +413,7 @@
 
 	/* Search input field */
 	.search-input-wrapper {
-		position: relative;
-		display: flex;
-		align-items: center;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: var(--space-3);
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.search-input {
-		padding-left: 32px;
-		padding-right: 28px;
 		width: 220px;
-		font-size: var(--font-size-xs);
-		background-color: var(--bg-base);
-	}
-
-	.btn-clear-search {
-		position: absolute;
-		right: 8px;
-		background: none;
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
-		font-size: 14px;
-		line-height: 1;
-		padding: 2px 4px;
-	}
-
-	.btn-clear-search:hover {
-		color: var(--text-primary);
 	}
 
 	/* Severity Filters */
@@ -543,7 +498,7 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
-		background-color: #080a0f;
+		background-color: var(--bg-terminal);
 		box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
@@ -556,7 +511,7 @@
 		line-height: 1.55;
 		color: var(--text-primary);
 		word-break: break-word;
-		background-color: #080a0f;
+		background-color: var(--bg-terminal);
 	}
 
 	.empty-logs {

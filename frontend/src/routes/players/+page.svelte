@@ -6,6 +6,7 @@
 	import PlayerList from '$lib/components/players/PlayerList.svelte';
 	import PlayerProfileModal from '$lib/components/players/PlayerProfileModal.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		Users,
 		UserCheck,
@@ -234,7 +235,7 @@
 </svelte:head>
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="players-page">
+<div class="page-stack players-page">
 	<!-- Top Hero Banner -->
 	<PageHeader
 		title="Player Directory & Moderation"
@@ -340,20 +341,14 @@
 	/>
 
 	<!-- Quick Kick / Ban Dialog Modal -->
-	{#if quickActionModalOpen && targetPlayerForQuickAction}
-		<div class="modal-backdrop" onclick={closeQuickActionModal} aria-hidden="true">
-			<div
-				class="modal"
-				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => {
-					e.stopPropagation();
-					if (e.key === 'Escape') closeQuickActionModal();
-				}}
-				role="dialog"
-				tabindex="-1"
-				aria-modal="true"
-				aria-labelledby="quick-action-title"
-			>
+	{#if targetPlayerForQuickAction}
+		<Modal
+			open={quickActionModalOpen}
+			onclose={() => { if (!isExecutingQuickAction) closeQuickActionModal(); }}
+			class="modal"
+			ariaLabelledBy="quick-action-title"
+		>
+			{#snippet content()}
 				<div class="modal-header">
 					<div class="quick-title-row">
 						{#if quickActionType === 'kick'}
@@ -420,17 +415,14 @@
 						<span>Confirm {quickActionType === 'kick' ? 'Kick' : 'Ban'}</span>
 					</button>
 				</div>
-			</div>
-		</div>
+			{/snippet}
+		</Modal>
 	{/if}
 
 </div>
 
 <style>
 	.players-page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
 		position: relative;
 	}
 
@@ -450,7 +442,7 @@
 	}
 
 	.live-status-pill:hover {
-		border-color: var(--border-hover);
+		border-color: var(--border-focus);
 		color: var(--text-primary);
 	}
 

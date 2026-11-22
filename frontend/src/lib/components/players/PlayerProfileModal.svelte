@@ -6,6 +6,7 @@
 	import StatusEffectsPanel from './StatusEffectsPanel.svelte';
 	import BasicPermissionsPanel from './BasicPermissionsPanel.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import {
 		X,
 		Crown,
@@ -74,6 +75,8 @@
 	let loadingDetail = $state(false);
 	let actionLoading = $state(null); // 'kick' | 'ban' | 'pardon' | 'teleport' | 'op' | 'deop' | 'gamemode' | 'heal' | 'feed' | 'kill' | 'clear' | 'give' | 'whitelist_add' | 'whitelist_remove'
 	let errorMessage = $state('');
+	let confirmClearOpen = $state(false);
+	let confirmClearName = $state('');
 
 	// Inventory NBT state
 	let inventoryData = $state(null);
@@ -1141,11 +1144,7 @@
 
 										<button
 											class="btn btn-danger {actionLoading === 'clear' ? 'btn-loading' : ''}"
-											onclick={() => {
-												if (confirm(`Are you sure you want to completely clear ${p.username}'s inventory?`)) {
-													handleExecuteAction('clear');
-												}
-											}}
+											onclick={() => { confirmClearName = p.username; confirmClearOpen = true; }}
 											disabled={actionLoading === 'clear'}
 											title="Clears player inventory (queued if offline)"
 										>
@@ -1388,6 +1387,16 @@
 		{/snippet}
 	</Modal>
 {/if}
+
+<ConfirmDialog
+	open={confirmClearOpen}
+	title="Vider l'inventaire"
+	message={`Vider complètement l'inventaire de ${confirmClearName} ? Cette action est irréversible.`}
+	confirmLabel="Vider l'inventaire"
+	busy={actionLoading === 'clear'}
+	onconfirm={() => { confirmClearOpen = false; handleExecuteAction('clear'); }}
+	oncancel={() => (confirmClearOpen = false)}
+/>
 
 <style>
 	.profile-modal-drawer {
@@ -1855,7 +1864,7 @@
 
 	.count-btn.active {
 		background-color: var(--accent-blue);
-		color: #ffffff;
+		color: var(--text-on-solid);
 	}
 
 	.count-custom-input {
@@ -1886,7 +1895,7 @@
 	}
 
 	.cat-pill:hover {
-		border-color: var(--border-hover);
+		border-color: var(--border-focus);
 		color: var(--text-primary);
 	}
 
@@ -1983,7 +1992,7 @@
 	}
 
 	.item-grid-card:hover {
-		border-color: var(--border-hover);
+		border-color: var(--border-focus);
 		background-color: var(--bg-elevated);
 	}
 
@@ -2040,7 +2049,7 @@
 		top: 4px;
 		right: 4px;
 		background-color: var(--accent-blue);
-		color: #ffffff;
+		color: var(--text-on-solid);
 		border-radius: 50%;
 		width: 16px;
 		height: 16px;
@@ -2119,7 +2128,7 @@
 	}
 
 	.gamemode-select-btn:hover {
-		border-color: var(--border-hover);
+		border-color: var(--border-focus);
 	}
 
 	.gamemode-select-btn:active {
@@ -2189,7 +2198,7 @@
 	.btn-purple {
 		background-color: var(--accent-purple-solid);
 		border-color: var(--accent-purple-solid);
-		color: #ffffff;
+		color: var(--text-on-solid);
 	}
 
 	.btn-purple:hover:not(:disabled) {
@@ -2232,8 +2241,8 @@
 
 	/* Tab Badge Count */
 	.tab-badge-count {
-		background-color: var(--warning, #F59E0B);
-		color: #000000;
+		background-color: var(--warning);
+		color: var(--mc-shadow);
 		font-size: 10px;
 		font-weight: 700;
 		padding: 1px 5px;
@@ -2256,7 +2265,7 @@
 
 	.queue-count-pill {
 		background-color: rgba(245, 158, 11, 0.2);
-		color: var(--warning, #F59E0B);
+		color: var(--warning);
 		font-size: 11px;
 		font-weight: 700;
 		padding: 2px 7px;

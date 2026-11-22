@@ -1,4 +1,3 @@
-<!-- KpiGrid.svelte -->
 <script>
 	/** @import { Snippet } from 'svelte'; */
 	/** @type {{ children?: Snippet }} */
@@ -8,6 +7,9 @@
 <div class="kpi-grid">{@render children()}</div>
 
 <style>
-	.kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-	@media (max-width: 960px) { .kpi-grid { grid-template-columns: 1fr; } }
+	.kpi-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		gap: var(--space-4);
+	}
 </style>

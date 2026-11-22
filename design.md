@@ -598,11 +598,17 @@ Répertoire `frontend/src/lib/components/ui/` — les primitives réutilisables 
 | Composant | Rôle | Contrat |
 | :--- | :--- | :--- |
 | `Spinner.svelte` | Loading inline (`--spin` global) | `size`, `label` (aria-label), `class` |
-| `EmptyState.svelte` | État vide canonique | `title`, `description` (**string OU snippet**), `icon`/`action` (snippets), `variant: standard \| card \| compact \| dashed`, `class` |
+| `EmptyState.svelte` | État vide canonique | `title`, `description` (**string OU snippet**), `icon`/`action` (snippets), `card`, `compact`, `dashed` (booléens), `class` |
 | `Modal.svelte` | Shell de modale accessible | `open`, `onclose`, `class` (classes du panneau), `backdropClass`, `role`/`ariaLabelledBy`, `initialFocus`, `closeOnBackdrop`, contenu via `{#snippet content()}` |
-| `PageHeader.svelte` | Header de page canonique (Design Council II) | `title`, `subtitle`, `actions` (snippet), `backLink` |
-| `RedirectState.svelte` | État de redirection | `to`, `message` |
-| `ConfirmDialog.svelte` | Confirmation accessible de référence | boutons `.btn-danger`/`.btn-secondary`, focus trap, ESC |
+| `PageHeader.svelte` | Header de page canonique (Design Council II) | `title`, `subtitle`, `icon`/`badge` (snippets), actions via le contenu enfant |
+| `RedirectState.svelte` | État de redirection | `title`, `description`, `href`, `actionLabel`, `children` |
+| `ConfirmDialog.svelte` | Confirmation accessible de référence | `open`, `title`, `message`, `confirmLabel`/`cancelLabel`, `destructive`, `busy`, `onconfirm`, `oncancel` |
+| `Callout.svelte` | Message de statut inline | `tone: info \| success \| warning \| danger`, `title`, `action` (snippet), contenu enfant |
+| `KpiCard.svelte` / `KpiGrid.svelte` | Tuile et grille d'indicateurs | `label`, `value`, `icon`, `tone`, `mono`, `children` / grille via `children` |
+| `SearchBar.svelte` | Champ de recherche canonique | `value` (bindable), `placeholder`, `label`, `compact`, `oninput`, `onclear` |
+| `CategoryTabs.svelte` | Filtre segmenté | `options: {id,label,count}[]`, `active` (bindable), `variant` |
+| `ChecklistCard.svelte` | Carte de configuration cochable | `title`, `detail`, `badge`, `checked` (bindable, `null` = lecture seule), `icon` |
+| `HeroBanner.svelte` | Bandeau d'identité | `title`, `badge`, `titleExtra`, `visual`, `meta`, `kpis` |
 
 Variants `EmptyState` calées sur des usages réels : `card` (bordure + bg-surface, ex-worlds), `compact` (titre base/medium, desc xs, icône opacity .5, ex-PlayerListCard), `dashed` (bg-base + bordure tirets `--border-focus`, ex-StatusEffectsPanel). Titre canonique `.empty-title` = `font-size-md` + `font-weight-semibold`.
 
@@ -616,7 +622,7 @@ Variants `EmptyState` calées sur des usages réels : `card` (bordure + bg-surfa
 
 ### 15.4 Contrat A11y Modal Unifié
 
-Toute modale passe par `Modal.svelte` (7 fichiers migrés : Create/Configure/ImportWorld, WorldBackup, ConfigDiff, VersionPicker, PlayerProfile) :
+Toute modale passe par `Modal.svelte` (toutes les routes et tous les composants ; il ne reste aucun `modal-backdrop` brut hors de `Modal`/`ConfirmDialog`) :
 
 - `role="dialog"` + `aria-modal="true"` + `aria-labelledby` + `tabindex="-1"` sur le panneau.
 - Focus initial sur le premier élément focusable à l'ouverture, focus restauré sur le déclencheur à la fermeture.
@@ -641,3 +647,81 @@ Micro-fixes    → 5 selecteurs segment-* morts supprimés (ModpackCatalogBrowse
                  tabindex radiogroup ChunkyPanel, svelte-ignore state_referenced_locally
                  (initialiseurs de props intentionnels)
 ```
+
+---
+
+## 16. Session Design Council V — Source Unique Réelle, Shell Canonique & Garde-Fou (2026-11-22)
+
+Cette session supprime la dette qui faisait dériver les pages malgré le kit existant.
+
+### 16.1 Une seule source de tokens, pour de vrai
+
+`app.css` redéfinissait `:root` (palette « engine », indigo/emerald, z-index) en violation de §12.1. C'est corrigé :
+
+- `src/lib/styles/tokens.css` est la **seule** définition de tokens (121 tokens).
+- `src/app.css` ne contient plus aucun `:root` ni aucun hex : uniquement la suite de composants globaux (`.btn`, `.card`, `.badge`, `.table`, `.modal`, formulaires).
+- 37 alias legacy (`--engine-*`, `--accent-indigo*`, `--accent-emerald*`, `--bg-surface-2`, `--bg-inset`, `--bg-card`, `--bg-subtle`, `--border-hover`, `--space-*` manquants) ont été migrés puis supprimés. Les valeurs sémantiques canoniques sont désormais seules.
+- Tokens manquants réintroduits : `--space-5/10/16`, `--radius-full`, `--radius-modal`, `--bg-code`, `--bg-terminal`, `--text-on-solid`, `--mc-*` (couleurs de jeu).
+
+### 16.2 Shell de page canonique
+
+Toutes les routes cockpit utilisent une seule colonne, définie dans `tokens.css` :
+
+```css
+.page-stack {
+  display: flex; flex-direction: column; gap: var(--space-6);
+  width: 100%; max-width: 1380px; margin-inline: auto;
+  padding-bottom: var(--space-8); min-width: 0;
+}
+```
+
+Références visuelles : **`/engine`** (header + toolbar + grille) et **`/dashboard`** (bento + télémétrie). Les 15 routes ont été migrées ; les anciens wrappers `.dashboard-page`, `.engine-page`, `.network-page-layout`, etc. sont supprimés. Seules les pages plein écran (`/login`, `/setup`, `/console`, `/files`) conservent des contraintes locales de hauteur.
+
+### 16.3 Règles d'extension (non négociables)
+
+1. Nouvelle page : `<div class="page-stack">` + `PageHeader` + primitives du kit. Jamais de wrapper local.
+2. Alerte/erreur : `Callout` (action de retry via `{#snippet action()}`). Jamais de `.alert` local.
+3. Indicateurs : `KpiGrid` + `KpiCard` (icône, ton sémantique, valeur mono).
+4. Recherche : `SearchBar` (`compact` dans les barres d'outils, `onclear` pour relancer une requête).
+5. Modale : `Modal` (focus trap, ESC, restore focus). Confirmation destructive : `ConfirmDialog`. Ne jamais utiliser `confirm()`/`alert()` natifs.
+6. Toasts : `toast` store global via `toast.forward` (mappe `danger` → `error`). Pas d'état de toast local.
+7. API : `apiGet` / `apiPost` / `apiDelete` / `apiDownload`. `apiFetch` uniquement pour un contrat HTTP spécifique.
+8. Couleur : token existant ou nouveau token dans `tokens.css`. Les seules couleurs littérales admises dans un `<style>` sont annotées `/* token-ok: raison */` (ex. séries de graphes calculées en JS).
+
+### 16.4 Garde-fou automatique
+
+```bash
+cd frontend && npm run check:tokens
+```
+
+`scripts/check-tokens.mjs` échoue si :
+
+- un `var(--x)` n'est défini ni dans `tokens.css` ni localement dans le fichier ;
+- un `<style>` (ou un CSS global) contient un hex non annoté `token-ok:` ;
+- un `:root` est redéfini hors `tokens.css`.
+
+`npm run check` exécute ce garde-fou avant `svelte-check`. Sortie attendue : `check:tokens — OK (121 tokens, 0 drift)`.
+
+### 16.5 Migrations effectuées
+
+- 31 fichiers : 113 hex remplacés par des tokens (zéro changement de structure).
+- `/audit`, `/database`, `/network`, `/backups` : KPI locaux → `KpiGrid`/`KpiCard`, alertes → `Callout`.
+- `/audit`, `/database`, `/engine`, `/players`, `/files`, `/backups`, `/diagnostics`, `/addons`, `/console`, `/modpacks` et leurs composants : modales brutes → `Modal` (a11y unifiée, gardes busy), y compris `QuickCommands`, `AlertSettings`, `ProfileManager`, `GroupEditor`, `WorldBackup`, `Modrinth`/`Modpack` (install/deploy), `InstalledPluginsList`.
+- `/backups` : suppression via `apiDelete` ; `PlayerProfileModal` et `InstalledPluginsList` : `confirm()` natifs → `ConfirmDialog` (suppression groupée conservée).
+- `/audit` : export CSV via `apiDownload` (plus de lecture `localStorage` ni de `fetch` manuel).
+- `SearchBar` adoptée dans 11 vues (pages + composants), `toast.forward` remplace les adaptateurs locaux.
+- `CustomSelect.svelte` supprimé : le `.select` global stylé est le seul contrat.
+
+### 16.6 Vérification
+
+```
+npm run check:tokens → OK (121 tokens, 0 drift)
+npm run check        → 0 erreur
+npm run build        → exit 0 (adapter-static)
+```
+
+### 16.7 Dette restante assumée
+
+- Les `rgba(...)` d'accent (halos, ombres, fonds translucides) restent littéraux : ils demandent des tokens `-bg-soft` par accent. À traiter lors d'une passe dédiée, sans changer les composants.
+- Les couleurs de séries de `MetricsChart.svelte` vivent dans le `<script>` (uPlot) et ne sont donc pas couvertes par le garde-fou.
+- Les icônes Lucide passées en props restent signalées « Unused CSS selector » par `svelte-check` : faux positifs connus, ne pas supprimer.

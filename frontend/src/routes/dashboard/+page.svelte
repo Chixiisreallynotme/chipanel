@@ -9,8 +9,9 @@
 	import VersionsCard from '$lib/components/dashboard/VersionsCard.svelte';
 	import MetricsChart from '$lib/components/metrics/MetricsChart.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
-	import { Play, Moon, Power, RotateCw, AlertTriangle, X, Sparkles } from '$lib/icons.js';
+	import { Play, Moon, Power, RotateCw, X, Sparkles } from '$lib/icons.js';
 
 	const UNKNOWN = 'inconnu';
 	const EMPTY_HISTORY = { timestamps: [], tps: [], cpu: [], ram_mb: [], players: [] };
@@ -150,7 +151,7 @@
 	oncancel={() => (offConfirmOpen = false)}
 />
 
-<div class="dashboard-page">
+<div class="page-stack">
 	<!-- Top Main Header & Controls -->
 	<PageHeader title="Vue d'ensemble" subtitle="Gérez et surveillez votre serveur Minecraft en temps réel.">
 		{#snippet badge()}
@@ -204,34 +205,28 @@
 	</PageHeader>
 
 	{#if modeError}
-		<div class="page-alert alert-danger" role="alert">
-			<AlertTriangle size={18} class="alert-icon" />
-			<div class="alert-body">
-				<span class="alert-title">{modeError.title}</span>
-				<span class="alert-detail">{modeError.detail}</span>
-				{#if modeError.serverMessage}
-					<span class="alert-server-msg">Réponse du serveur : {modeError.serverMessage}</span>
-				{/if}
-			</div>
-			<button
-				class="btn btn-ghost btn-icon btn-sm"
-				onclick={() => (modeError = null)}
-				aria-label="Masquer l'erreur"
-				type="button"
-			>
-				<X size={14} />
-			</button>
-		</div>
+		<Callout tone="danger" title={modeError.title}>
+			{modeError.detail}
+			{#if modeError.serverMessage}
+				<span class="callout-server">Réponse du serveur : {modeError.serverMessage}</span>
+			{/if}
+			{#snippet action()}
+				<button
+					class="btn btn-ghost btn-icon btn-sm"
+					onclick={() => (modeError = null)}
+					aria-label="Masquer l'erreur"
+					type="button"
+				>
+					<X size={14} />
+				</button>
+			{/snippet}
+		</Callout>
 	{/if}
 
 	{#if engineError}
-		<div class="page-alert alert-warning" role="alert">
-			<AlertTriangle size={18} class="alert-icon" />
-			<div class="alert-body">
-				<span class="alert-title">Configuration du moteur illisible</span>
-				<span class="alert-detail">{engineError}</span>
-			</div>
-		</div>
+		<Callout tone="warning" title="Configuration du moteur illisible">
+			{engineError}
+		</Callout>
 	{/if}
 
 	<!-- 1. Server Hero Banner -->
@@ -279,11 +274,6 @@
 </div>
 
 <style>
-	.dashboard-page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-	}
 
 	.mode-selector {
 		display: inline-flex;
@@ -338,7 +328,7 @@
 	.mode-active.mode-hibernate {
 		background: var(--warning-bg);
 		border-color: var(--warning-border);
-		color: var(--warning-text, #FBBF24);
+		color: var(--warning-text);
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 	}
 
@@ -368,7 +358,7 @@
 	.mode-badge-hibernate {
 		background: var(--warning-bg);
 		border-color: var(--warning-border);
-		color: var(--warning-text, #FBBF24);
+		color: var(--warning-text);
 	}
 
 	.header-action-btn {
@@ -380,47 +370,9 @@
 	}
 
 	/* Persistent inline alerts */
-	.page-alert {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-card);
-		border: 1px solid transparent;
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-	}
-
-	.alert-danger {
-		background-color: var(--danger-bg);
-		border-color: var(--danger-border);
-		color: var(--danger-text);
-	}
-
-	.alert-warning {
-		background-color: var(--warning-bg);
-		border-color: var(--warning-border);
-		color: var(--warning-text, #FBBF24);
-	}
-
-	.alert-body {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.alert-title {
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-semibold);
-	}
-
-	.alert-detail {
-		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
-	}
-
-	.alert-server-msg {
+	.callout-server {
+		display: block;
+		margin-top: var(--space-1);
 		font-size: var(--font-size-xs);
 		font-family: var(--font-mono);
 		color: var(--text-muted);

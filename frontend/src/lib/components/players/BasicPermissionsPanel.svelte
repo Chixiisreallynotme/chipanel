@@ -8,7 +8,6 @@
 		Crown,
 		User,
 		Sparkles,
-		Search,
 		CheckCircle2,
 		AlertCircle,
 		Loader2,
@@ -16,9 +15,9 @@
 		Sliders,
 		Key,
 		Clock,
-		ArrowRight,
-		X
+		ArrowRight
 	} from '$lib/icons.js';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 
 	/**
 	 * @typedef {Object} PermissionNodeInfo
@@ -238,21 +237,12 @@
 			</div>
 
 			<!-- Search Filter -->
-			<div class="search-input-wrapper">
-				<Search size={14} class="search-icon" />
-				<input
-					type="text"
-					class="input search-input"
-					placeholder="Search permission nodes..."
-					aria-label="Search permission nodes"
-					bind:value={searchQuery}
-				/>
-				{#if searchQuery}
-					<button class="btn btn-ghost btn-sm clear-search-btn" onclick={() => (searchQuery = '')} aria-label="Clear search">
-						<X size={12} />
-					</button>
-				{/if}
-			</div>
+			<SearchBar
+				compact
+				bind:value={searchQuery}
+				placeholder="Rechercher une permission…"
+				label="Rechercher des nœuds de permission"
+			/>
 		</div>
 
 		<div class="card-body nodes-card-body">
@@ -447,33 +437,7 @@
 	}
 
 	.search-input-wrapper {
-		position: relative;
-		display: flex;
-		align-items: center;
 		width: 260px;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: 10px;
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.search-input {
-		padding-left: 32px;
-		padding-right: 28px;
-		height: 36px;
-		font-size: var(--font-size-xs);
-	}
-
-	.clear-search-btn {
-		position: absolute;
-		right: 4px;
-		padding: 0;
-		width: 24px;
-		height: 24px;
-		color: var(--text-muted);
 	}
 
 	.nodes-card-body {

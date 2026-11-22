@@ -12,11 +12,11 @@
 		RefreshCw,
 		ChevronRight,
 		ChevronDown,
-		X,
 		FilePlus,
 		AlertCircle,
 		AlertTriangle
 	} from '$lib/icons.js';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 
 	/**
 	 * @typedef {Object} FileTreeNode
@@ -245,26 +245,12 @@
 <aside class="file-tree-sidebar">
 	<!-- Top Search & Action Bar -->
 	<div class="tree-toolbar">
-		<div class="search-input-wrapper">
-			<Search size={14} class="search-icon" />
-			<input
-				type="text"
-				class="input tree-search-input"
-				placeholder="Filter files..."
-				bind:value={searchQuery}
-				aria-label="Filter tree by filename"
-			/>
-			{#if searchQuery}
-				<button
-					type="button"
-					class="btn btn-ghost btn-icon clear-search-btn"
-					onclick={clearSearch}
-					aria-label="Clear search filter"
-				>
-					<X size={12} />
-				</button>
-			{/if}
-		</div>
+		<SearchBar
+			compact
+			bind:value={searchQuery}
+			placeholder="Filtrer les fichiers…"
+			label="Filtrer l'arborescence par nom de fichier"
+		/>
 
 		<div class="tree-header-actions">
 			<button
@@ -497,42 +483,6 @@
 		padding: var(--space-3);
 		border-bottom: 1px solid var(--border-subtle);
 		background-color: var(--bg-base);
-	}
-
-	.search-input-wrapper {
-		position: relative;
-		flex: 1;
-		display: flex;
-		align-items: center;
-	}
-
-	:global(.search-input-wrapper .search-icon) {
-		position: absolute;
-		left: 10px;
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.tree-search-input {
-		height: 32px;
-		padding-left: 30px;
-		padding-right: 28px;
-		font-size: var(--font-size-xs);
-		background-color: var(--bg-surface);
-		border-color: var(--border-subtle);
-	}
-
-	.tree-search-input:focus {
-		border-color: var(--accent-blue);
-		box-shadow: 0 0 0 2px var(--accent-blue-border);
-	}
-
-	:global(.clear-search-btn) {
-		position: absolute;
-		right: 4px;
-		width: 22px !important;
-		height: 22px !important;
-		color: var(--text-muted);
 	}
 
 	.tree-header-actions {

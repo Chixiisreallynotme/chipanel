@@ -22,6 +22,17 @@ class ToastStore {
 	/** @param {string} title @param {string} message */
 	info(title, message) { this.show('info', title, message); }
 
+	/**
+	 * Child components still emit a `type` that may include 'danger'; map it once
+	 * here instead of every page re-implementing a forwardToast adapter.
+	 * Arrow field so it can be passed directly as `onToast={toast.forward}`.
+	 * @param {string} type @param {string} title @param {string} message
+	 */
+	forward = (type, title, message) => {
+		if (type === 'danger') this.error(title, message);
+		else this.show(/** @type {ToastType} */ (type), title, message);
+	};
+
 	/** @param {string} id */
 	dismiss(id) {
 		this.items = this.items.filter((t) => t.id !== id);

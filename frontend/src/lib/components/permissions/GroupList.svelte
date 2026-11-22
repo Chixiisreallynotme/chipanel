@@ -11,13 +11,12 @@
 		Edit,
 		Trash2,
 		Plus,
-		Search,
 		LayoutGrid,
 		List,
-		X,
 		Layers,
 		ArrowUpRight
 	} from '$lib/icons.js';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 
 	/**
 	 * @typedef {Object} LuckPermsPermissionNode
@@ -94,23 +93,12 @@
 	<!-- Control Bar: Search, View Mode Switcher, Create Group Button -->
 	<div class="list-control-bar">
 		<div class="search-box">
-			<Search size={16} class="search-icon" />
-			<input
-				type="text"
-				class="input search-input"
-				placeholder="Search groups by name, prefix, or parents..."
-				aria-label="Search groups by name, prefix, or parents"
+			<SearchBar
+				compact
 				bind:value={searchQuery}
+				placeholder="Rechercher un groupe par nom, préfixe ou parent…"
+				label="Rechercher des groupes"
 			/>
-			{#if searchQuery}
-				<button
-					class="btn btn-ghost btn-icon btn-sm clear-btn"
-					onclick={() => (searchQuery = '')}
-					title="Clear search"
-				>
-					<X size={14} />
-				</button>
-			{/if}
 		</div>
 
 		<div class="actions-group">
@@ -375,33 +363,11 @@
 	}
 
 	.search-box {
-		position: relative;
 		display: flex;
 		align-items: center;
 		flex: 1;
 		min-width: 280px;
 		max-width: 480px;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: 12px;
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.search-input {
-		padding-left: 38px;
-		padding-right: 32px;
-		height: 40px;
-	}
-
-	.clear-btn {
-		position: absolute;
-		right: 4px;
-		width: 28px;
-		height: 28px;
-		padding: 0;
 	}
 
 	.actions-group {

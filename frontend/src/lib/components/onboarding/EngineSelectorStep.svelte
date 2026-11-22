@@ -392,7 +392,7 @@
 
 	.engine-card.selected {
 		border-color: var(--accent-blue);
-		background-color: #171B26;
+		background-color: var(--bg-elevated);
 		box-shadow: inset 0 1px 0 rgba(59, 130, 246, 0.25), 0 0 0 1px var(--accent-blue), 0 8px 24px rgba(0, 0, 0, 0.4);
 	}
 
@@ -512,7 +512,7 @@
 
 	.radio-pill.selected {
 		background-color: var(--accent-blue-solid);
-		color: #FFFFFF;
+		color: var(--text-on-solid);
 		font-weight: var(--font-weight-semibold);
 	}
 

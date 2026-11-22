@@ -298,7 +298,7 @@
 	}
 
 	.segment-os {
-		background-color: #4B5563; /* Cool Slate Gray OS reserve */
+		background-color: var(--text-muted); /* Cool Slate Gray OS reserve */
 		z-index: 2;
 	}
 
@@ -333,7 +333,7 @@
 		border-radius: 2px;
 	}
 
-	.dot-os { background-color: #4B5563; }
+	.dot-os { background-color: var(--text-muted); }
 	.dot-heap { background-color: var(--accent-blue-solid); }
 	.dot-free { background-color: var(--bg-elevated); border: 1px solid var(--border-focus); }
 
@@ -411,7 +411,7 @@
 		width: 22px;
 		height: 22px;
 		border-radius: 50%;
-		background: #FFFFFF;
+		background: var(--text-on-solid);
 		border: 3px solid var(--accent-blue);
 		cursor: pointer;
 		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -430,7 +430,7 @@
 		width: 22px;
 		height: 22px;
 		border-radius: 50%;
-		background: #FFFFFF;
+		background: var(--text-on-solid);
 		border: 3px solid var(--accent-blue);
 		cursor: pointer;
 		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);

@@ -539,7 +539,7 @@
 
 	.clear-single-btn:hover {
 		background-color: var(--danger-bg);
-		color: var(--danger-hover);
+		color: var(--danger-solid-hover);
 	}
 
 	/* Apply Effect Section */

@@ -76,6 +76,6 @@
 		justify-content: center;
 		background: rgba(255, 255, 255, 0.05);
 		border-radius: 10px;
-		color: #94a3b8;
+		color: var(--text-secondary);
 	}
 </style>

@@ -28,7 +28,7 @@
 	<title>Server Console | ChiPanel</title>
 </svelte:head>
 
-<div class="console-page-layout">
+<div class="page-stack console-page-layout">
 	<!-- Page Header -->
 	<PageHeader
 		title="Console Serveur"
@@ -95,14 +95,12 @@
 
 <style>
 	.console-page-layout {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
 		height: calc(100vh - 60px - 48px);
 		height: calc(100dvh - 60px - 48px);
 		max-height: calc(100vh - 60px - 48px);
 		max-height: calc(100dvh - 60px - 48px);
 		min-height: 550px;
+		padding-bottom: 0;
 	}
 
 	.status-indicator-badge {
@@ -174,7 +172,7 @@
 		overflow: hidden;
 	}
 
-	/* Machined Obsidian Chassis (#080a0f) */
+	/* Machined Obsidian Chassis (var(--bg-terminal)) */
 	.obsidian-chassis {
 		flex: 1;
 		min-height: 250px;
@@ -190,7 +188,7 @@
 
 	.obsidian-core {
 		flex: 1;
-		background-color: #080a0f;
+		background-color: var(--bg-terminal);
 		border: 1px solid rgba(255, 255, 255, 0.04);
 		border-radius: calc(var(--radius-card) - 4px);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 2px 8px rgba(0, 0, 0, 0.25);

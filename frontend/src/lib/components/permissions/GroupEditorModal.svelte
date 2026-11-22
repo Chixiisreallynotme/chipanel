@@ -16,6 +16,7 @@
 		ToggleLeft,
 		ToggleRight
 	} from '$lib/icons.js';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	/**
 	 * @typedef {Object} LuckPermsPermissionNode
@@ -289,16 +290,13 @@
 </script>
 
 {#if isOpen}
-	<div
-		class="modal-backdrop"
-		onclick={(e) => e.target === e.currentTarget && onClose()}
-		onkeydown={(e) => e.key === 'Escape' && onClose()}
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="group-editor-modal-title"
-		tabindex="-1"
+	<Modal
+		open={isOpen}
+		onclose={onClose}
+		class="modal group-editor-modal"
+		ariaLabelledBy="group-editor-modal-title"
 	>
-		<div class="modal group-editor-modal">
+		{#snippet content()}
 			<!-- Modal Header -->
 			<div class="modal-header">
 				<div class="modal-title-group">
@@ -705,8 +703,8 @@
 					<span>{group ? 'Save Changes' : 'Create Group'}</span>
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
@@ -890,13 +888,13 @@
 
 	/* Minecraft Chat HUD */
 	.minecraft-chat-hud {
-		background-color: #0B0B10;
-		border: 1px solid #1A1A28;
+		background-color: var(--bg-base);
+		border: 1px solid var(--border);
 		border-radius: var(--radius-input);
 		padding: var(--space-4);
 		font-family: var(--font-mono);
 		font-size: var(--font-size-sm);
-		color: #E8E8F0;
+		color: var(--text-primary);
 		box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7);
 		min-height: 48px;
 		display: flex;
@@ -909,11 +907,11 @@
 	}
 
 	.chat-bracket {
-		color: #AAAAAA;
+		color: var(--text-secondary);
 	}
 
 	.chat-player-name {
-		color: #FFFFFF;
+		color: var(--text-on-solid);
 		font-weight: var(--font-weight-semibold);
 	}
 
@@ -922,7 +920,7 @@
 	}
 
 	.chat-message-text {
-		color: #FFFFFF;
+		color: var(--text-on-solid);
 	}
 
 	/* Permission Nodes Tab */

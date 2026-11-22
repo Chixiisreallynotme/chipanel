@@ -173,3 +173,17 @@ silencie les warnings a11y sans changer le comportement ni le rendu.
 `state_referenced_locally`. Comportement voulu → commenter la ligne avec
 `// svelte-ignore state_referenced_locally` au lieu de "corriger" la réactivité.
 Exemples : `formWorld` (ChunkyPanel), `filterTargetDir` (InstalledPluginsList), `selectedProjectType` (ModrinthCatalogBrowser).
+
+## Design tokens & kit UI (Design Council V)
+
+- **Source unique** : `frontend/src/lib/styles/tokens.css`. Aucun `:root` ni hex dans `app.css` ;
+  aucun `var(--x)` non défini. Avant tout commit frontend : `cd frontend && npm run check:tokens`.
+- **Shell** : toute route cockpit utilise `<div class="page-stack">` (max 1380px, gap 24px).
+  Références : `/engine` et `/dashboard`. Pas de wrapper `.xxx-page` local.
+- **Kit** : `PageHeader`, `KpiGrid`/`KpiCard`, `Callout`, `SearchBar`, `Modal`, `ConfirmDialog`,
+  `EmptyState`, `Spinner`, `CategoryTabs`, `ChecklistCard`, `HeroBanner`.
+- **Interdits** : `confirm()`/`alert()` natifs, toast local, `apiFetch` quand `apiGet/apiPost/apiDelete`
+  suffit, hex dans un `<style>` (sauf `/* token-ok: raison */`).
+- **Toast enfant** : passer `onToast={toast.forward}` (mappe `danger` → `error`).
+- **Piège CRLF** : les scripts de remplacement doivent matcher `\r?\n` ; un regex en `\n` seule
+  échoue silencieusement sur ces fichiers (c'est ce qui avait laissé des wrappers de page en place).

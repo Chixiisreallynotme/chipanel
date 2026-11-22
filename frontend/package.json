@@ -8,7 +8,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "npm run check:tokens && svelte-check --tsconfig ./tsconfig.json",
+    "check:tokens": "node scripts/check-tokens.mjs"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",

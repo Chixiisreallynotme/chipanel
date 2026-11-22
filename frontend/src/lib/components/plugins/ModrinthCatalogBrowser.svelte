@@ -1,7 +1,9 @@
-<script>
+﻿<script>
 	import { onMount } from 'svelte';
 	import { apiGet } from '$lib/api/client.js';
 	import VersionPickerButton from '$lib/components/common/VersionPickerButton.svelte';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		Search,
 		Download,
@@ -301,27 +303,12 @@
 			<!-- Search Bar -->
 			<div class="search-main-row">
 				<div class="search-input-wrapper">
-					<Search size={18} class="search-icon" />
-					<input
-						type="text"
-						class="input search-input"
-						placeholder="Rechercher parmi des milliers de mods, plugins et packs Modrinth…"
+					<SearchBar
 						bind:value={searchQuery}
-						aria-label="Rechercher dans le catalogue Modrinth"
+						placeholder="Rechercher parmi des milliers de mods, plugins et packs Modrinth…"
+						label="Rechercher dans le catalogue Modrinth"
+						onclear={fetchModrinthCatalog}
 					/>
-					{#if searchQuery}
-						<button
-							type="button"
-							class="btn btn-ghost btn-icon btn-sm clear-search-btn"
-							onclick={() => {
-								searchQuery = '';
-								fetchModrinthCatalog();
-							}}
-							title="Effacer"
-						>
-							<X size={14} />
-						</button>
-					{/if}
 				</div>
 
 				<button type="submit" class="btn btn-primary search-submit-btn {isSearching ? 'btn-loading' : ''}" disabled={isSearching}>
@@ -483,10 +470,14 @@
 </div>
 
 <!-- Modrinth Install Modal -->
-{#if installModalOpen && selectedProject}
-	<div class="modal-backdrop" onclick={closeInstallModal} role="presentation">
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
+{#if selectedProject}
+	<Modal
+		open={installModalOpen}
+		onclose={() => { if (!isInstalling) closeInstallModal(); }}
+		class="modal-card card shadow-xl"
+		ariaLabelledBy="modrinth-install-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-project-title-box">
 					{#if selectedProject.icon_url}
@@ -495,11 +486,11 @@
 						<Package size={22} />
 					{/if}
 					<div>
-						<h3>Installer {selectedProject.title}</h3>
+						<h3 id="modrinth-install-title">Installer {selectedProject.title}</h3>
 						<span class="modal-author-sub">par {selectedProject.author}</span>
 					</div>
 				</div>
-				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeInstallModal} disabled={isInstalling}>
+				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeInstallModal} disabled={isInstalling} aria-label="Fermer">
 					<X size={18} />
 				</button>
 			</div>
@@ -595,8 +586,8 @@
 					<span>Confirmer l'installation</span>
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
@@ -623,26 +614,7 @@
 		gap: var(--space-2);
 	}
 	.search-input-wrapper {
-		position: relative;
 		flex: 1;
-	}
-	.search-icon {
-		position: absolute;
-		left: var(--space-3);
-		top: 50%;
-		transform: translateY(-50%);
-		color: var(--text-muted);
-	}
-	.search-input {
-		padding-left: 2.2rem;
-		padding-right: 2rem;
-		width: 100%;
-	}
-	.clear-search-btn {
-		position: absolute;
-		right: 4px;
-		top: 50%;
-		transform: translateY(-50%);
 	}
 	.filters-row {
 		display: flex;
@@ -690,7 +662,7 @@
 		width: 44px;
 		height: 44px;
 		border-radius: var(--radius-input);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.04));
+		background-color: var(--bg-elevated);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -758,14 +730,14 @@
 		font-size: 10px;
 		padding: 2px 6px;
 		border-radius: 4px;
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.06));
+		background-color: var(--bg-elevated);
 		color: var(--text-secondary);
 	}
 
 	.project-footer {
 		padding: var(--space-3) var(--space-4);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -786,17 +758,6 @@
 	}
 
 	/* Modal styling */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-		padding: var(--space-4);
-	}
 	.modal-card {
 		width: 100%;
 		max-width: 540px;
@@ -856,14 +817,14 @@
 		padding: var(--space-2) var(--space-3);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-input);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.04));
+		background-color: var(--bg-elevated);
 		color: var(--text-secondary);
 		cursor: pointer;
 		font-size: var(--font-size-xs);
 		transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 	}
 	.segment-btn:hover {
-		background-color: var(--bg-subtle-hover, rgba(255, 255, 255, 0.08));
+		background-color: var(--bg-active);
 	}
 	.segment-btn:active {
 		transform: scale(0.97);
@@ -871,7 +832,7 @@
 	.segment-btn.active {
 		border-color: var(--accent-blue);
 		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12));
-		color: var(--accent-blue-text, #60a5fa);
+		color: var(--accent-blue-text);
 		font-weight: var(--font-weight-semibold);
 	}
 	.select-full {
@@ -884,7 +845,7 @@
 		justify-content: flex-end;
 		gap: var(--space-3);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 	}
 	.catalog-loading-state, .catalog-empty-state {
 		padding: var(--space-10);

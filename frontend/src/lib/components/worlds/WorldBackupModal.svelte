@@ -1,6 +1,7 @@
 <script>
 	import { apiPost, apiFetch } from '$lib/api/client.js';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 	import {
 		X,
 		Archive,
@@ -188,30 +189,20 @@
 		}
 	}
 
-	function handleKeydown(e) {
-		if (e.key === 'Escape') {
-			if (backupToRestore) {
-				cancelRestore();
-			} else if (backupToDelete) {
-				cancelDelete();
-			} else if (isOpen) {
-				onClose();
-			}
-		}
-	}
 </script>
 
 {#if isOpen}
-	<div
-		class="modal-backdrop"
-		onclick={(e) => e.target === e.currentTarget && onClose()}
-		onkeydown={handleKeydown}
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="backup-modal-title"
-		tabindex="-1"
+	<Modal
+		open={isOpen}
+		onclose={() => {
+			if (backupToRestore) cancelRestore();
+			else if (backupToDelete) cancelDelete();
+			else onClose();
+		}}
+		class="modal backup-modal"
+		ariaLabelledBy="backup-modal-title"
 	>
-		<div class="modal backup-modal">
+		{#snippet content()}
 			<!-- Modal Header -->
 			<div class="modal-header">
 				<div class="modal-title-group">
@@ -285,13 +276,11 @@
 				<!-- Search Filter & List Header -->
 				<div class="list-controls-bar">
 					<div class="search-box">
-						<Search size={14} class="search-icon" />
-						<input
-							type="text"
-							class="input search-input"
-							placeholder="Search backups by filename or world..."
+						<SearchBar
+							compact
 							bind:value={searchQuery}
-							aria-label="Filter backup archives"
+							placeholder="Rechercher une sauvegarde…"
+							label="Filtrer les archives de sauvegarde"
 						/>
 					</div>
 
@@ -411,8 +400,8 @@
 					Close
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <!-- Double Confirmation Restore Dialog Overlay -->
@@ -634,22 +623,8 @@
 	}
 
 	.search-box {
-		position: relative;
 		flex: 1;
 		max-width: 400px;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: 12px;
-		top: 50%;
-		transform: translateY(-50%);
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.search-input {
-		padding-left: 36px;
 	}
 
 	.list-meta {

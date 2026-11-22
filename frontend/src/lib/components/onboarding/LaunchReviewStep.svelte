@@ -410,14 +410,14 @@ WantedBy=default.target`);
 
 	.quadlet-code-block {
 		padding: 12px 14px;
-		background-color: #0A0C10;
+		background-color: var(--bg-base);
 		border-top: 1px solid var(--border);
 		overflow-x: auto;
 	}
 
 	.quadlet-code-block pre {
 		font-size: 11px;
-		color: #A5B4FC;
+		color: var(--text-code);
 		line-height: 1.5;
 		margin: 0;
 	}
@@ -470,8 +470,8 @@ WantedBy=default.target`);
 	}
 
 	.launch-button:hover:not(:disabled) {
-		background-color: #0D965B;
-		border-color: #0D965B;
+		background-color: var(--accent-green-solid);
+		border-color: var(--accent-green-solid);
 		box-shadow: 0 6px 20px rgba(15, 169, 104, 0.35);
 	}
 

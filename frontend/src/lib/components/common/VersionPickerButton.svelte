@@ -82,7 +82,7 @@
 	.picker-label {
 		font-size: 0.8125rem;
 		font-weight: 500;
-		color: #94a3b8;
+		color: var(--text-secondary);
 	}
 
 	.version-picker-trigger-btn {
@@ -138,7 +138,7 @@
 		height: 26px;
 		border-radius: 6px;
 		background: rgba(99, 102, 241, 0.2);
-		color: #818cf8;
+		color: var(--accent-blue-text);
 	}
 
 	.trigger-info {
@@ -149,7 +149,7 @@
 	.trigger-version-display {
 		font-family: monospace;
 		font-size: 0.875rem;
-		color: #ffffff;
+		color: var(--text-on-solid);
 		letter-spacing: 0.02em;
 	}
 
@@ -172,17 +172,17 @@
 
 	.tag-recommended {
 		background: rgba(16, 185, 129, 0.2);
-		color: #34d399;
+		color: var(--accent-green-text);
 		border: 1px solid rgba(16, 185, 129, 0.3);
 	}
 
 	:global(.chevron-icon) {
-		color: #64748b;
+		color: var(--text-muted);
 		transition: transform 0.2s ease;
 	}
 
 	:global(.chevron-icon.rotated) {
 		transform: rotate(180deg);
-		color: #ffffff;
+		color: var(--text-on-solid);
 	}
 </style>

@@ -1,7 +1,11 @@
 <script>
 	import { onMount } from 'svelte';
-	import { apiFetch } from '$lib/api/client.js';
+	import { apiGet, apiPost } from '$lib/api/client.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import KpiCard from '$lib/components/ui/KpiCard.svelte';
+	import KpiGrid from '$lib/components/ui/KpiGrid.svelte';
 	import {
 		Database,
 		HardDrive,
@@ -38,12 +42,7 @@
 		loading = true;
 		error = '';
 		try {
-			const res = await apiFetch('/api/maintenance/db-stats');
-			if (!res.ok) {
-				const errData = await res.json().catch(() => ({}));
-				throw new Error(errData.message || 'Impossible de récupérer les statistiques');
-			}
-			stats = await res.json();
+			stats = await apiGet('/api/maintenance/db-stats');
 		} catch (err) {
 			error = err.message || 'Erreur lors du chargement des données';
 		} finally {
@@ -68,13 +67,8 @@
 				payload.dimension = 'DIM1';
 			}
 
-			const res = await apiFetch('/api/maintenance/purge-db', {
-				method: 'POST',
-				body: payload
-			});
-
-			const data = await res.json();
-			if (!res.ok || !data.success) {
+			const data = await apiPost('/api/maintenance/purge-db', payload);
+			if (!data.success) {
 				throw new Error(data.message || data.error || 'Erreur lors de la purge');
 			}
 
@@ -102,7 +96,7 @@
 	<title>Base de Données & Maintenance | ChiPanel</title>
 </svelte:head>
 
-<div class="db-page-layout">
+<div class="page-stack">
 	<!-- Header Banner -->
 	<PageHeader
 		title="Base de Données & Maintenance"
@@ -123,61 +117,37 @@
 	</PageHeader>
 
 	{#if error}
-		<div class="error-banner card">
-			<AlertTriangle size={20} class="text-danger" />
-			<span>{error}</span>
-			<button class="btn btn-secondary btn-sm" onclick={loadStats}>Réessayer</button>
-		</div>
+		<Callout tone="danger" title="Base de données inaccessible">
+			{error}
+			{#snippet action()}
+				<button class="btn btn-secondary btn-sm" onclick={loadStats}>Réessayer</button>
+			{/snippet}
+		</Callout>
 	{/if}
 
 	<!-- Overview KPI Grid -->
-	<div class="kpi-grid">
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-primary">
-				<HardDrive size={20} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Empreinte Totale Détectée</span>
-				<span class="kpi-value">{stats ? stats.formatted_total : '—'}</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-warning">
-				<Layers size={20} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">CoreProtect (Logs Blocs/Coffres)</span>
-				<span class="kpi-value">{stats?.tables?.[0]?.formatted_size ?? '—'}</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-info">
-				<FileArchive size={20} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Archives Logs (.log.gz)</span>
-				<span class="kpi-value">{stats?.tables?.[2]?.formatted_size ?? '—'}</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-danger">
-				<Flame size={20} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Dimensions (Nether + End)</span>
-				<span class="kpi-value">
-					{#if stats?.tables}
-						{stats.tables[3]?.formatted_size ?? '—'} + {stats.tables[4]?.formatted_size ?? '—'}
-					{:else}
-						—
-					{/if}
-				</span>
-			</div>
-		</div>
-	</div>
+	<KpiGrid>
+		<KpiCard label="Empreinte Totale Détectée" tone="info">
+			{#snippet icon()}<HardDrive size={20} />{/snippet}
+			{stats ? stats.formatted_total : '—'}
+		</KpiCard>
+		<KpiCard label="CoreProtect (Logs Blocs/Coffres)" tone="warning">
+			{#snippet icon()}<Layers size={20} />{/snippet}
+			{stats?.tables?.[0]?.formatted_size ?? '—'}
+		</KpiCard>
+		<KpiCard label="Archives Logs (.log.gz)" tone="info">
+			{#snippet icon()}<FileArchive size={20} />{/snippet}
+			{stats?.tables?.[2]?.formatted_size ?? '—'}
+		</KpiCard>
+		<KpiCard label="Dimensions (Nether + End)" tone="danger">
+			{#snippet icon()}<Flame size={20} />{/snippet}
+			{#if stats?.tables}
+				{stats.tables[3]?.formatted_size ?? '—'} + {stats.tables[4]?.formatted_size ?? '—'}
+			{:else}
+				—
+			{/if}
+		</KpiCard>
+	</KpiGrid>
 
 	<!-- Storage Breakdown Table -->
 	<div class="table-card card">
@@ -262,22 +232,27 @@
 
 <!-- Purge Modal Dialogs -->
 {#if activeModal}
-	<div class="modal-backdrop" onclick={closeModal} onkeydown={(e) => e.stopPropagation()}  role="presentation">
-		<div class="modal-dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
+	<Modal
+		open={activeModal !== null}
+		onclose={() => { if (!isExecuting) closeModal(); }}
+		class="modal-dialog"
+		ariaLabelledBy="purge-modal-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-header-left">
 					{#if activeModal === 'coreprotect'}
 						<ShieldAlert size={22} class="text-warning" />
-						<h2>Purger l'historique CoreProtect</h2>
+						<h2 id="purge-modal-title">Purger l'historique CoreProtect</h2>
 					{:else if activeModal === 'logs'}
 						<FileArchive size={22} class="text-info" />
-						<h2>Nettoyer les archives de logs</h2>
+						<h2 id="purge-modal-title">Nettoyer les archives de logs</h2>
 					{:else}
 						<AlertTriangle size={22} class="text-danger" />
-						<h2>Régénération de Dimension</h2>
+						<h2 id="purge-modal-title">Régénération de Dimension</h2>
 					{/if}
 				</div>
-				<button class="btn btn-ghost btn-sm" onclick={closeModal}>&times;</button>
+				<button class="btn btn-ghost btn-sm" onclick={closeModal} aria-label="Fermer">&times;</button>
 			</div>
 
 			<div class="modal-body">
@@ -354,90 +329,11 @@
 					</button>
 				{/if}
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
-	.db-page-layout {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding-bottom: var(--space-8);
-	}
-
-	.error-banner {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-3) var(--space-4);
-		background-color: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.3);
-	}
-
-	/* KPI Grid */
-	.kpi-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-		gap: var(--space-4);
-	}
-
-	.kpi-card {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		padding: var(--space-4);
-		background-color: var(--bg-surface);
-	}
-
-	.kpi-icon-wrapper {
-		width: 42px;
-		height: 42px;
-		border-radius: var(--radius-md);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-
-	.kpi-primary {
-		background-color: var(--accent-blue-bg);
-		color: var(--accent-blue-text);
-	}
-
-	.kpi-warning {
-		background-color: rgba(245, 158, 11, 0.15);
-		color: var(--engine-amber);
-	}
-
-	.kpi-info {
-		background-color: rgba(59, 130, 246, 0.15);
-		color: var(--accent-blue-text);
-	}
-
-	.kpi-danger {
-		background-color: rgba(239, 68, 68, 0.15);
-		color: var(--danger);
-	}
-
-	.kpi-content {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.kpi-label {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-	}
-
-	.kpi-value {
-		font-size: var(--font-size-lg);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-	}
 
 	/* Table Card */
 	.table-card {
@@ -474,7 +370,7 @@
 
 	.data-table th {
 		padding: var(--space-3) var(--space-6);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		color: var(--text-muted);
 		font-weight: var(--font-weight-medium);
 		border-bottom: 1px solid var(--border);
@@ -491,17 +387,6 @@
 	}
 
 	/* Modals */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.75);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-		padding: var(--space-4);
-	}
 
 	.modal-dialog {
 		background-color: var(--bg-surface);
@@ -519,7 +404,7 @@
 		justify-content: space-between;
 		padding: var(--space-4) var(--space-6);
 		border-bottom: 1px solid var(--border);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 	}
 
 	.modal-header-left {
@@ -584,7 +469,7 @@
 		border: 1px solid rgba(239, 68, 68, 0.3);
 		border-radius: var(--radius-sm);
 		font-size: var(--font-size-sm);
-		color: var(--engine-red-300);
+		color: var(--danger-text);
 	}
 
 	.warning-callout p {
@@ -620,11 +505,11 @@
 	}
 
 	.result-output {
-		background-color: #0d1117;
+		background-color: var(--bg-code);
 		padding: var(--space-3);
 		border-radius: var(--radius-sm);
 		font-size: var(--font-size-xs);
-		color: #D1D5DB;
+		color: var(--text-secondary);
 		max-height: 150px;
 		overflow-y: auto;
 		white-space: pre-wrap;
@@ -637,7 +522,7 @@
 		gap: var(--space-3);
 		padding: var(--space-4) var(--space-6);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 	}
 
 	.spin {

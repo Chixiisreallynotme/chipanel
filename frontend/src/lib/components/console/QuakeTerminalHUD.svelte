@@ -432,7 +432,7 @@
 	.quake-logs-stream {
 		flex: 1;
 		padding: var(--space-3) var(--space-4);
-		background-color: #07080c;
+		background-color: var(--bg-terminal);
 		overflow-y: auto;
 		display: flex;
 		flex-direction: column;

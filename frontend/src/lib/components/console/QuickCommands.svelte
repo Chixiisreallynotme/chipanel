@@ -13,6 +13,7 @@
 		AlertTriangle,
 		X
 	} from '$lib/icons.js';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	let { onFillCommand, onExecuteCommand } = $props();
 
@@ -186,15 +187,13 @@
 
 <!-- Confirmation Modal Dialog -->
 {#if confirmModalAction}
-	<div class="modal-backdrop" onclick={() => (confirmModalAction = null)} onkeydown={(e) => e.stopPropagation()}  aria-hidden="true">
-		<div
-			class="modal confirm-modal"
-			onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			tabindex="-1"
-			aria-modal="true"
-			aria-labelledby="confirm-modal-title"
-		>
+	<Modal
+		open={confirmModalAction !== null}
+		onclose={() => (confirmModalAction = null)}
+		class="modal confirm-modal"
+		ariaLabelledBy="confirm-modal-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-title-group">
 					<AlertTriangle size={20} class="warning-icon" />
@@ -225,8 +224,8 @@
 					Confirmer & Exécuter
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>

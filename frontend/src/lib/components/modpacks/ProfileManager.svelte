@@ -1,7 +1,8 @@
-<script>
+﻿<script>
 	import { onMount } from 'svelte';
-	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
+	import { apiGet, apiPost } from '$lib/api/client.js';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		HardDrive,
 		RefreshCw,
@@ -303,18 +304,22 @@
 </div>
 
 <!-- Switch Profile Confirmation Modal -->
-{#if switchModalOpen && targetSwitchProfile}
-	<div class="modal-backdrop" onclick={closeSwitchModal} role="presentation">
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
+{#if targetSwitchProfile}
+	<Modal
+		open={switchModalOpen}
+		onclose={() => { if (!isSwitching) closeSwitchModal(); }}
+		class="modal-card card shadow-xl"
+		ariaLabelledBy="profile-switch-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-title-with-icon">
 					<div class="modal-icon-box icon-blue">
 						<ArrowRightLeft size={20} />
 					</div>
-					<h3>Activer le profil</h3>
+					<h3 id="profile-switch-title">Activer le profil</h3>
 				</div>
-				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeSwitchModal} disabled={isSwitching}>
+				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeSwitchModal} disabled={isSwitching} aria-label="Fermer">
 					<X size={18} />
 				</button>
 			</div>
@@ -351,23 +356,27 @@
 					<span>Confirmer le basculement</span>
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <!-- Delete Profile Confirmation Modal -->
-{#if deleteModalOpen && targetDeleteProfile}
-	<div class="modal-backdrop" onclick={closeDeleteModal} role="presentation">
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-xl" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
+{#if targetDeleteProfile}
+	<Modal
+		open={deleteModalOpen}
+		onclose={() => { if (!isDeleting) closeDeleteModal(); }}
+		class="modal-card card shadow-xl"
+		ariaLabelledBy="profile-delete-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-title-with-icon">
 					<div class="modal-icon-box icon-danger">
 						<Trash2 size={20} />
 					</div>
-					<h3>Supprimer le profil</h3>
+					<h3 id="profile-delete-title">Supprimer le profil</h3>
 				</div>
-				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeDeleteModal} disabled={isDeleting}>
+				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeDeleteModal} disabled={isDeleting} aria-label="Fermer">
 					<X size={18} />
 				</button>
 			</div>
@@ -404,8 +413,8 @@
 					<span>Supprimer</span>
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
@@ -440,7 +449,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--accent-blue-text, #60a5fa);
+		color: var(--accent-blue-text);
 		flex-shrink: 0;
 	}
 	.header-title {
@@ -531,7 +540,7 @@
 	.profile-card-footer {
 		padding: var(--space-3) var(--space-4);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -560,17 +569,6 @@
 	}
 
 	/* Modal Backdrop */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-		padding: var(--space-4);
-	}
 	.modal-card {
 		width: 100%;
 		max-width: 480px;
@@ -616,6 +614,6 @@
 		justify-content: flex-end;
 		gap: var(--space-3);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 	}
 </style>

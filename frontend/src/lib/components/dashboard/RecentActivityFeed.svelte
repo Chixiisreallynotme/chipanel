@@ -115,7 +115,7 @@
 
 	.icon-orange {
 		background-color: var(--accent-orange-bg);
-		color: var(--accent-orange-text, #FBBF24);
+		color: var(--accent-orange-text);
 		border: 1px solid var(--accent-orange-border);
 	}
 

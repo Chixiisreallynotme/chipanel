@@ -1,4 +1,4 @@
-<script>
+﻿<script>
 	import { onMount, onDestroy } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
 	import { wsStore } from '$lib/stores/websocket.svelte.js';
@@ -43,10 +43,6 @@
 	});
 
 	// Relais vers le store toast global pour le composant enfant (mappe 'danger' -> error, store sans type danger).
-	function forwardToast(type, title, message) {
-		if (type === 'danger') toast.error(title, message);
-		else toast.show(type, title, message);
-	}
 
 	// History Telemetry State — populated only from /api/metrics/history.
 	// There is no synthetic seed and no client-side extrapolation: a range with
@@ -220,7 +216,7 @@
 	<title>Time-Series Metrics & Spark Profiler - ChiPanel</title>
 </svelte:head>
 
-<div class="metrics-page">
+<div class="page-stack">
 	<!-- Page Header -->
 	<PageHeader
 		title="Time-Series Metrics & Spark Profiler"
@@ -303,7 +299,7 @@
 		<div class="grid-column-2">
 			<SparkProfilerCard
 				onTriggerSpark={handleTriggerSpark}
-				onToast={forwardToast}
+				onToast={toast.forward}
 			/>
 		</div>
 
@@ -394,11 +390,6 @@
 </div>
 
 <style>
-	.metrics-page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-	}
 
 	.telemetry-status-pill {
 		display: flex;
@@ -448,7 +439,7 @@
 	/* White label, so it needs the solid (white-safe) fill, not the palette hue. */
 	.range-btn.active {
 		background-color: var(--accent-blue-solid);
-		color: #ffffff;
+		color: var(--text-on-solid);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
 	}
 

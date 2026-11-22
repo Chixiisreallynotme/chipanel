@@ -1,13 +1,14 @@
-<script>
+﻿<script>
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
+	import { apiGet, apiPost, apiDelete } from '$lib/api/client.js';
 	import InstalledPluginsList from '$lib/components/plugins/InstalledPluginsList.svelte';
 	import ModrinthCatalogBrowser from '$lib/components/plugins/ModrinthCatalogBrowser.svelte';
 	import ToolsSyncPanel from '$lib/components/plugins/ToolsSyncPanel.svelte';
 	import ModpackCatalogBrowser from '$lib/components/modpacks/ModpackCatalogBrowser.svelte';
 	import ProfileManager from '$lib/components/modpacks/ProfileManager.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		Package,
@@ -62,11 +63,6 @@
 			subView = subParam;
 		}
 	});
-
-	// Relais vers le store toast global pour les composants enfants (même signature qu'avant).
-	function forwardToast(type, title, message) {
-		toast.show(type, title, message);
-	}
 
 	// Fetch Server Context
 	async function loadServerContext() {
@@ -208,12 +204,9 @@
 	// Action Handler: Delete Plugin/Mod
 	async function handleDelete(plugin) {
 		try {
-			await apiFetch('/api/plugins/delete', {
-				method: 'DELETE',
-				body: {
-					filename: plugin.filename,
-					target_dir: plugin.target_dir
-				}
+			await apiDelete('/api/plugins/delete', {
+				filename: plugin.filename,
+				target_dir: plugin.target_dir
 			});
 
 			installedPlugins = installedPlugins.filter(
@@ -296,7 +289,7 @@
 	<title>Centre des Addons & Extensions - ChiPanel</title>
 </svelte:head>
 
-<div class="addons-page">
+<div class="page-stack">
 	<!-- Hero Header & Engine Context Banner -->
 	<PageHeader
 		title="Centre des Addons & Extensions"
@@ -439,7 +432,7 @@
 			</div>
 
 			{#if activeTab === 'plugins' || activeTab === 'mods'}
-				<ToolsSyncPanel onToast={forwardToast} />
+				<ToolsSyncPanel onToast={toast.forward} />
 			{/if}
 
 			{#if subView === 'installed'}
@@ -451,7 +444,7 @@
 					onToggle={handleToggle}
 					onDelete={handleDelete}
 					onRefresh={loadInstalledPlugins}
-					onToast={forwardToast}
+					onToast={toast.forward}
 					{serverResourcePack}
 					onResourcePackChanged={(newRp) => (serverResourcePack = newRp)}
 				/>
@@ -477,21 +470,25 @@
 	</div>
 
 	<!-- Updates & Compatibility Modal -->
-	{#if updatesModalOpen && updatesReport}
-		<div class="modal-backdrop" onclick={() => (updatesModalOpen = false)} role="presentation">
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<div class="modal-card card shadow-xl updates-modal-card" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
+	{#if updatesReport}
+		<Modal
+			open={updatesModalOpen}
+			onclose={() => { if (!isApplyingUpdates) updatesModalOpen = false; }}
+			class="modal-card card shadow-xl updates-modal-card"
+			ariaLabelledBy="updates-modal-title"
+		>
+			{#snippet content()}
 				<div class="modal-header">
 					<div class="title-with-icon">
 						<div class="modal-icon-box icon-blue">
 							<RefreshCw size={20} />
 						</div>
 						<div>
-							<h3>Rapport de Compatibilité & Mises à Jour</h3>
+							<h3 id="updates-modal-title">Rapport de Compatibilité & Mises à Jour</h3>
 							<span class="modal-sub">Moteur cible : {updatesReport.engine} ({updatesReport.game_version})</span>
 						</div>
 					</div>
-					<button class="btn btn-ghost btn-icon btn-sm" onclick={() => (updatesModalOpen = false)} disabled={isApplyingUpdates}>
+					<button class="btn btn-ghost btn-icon btn-sm" onclick={() => (updatesModalOpen = false)} disabled={isApplyingUpdates} aria-label="Fermer">
 						<X size={18} />
 					</button>
 				</div>
@@ -587,18 +584,13 @@
 						</button>
 					{/if}
 				</div>
-			</div>
-		</div>
+			{/snippet}
+		</Modal>
 	{/if}
 
 </div>
 
 <style>
-	.addons-page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-	}
 
 	.title-with-icon {
 		display: flex;
@@ -620,7 +612,7 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background-color: #22c55e;
+		background-color: var(--accent-green);
 		box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
 	}
 	.check-updates-btn {
@@ -667,7 +659,7 @@
 		font-family: var(--font-mono);
 		padding: 1px 6px;
 		border-radius: var(--radius-badge);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.08));
+		background-color: var(--bg-elevated);
 	}
 	.badge-pill {
 		border-radius: var(--radius-badge);
@@ -711,7 +703,7 @@
 	}
 	.subview-btn.active {
 		background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12));
-		color: var(--accent-blue-text, #60a5fa);
+		color: var(--accent-blue-text);
 		font-weight: var(--font-weight-semibold);
 	}
 
@@ -740,9 +732,9 @@
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-medium);
 	}
-	.chip-green { background-color: rgba(34, 197, 94, 0.12); color: #4ade80; }
-	.chip-amber { background-color: rgba(245, 158, 11, 0.12); color: #fbbf24; }
-	.chip-red { background-color: rgba(239, 68, 68, 0.12); color: #f87171; }
+	.chip-green { background-color: rgba(34, 197, 94, 0.12); color: var(--accent-green-text); }
+	.chip-amber { background-color: rgba(245, 158, 11, 0.12); color: var(--warning-text); }
+	.chip-red { background-color: rgba(239, 68, 68, 0.12); color: var(--danger-text); }
 
 	.updates-list-container {
 		display: flex;
@@ -754,7 +746,7 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: var(--space-3);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-input);
 		gap: var(--space-3);
@@ -793,17 +785,6 @@
 	}
 
 	/* Modal generic backdrop */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-		padding: var(--space-4);
-	}
 	.modal-card {
 		width: 100%;
 		background-color: var(--bg-surface);
@@ -829,6 +810,6 @@
 		justify-content: flex-end;
 		gap: var(--space-3);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 	}
 </style>

@@ -1,5 +1,6 @@
 <script>
 	import { Bell, X, Send, Save, CheckCircle2, AlertTriangle, ShieldAlert, Loader2 } from '$lib/icons.js';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	let {
 		isOpen = false,
@@ -42,12 +43,6 @@
 		}
 	});
 
-	function handleKeyDown(event) {
-		if (event.key === 'Escape' && isOpen) {
-			onClose();
-		}
-	}
-
 	async function handleSave() {
 		if (!onSaveConfig) return;
 		isSaving = true;
@@ -79,20 +74,9 @@
 	}
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
-
 {#if isOpen}
-	<div
-		class="modal-backdrop"
-		onclick={(e) => e.target === e.currentTarget && onClose()}
-		role="presentation"
-	>
-		<div
-			class="modal alert-settings-modal"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="alert-settings-title"
-		>
+	<Modal open={isOpen} onclose={onClose} class="modal alert-settings-modal" ariaLabelledBy="alert-settings-title">
+		{#snippet content()}
 			<!-- Modal Header -->
 			<div class="modal-header">
 				<div class="modal-title-group">
@@ -278,8 +262,8 @@
 					<span>Save Alert Rules</span>
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>

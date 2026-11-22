@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { apiGet, apiPost } from '$lib/api/client.js';
 	import VersionPickerButton from '$lib/components/common/VersionPickerButton.svelte';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		Search,
 		Download,
@@ -302,27 +304,12 @@
 			<!-- Row 1: Search input and submit -->
 			<div class="search-main-row">
 				<div class="search-input-wrapper">
-					<Search size={18} class="search-icon" />
-					<input
-						type="text"
-						class="input search-input"
-						placeholder="Rechercher des modpacks sur Modrinth (ex: Fabulously Optimized, Cobblemon)..."
+					<SearchBar
 						bind:value={searchQuery}
-						aria-label="Search modpacks"
+						placeholder="Rechercher des modpacks sur Modrinth (ex: Fabulously Optimized, Cobblemon)…"
+						label="Rechercher des modpacks"
+						onclear={fetchModpacks}
 					/>
-					{#if searchQuery}
-						<button
-							type="button"
-							class="btn btn-ghost btn-icon btn-sm clear-search-btn"
-							onclick={() => {
-								searchQuery = '';
-								fetchModpacks();
-							}}
-							title="Clear search"
-						>
-							<X size={14} />
-						</button>
-					{/if}
 				</div>
 
 				<button
@@ -469,21 +456,14 @@
 </div>
 
 <!-- Detail & Deploy Modal -->
-{#if isModalOpen && selectedModpack}
-	<div
-		class="modal-backdrop"
-		onclick={closeModal}
-		aria-hidden="true"
+{#if selectedModpack}
+	<Modal
+		open={isModalOpen}
+		onclose={closeModal}
+		class="modal detail-modal"
+		ariaLabelledBy="modal-modpack-title"
 	>
-		<div
-			class="modal detail-modal"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-			role="dialog"
-			tabindex="-1"
-			aria-modal="true"
-			aria-labelledby="modal-modpack-title"
-		>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-header-main">
 					{#if selectedModpack.thumbnail || selectedModpack.icon_url}
@@ -611,8 +591,8 @@
 					<span>Deploy Modpack</span>
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
@@ -641,29 +621,9 @@
 	}
 
 	.search-input-wrapper {
-		position: relative;
 		flex: 1;
 		display: flex;
 		align-items: center;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: var(--space-3);
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.search-input {
-		padding-left: var(--space-8);
-		padding-right: var(--space-8);
-		height: 42px;
-	}
-
-	.clear-search-btn {
-		position: absolute;
-		right: 4px;
-		color: var(--text-muted);
 	}
 
 	.search-submit-btn {

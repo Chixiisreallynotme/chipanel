@@ -1,7 +1,6 @@
 <script>
 	import {
 		X,
-		Search,
 		CheckCircle2,
 		Sparkles,
 		Flame,
@@ -12,6 +11,7 @@
 	} from '$lib/icons.js';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 
 	let {
 		open = false,
@@ -142,26 +142,12 @@
 
 			<!-- Search Bar -->
 			<div class="modal-search-bar">
-				<div class="search-input-wrapper">
-					<Search size={16} class="search-icon" />
-					<input
-						type="text"
-						class="search-input"
-						placeholder="Rechercher une version (ex: 1.20.4, 24w14a)..."
-						bind:value={searchQuery}
-						aria-label="Rechercher une version"
-					/>
-					{#if searchQuery}
-						<button
-							type="button"
-							class="clear-search-btn"
-							onclick={() => (searchQuery = '')}
-							title="Effacer la recherche"
-						>
-							<X size={14} />
-						</button>
-					{/if}
-				</div>
+				<SearchBar
+					compact
+					bind:value={searchQuery}
+					placeholder="Rechercher une version (ex: 1.20.4, 24w14a)…"
+					label="Rechercher une version"
+				/>
 			</div>
 
 			<!-- Columns Body (Left: Releases Stables | Right: Snapshots) -->
@@ -399,54 +385,9 @@
 
 	/* Search Bar */
 	.modal-search-bar {
-		padding: 1rem 1.5rem;
+		padding: var(--space-4) var(--space-5);
 		border-bottom: 1px solid var(--border-subtle);
 		background: var(--bg-base);
-	}
-
-	.search-input-wrapper {
-		position: relative;
-		display: flex;
-		align-items: center;
-		width: 100%;
-	}
-
-	:global(.search-icon) {
-		position: absolute;
-		left: 0.875rem;
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.search-input {
-		width: 100%;
-		padding: 0.625rem 2.5rem 0.625rem 2.5rem;
-		background: var(--bg-surface);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-input);
-		color: var(--text-primary);
-		font-size: var(--font-size-sm);
-		outline: none;
-		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-	}
-
-	.search-input:focus {
-		border-color: var(--accent-blue);
-		box-shadow: 0 0 0 2px var(--accent-blue-bg);
-	}
-
-	.clear-search-btn {
-		position: absolute;
-		right: 0.75rem;
-		background: transparent;
-		border: none;
-		color: #64748b;
-		cursor: pointer;
-		padding: 0.25rem;
-	}
-
-	.clear-search-btn:hover {
-		color: #ffffff;
 	}
 
 	/* Columns Body */
@@ -463,13 +404,13 @@
 	.version-column {
 		display: flex;
 		flex-direction: column;
-		background: #161922;
+		background: var(--bg-surface);
 		overflow: hidden;
 	}
 
 	.column-header {
 		padding: 0.875rem 1.25rem;
-		background: #11141c;
+		background: var(--bg-base);
 		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 	}
 
@@ -479,15 +420,15 @@
 		gap: 0.5rem;
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: #ffffff;
+		color: var(--text-on-solid);
 	}
 
 	.text-success {
-		color: #10b981;
+		color: var(--accent-green);
 	}
 
 	.text-purple {
-		color: #c084fc;
+		color: var(--accent-purple-text);
 	}
 
 	.version-list-scroll {
@@ -510,7 +451,7 @@
 		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: #64748b;
+		color: var(--text-muted);
 		padding-left: 0.25rem;
 	}
 
@@ -694,7 +635,7 @@
 	.btn-primary {
 		background: var(--accent-blue-solid);
 		border: 1px solid transparent;
-		color: #ffffff;
+		color: var(--text-on-solid);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 	}
 

@@ -30,6 +30,14 @@
   --text-secondary: #9DA4B9;   /* oklch(0.72 0.02 260) - 5.8:1 on --bg-surface */
   --text-muted: #848CA6;       /* oklch(0.64 0.025 260) - 4.8:1 on all surfaces */
   --text-code: #A5B4FC;        /* oklch(0.78 0.08 275) - Monospace identifiers */
+  --text-on-solid: #FFFFFF;    /* Label on a filled accent/danger button */
+  --bg-terminal: #060609;      /* Console/terminal canvas, darker than --bg-base */
+  --bg-code: #0D1117;          /* Diff and read-only code blocks */
+  --mc-gold: #FFAA00;          /* Minecraft chat/rarity gold */
+  --mc-aqua: #55FFFF;          /* Minecraft aqua */
+  --mc-red: #FF5555;           /* Minecraft red */
+  --mc-shadow: #000000;        /* Item-count text outline */
+  --mc-steve-skin: #5C4033;    /* Fallback avatar tint */
 
   /* ------------------------------------------------------------------------
      4. The 3-Role Semantic Accents (Fill, Text Bump, Solid Button)
@@ -88,7 +96,9 @@
   --radius-md: 8px;
   --radius-card: 12px;
   --radius-lg: 12px;
+  --radius-modal: var(--radius-card);
   --radius-badge: 9999px;
+  --radius-full: var(--radius-badge);
 
   /* ------------------------------------------------------------------------
      6. Strict Z-Index Scale (Universal Architecture Scale)
@@ -132,9 +142,12 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-10: 40px;
   --space-12: 48px;
+  --space-16: 64px;
 
   /* ------------------------------------------------------------------------
      9. Typography Scale
@@ -194,6 +207,19 @@
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Canonical page column: every route uses this instead of a local wrapper.
+   Reference: /engine + /dashboard. */
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 1380px;
+  margin-inline: auto;
+  padding-bottom: var(--space-8);
+  min-width: 0;
 }
 
 /* ==========================================================================

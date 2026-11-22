@@ -3,6 +3,7 @@
 	import { apiGet, apiPost } from '$lib/api/client.js';
 	import { toast } from '$lib/stores/toast.svelte.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import {
 		Activity,
@@ -114,7 +115,7 @@
 	<title>Diagnostics & Auto-Tuner | ChiPanel</title>
 </svelte:head>
 
-<div class="diagnostics-page-layout">
+<div class="page-stack">
 	<!-- Header -->
 	<PageHeader
 		title="Diagnostics & Auto-Tuner"
@@ -342,10 +343,15 @@
 
 <!-- Modal Détail Stack Trace -->
 {#if selectedCrash}
-	<div class="modal-backdrop" onclick={() => (selectedCrash = null)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+	<Modal
+		open={selectedCrash !== null}
+		onclose={() => (selectedCrash = null)}
+		class="modal-card card"
+		ariaLabelledBy="crash-detail-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
-				<h2 class="modal-title flex items-center gap-2 text-danger">
+				<h2 class="modal-title flex items-center gap-2 text-danger" id="crash-detail-title">
 					<Flame size={18} />
 					<span>Rapport de Crash #{selectedCrash.id}</span>
 				</h2>
@@ -371,17 +377,11 @@
 			<div class="modal-footer">
 				<button class="btn btn-secondary" onclick={() => (selectedCrash = null)}>Fermer</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
-	.diagnostics-page-layout {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding-bottom: var(--space-8);
-	}
 
 	/* Health Grid */
 	.health-grid {
@@ -415,9 +415,9 @@
 		border: 3px solid;
 	}
 
-	.score-good { border-color: #10B981; color: #10B981; background: rgba(16, 185, 129, 0.1); }
-	.score-warn { border-color: #F59E0B; color: #F59E0B; background: rgba(245, 158, 11, 0.1); }
-	.score-bad { border-color: #EF4444; color: #EF4444; background: rgba(239, 68, 68, 0.1); }
+	.score-good { border-color: var(--accent-green); color: var(--accent-green); background: rgba(16, 185, 129, 0.1); }
+	.score-warn { border-color: var(--warning); color: var(--warning); background: rgba(245, 158, 11, 0.1); }
+	.score-bad { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
 
 	.score-num {
 		font-size: var(--font-size-xl);
@@ -545,7 +545,7 @@
 		flex-direction: column;
 		gap: var(--space-2);
 		padding: var(--space-4);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		border-radius: var(--radius-md);
 	}
 
@@ -578,7 +578,7 @@
 		flex-direction: column;
 		gap: var(--space-3);
 		padding: var(--space-4);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-md);
 	}
@@ -622,16 +622,6 @@
 	}
 
 	/* Modal */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-	}
 
 	.modal-card {
 		width: 100%;

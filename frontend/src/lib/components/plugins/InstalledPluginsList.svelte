@@ -1,6 +1,5 @@
-<script>
+﻿<script>
 	import {
-		Search,
 		Filter,
 		RefreshCw,
 		Trash2,
@@ -20,6 +19,9 @@
 		Radio
 	} from '$lib/icons.js';
 	import { apiPost, apiFetch } from '$lib/api/client.js';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	/**
 	 * @typedef {Object} InstalledPlugin
@@ -64,6 +66,7 @@
 	// Batch selection state
 	let selectedFilenames = $state([]);
 	let isBatchProcessing = $state(false);
+	let confirmBatchDeleteOpen = $state(false);
 
 	// Drag and Drop Upload state
 	let isDragging = $state(false);
@@ -187,9 +190,11 @@
 
 	async function handleBatchDelete() {
 		if (isBatchProcessing || selectedFilenames.length === 0) return;
-		if (!confirm(`Supprimer définitivement les ${selectedFilenames.length} extensions sélectionnées ?`)) {
-			return;
-		}
+		confirmBatchDeleteOpen = true;
+	}
+
+	async function performBatchDelete() {
+		confirmBatchDeleteOpen = false;
 		isBatchProcessing = true;
 		try {
 			const targetItems = plugins.filter((p) => selectedFilenames.includes(p.filename));
@@ -467,23 +472,11 @@
 	<div class="controls-card card">
 		<div class="controls-body">
 			<div class="search-input-wrapper">
-				<Search size={18} class="search-icon" />
-				<input
-					type="text"
-					class="input search-input"
-					placeholder="Rechercher par nom, fichier ou description…"
+				<SearchBar
 					bind:value={searchQuery}
-					aria-label="Rechercher des extensions"
+					placeholder="Rechercher par nom, fichier ou description…"
+					label="Rechercher des extensions"
 				/>
-				{#if searchQuery}
-					<button
-						class="btn btn-ghost btn-icon btn-sm clear-search-btn"
-						onclick={() => (searchQuery = '')}
-						title="Effacer la recherche"
-					>
-						<X size={14} />
-					</button>
-				{/if}
 			</div>
 
 			<div class="filter-group">
@@ -716,18 +709,22 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-{#if deleteModalOpen && pluginToDelete}
-	<div class="modal-backdrop" onclick={closeDeleteModal} role="presentation">
-		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<div class="modal-card card shadow-lg" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true">
+{#if pluginToDelete}
+	<Modal
+		open={deleteModalOpen}
+		onclose={() => { if (!isDeleting) closeDeleteModal(); }}
+		class="modal-card card shadow-lg"
+		ariaLabelledBy="plugin-delete-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-title-with-icon">
 					<div class="modal-icon-box icon-danger">
 						<AlertTriangle size={20} />
 					</div>
-					<h3>Confirmer la suppression</h3>
+					<h3 id="plugin-delete-title">Confirmer la suppression</h3>
 				</div>
-				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeDeleteModal} disabled={isDeleting}>
+				<button class="btn btn-ghost btn-icon btn-sm" onclick={closeDeleteModal} disabled={isDeleting} aria-label="Fermer">
 					<X size={18} />
 				</button>
 			</div>
@@ -752,9 +749,19 @@
 					<span>Supprimer définitivement</span>
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
+
+<ConfirmDialog
+	open={confirmBatchDeleteOpen}
+	title="Supprimer les extensions sélectionnées"
+	message={`Supprimer définitivement ${selectedFilenames.length} extension(s) ? Cette action est irréversible.`}
+	confirmLabel="Supprimer"
+	busy={isBatchProcessing}
+	onconfirm={performBatchDelete}
+	oncancel={() => (confirmBatchDeleteOpen = false)}
+/>
 
 <style>
 	.installed-plugins-container {
@@ -836,10 +843,10 @@
 		justify-content: center;
 		flex-shrink: 0;
 	}
-	.icon-blue { background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12)); color: var(--accent-blue-text, #60a5fa); border: 1px solid var(--accent-blue-border); }
-	.icon-green { background-color: var(--accent-green-bg, rgba(34, 197, 94, 0.12)); color: var(--accent-green-text, #4ade80); border: 1px solid var(--accent-green-border); }
-	.icon-danger { background-color: var(--danger-bg, rgba(239, 68, 68, 0.12)); color: var(--danger-text, #f87171); border: 1px solid var(--danger-border); }
-	.icon-purple { background-color: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.25); }
+	.icon-blue { background-color: var(--accent-blue-bg, rgba(59, 130, 246, 0.12)); color: var(--accent-blue-text); border: 1px solid var(--accent-blue-border); }
+	.icon-green { background-color: var(--accent-green-bg, rgba(34, 197, 94, 0.12)); color: var(--accent-green-text); border: 1px solid var(--accent-green-border); }
+	.icon-danger { background-color: var(--danger-bg, rgba(239, 68, 68, 0.12)); color: var(--danger-text); border: 1px solid var(--danger-border); }
+	.icon-purple { background-color: rgba(168, 85, 247, 0.12); color: var(--accent-purple-text); border: 1px solid rgba(168, 85, 247, 0.25); }
 
 	.stat-content {
 		display: flex;
@@ -858,8 +865,8 @@
 
 	/* Server Resource Pack Banner */
 	.server-rp-banner {
-		background-color: var(--accent-amber-bg, rgba(245, 158, 11, 0.1));
-		border: 1px solid var(--accent-amber-border, rgba(245, 158, 11, 0.3));
+		background-color: var(--warning-bg);
+		border: 1px solid var(--warning-border);
 		border-radius: var(--radius-card);
 		padding: var(--space-3) var(--space-4);
 		display: flex;
@@ -873,7 +880,7 @@
 		gap: var(--space-3);
 	}
 	.server-rp-icon {
-		color: #f59e0b;
+		color: var(--warning);
 	}
 	.server-rp-title {
 		font-size: var(--font-size-sm);
@@ -918,28 +925,10 @@
 		justify-content: space-between;
 	}
 	.search-input-wrapper {
-		position: relative;
 		flex: 1;
 		min-width: 260px;
 	}
-	.search-icon {
-		position: absolute;
-		left: var(--space-3);
-		top: 50%;
-		transform: translateY(-50%);
-		color: var(--text-muted);
-	}
-	.search-input {
-		padding-left: 2.2rem;
-		padding-right: 2rem;
-		width: 100%;
-	}
-	.clear-search-btn {
-		position: absolute;
-		right: 4px;
-		top: 50%;
-		transform: translateY(-50%);
-	}
+
 	.filter-group {
 		display: flex;
 		flex-wrap: wrap;
@@ -974,7 +963,7 @@
 		border-bottom: 1px solid var(--border);
 	}
 	.table th {
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 		color: var(--text-secondary);
 		font-weight: var(--font-weight-medium);
 		font-size: var(--font-size-xs);
@@ -998,8 +987,8 @@
 		justify-content: center;
 		flex-shrink: 0;
 	}
-	.icon-active { background-color: rgba(59, 130, 246, 0.1); color: #60a5fa; }
-	.icon-inactive { background-color: rgba(148, 163, 184, 0.1); color: #94a3b8; }
+	.icon-active { background-color: rgba(59, 130, 246, 0.1); color: var(--accent-blue-text); }
+	.icon-inactive { background-color: rgba(148, 163, 184, 0.1); color: var(--text-secondary); }
 	.name-info {
 		display: flex;
 		flex-direction: column;
@@ -1050,8 +1039,8 @@
 		border-radius: 50%;
 		margin-right: 4px;
 	}
-	.status-dot-success { background-color: #22c55e; }
-	.status-dot-danger { background-color: #ef4444; }
+	.status-dot-success { background-color: var(--accent-green); }
+	.status-dot-danger { background-color: var(--danger); }
 	.status-dot-pulse {
 		box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
 		animation: pulse 2s infinite;
@@ -1081,17 +1070,6 @@
 	}
 
 	/* Modal styles */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-		padding: var(--space-4);
-	}
 	.modal-card {
 		width: 100%;
 		max-width: 480px;
@@ -1137,7 +1115,7 @@
 		justify-content: flex-end;
 		gap: var(--space-3);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-subtle, rgba(255, 255, 255, 0.02));
+		background-color: var(--bg-elevated);
 	}
 
 	@keyframes pulse {

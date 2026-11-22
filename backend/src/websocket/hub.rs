@@ -1,9 +1,12 @@
-use std::sync::Arc;
+﻿use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::{interval, sleep, Duration, MissedTickBehavior};
 use tracing::{debug, error};
 
 use crate::config::AppConfig;
+use crate::engine::minecraft::{
+    parse_minecraft_player_list as parse_player_list, parse_minecraft_tps as parse_tps_output,
+};
 use crate::models::podman::ServerStatus;
 use crate::models::websocket::WsServerMessage;
 use crate::podman::PodmanClient;
@@ -236,89 +239,6 @@ async fn fetch_telemetry(
         online_players,
         max_players,
     }
-}
-
-/// Parses `/list` output into `(online, max)`. Returns `None` for either value that could not
-/// be read out of the response — never a guessed default such as "max 20".
-fn parse_player_list(output: &str) -> (Option<u32>, Option<u32>) {
-    if output.is_empty() {
-        return (None, None);
-    }
-
-    // Standard Vanilla/Paper Minecraft format: "There are X of a max of Y players online: ..."
-    if let Some(idx) = output.find("of a max of") {
-        let before = &output[..idx];
-        let after = &output[idx + "of a max of".len()..];
-
-        let online = before
-            .split_whitespace()
-            .last()
-            .and_then(|s| s.parse::<u32>().ok());
-
-        let max = after
-            .split_whitespace()
-            .next()
-            .and_then(|s| s.parse::<u32>().ok());
-
-        if online.is_some() || max.is_some() {
-            return (online, max);
-        }
-    }
-
-    // Alternative format: "There are X/Y players online"
-    if let Some(slash_idx) = output.find('/') {
-        let before = &output[..slash_idx];
-        let after = &output[slash_idx + 1..];
-
-        let online = before
-            .split_whitespace()
-            .last()
-            .and_then(|s| s.parse::<u32>().ok());
-
-        let max = after
-            .split_whitespace()
-            .next()
-            .and_then(|s| s.trim_matches(|c: char| !c.is_numeric()).parse::<u32>().ok());
-
-        if online.is_some() && max.is_some() {
-            return (online, max);
-        }
-    }
-
-    (None, None)
-}
-
-/// Parses `/tps` output. Returns `None` when the server did not answer with a parsable TPS
-/// (e.g. vanilla, which has no `tps` command) rather than pretending the server runs at 20.0.
-fn parse_tps_output(output: &str) -> Option<f32> {
-    if output.is_empty() {
-        return None;
-    }
-
-    // Spigot / Paper format: "TPS from last 1m, 5m, 15m: 20.0, 20.0, 20.0"
-    if let Some(idx) = output.find("1m, 5m, 15m:") {
-        let rest = &output[idx + "1m, 5m, 15m:".len()..];
-        if let Some(first_tps) = rest.split(',').next() {
-            if let Ok(tps) = first_tps.trim().parse::<f32>() {
-                return Some(tps.clamp(0.0, 20.0));
-            }
-        }
-    }
-
-    // Generic format: "TPS: 19.8" or "Mean tick time: 10.5ms (TPS: 20.0)"
-    if let Some(idx) = output.find("TPS:") {
-        let rest = &output[idx + 4..];
-        let num_str: String = rest
-            .trim_start()
-            .chars()
-            .take_while(|c| c.is_numeric() || *c == '.')
-            .collect();
-        if let Ok(tps) = num_str.parse::<f32>() {
-            return Some(tps.clamp(0.0, 20.0));
-        }
-    }
-
-    None
 }
 
 #[cfg(test)]

@@ -1,12 +1,16 @@
 <script>
 	import { onMount } from 'svelte';
-	import { apiGet, apiFetch } from '$lib/api/client.js';
+	import { apiGet, apiDownload } from '$lib/api/client.js';
+	import { toast } from '$lib/stores/toast.svelte.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import KpiCard from '$lib/components/ui/KpiCard.svelte';
+	import KpiGrid from '$lib/components/ui/KpiGrid.svelte';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 	import {
 		ShieldAlert,
 		ShieldCheck,
-		Search,
 		RefreshCw,
 		DownloadCloud,
 		FileText,
@@ -97,24 +101,9 @@
 
 	async function handleExportCsv() {
 		try {
-			const token = localStorage.getItem('chipanel_token') || sessionStorage.getItem('chipanel_token');
-			const response = await fetch('/api/audit/export/csv', {
-				headers: {
-					Authorization: `Bearer ${token}`
-				}
-			});
-			if (!response.ok) throw new Error('Échec du téléchargement CSV');
-			const blob = await response.blob();
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `chipanel_audit_log_${Date.now()}.csv`;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-			a.remove();
+			await apiDownload('/api/audit/export/csv', `chipanel_audit_log_${Date.now()}.csv`);
 		} catch (err) {
-			alert(err.message || 'Erreur lors de l\'export CSV');
+			toast.error('Export CSV impossible', err.message || 'Erreur lors de l’export CSV');
 		}
 	}
 
@@ -174,7 +163,7 @@
 	<title>Registre d'Audit & Sécurité | ChiPanel</title>
 </svelte:head>
 
-<div class="audit-page-layout">
+<div class="page-stack">
 	<!-- Page Header -->
 	<PageHeader
 		title="Registre d'Audit & Journal des Actions"
@@ -197,68 +186,31 @@
 	</PageHeader>
 
 	<!-- KPI Stats Grid -->
-	<div class="kpi-grid">
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-primary">
-				<FileText size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Événements Enregistrés</span>
-				<span class="kpi-value">{totalCount}</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-success">
-				<ShieldCheck size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Taux de Succès</span>
-				<span class="kpi-value">{successRate}%</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper {failedCount > 0 ? 'kpi-danger' : 'kpi-info'}">
-				<AlertTriangle size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Échecs / Alertes</span>
-				<span class="kpi-value">{failedCount}</span>
-			</div>
-		</div>
-
-		<div class="kpi-card card">
-			<div class="kpi-icon-wrapper kpi-info">
-				<Globe size={22} />
-			</div>
-			<div class="kpi-content">
-				<span class="kpi-label">Dernière Action</span>
-				<span class="kpi-value text-xs font-mono">
-					{events.length > 0 ? formatDate(events[0].timestamp_secs) : 'Aucune'}
-				</span>
-			</div>
-		</div>
-	</div>
+	<KpiGrid>
+		<KpiCard label="Événements Enregistrés" value={String(totalCount)}>
+			{#snippet icon()}<FileText size={22} />{/snippet}
+		</KpiCard>
+		<KpiCard label="Taux de Succès" value={`${successRate}%`} tone="success">
+			{#snippet icon()}<ShieldCheck size={22} />{/snippet}
+		</KpiCard>
+		<KpiCard label="Échecs / Alertes" value={String(failedCount)} tone={failedCount > 0 ? 'danger' : 'info'}>
+			{#snippet icon()}<AlertTriangle size={22} />{/snippet}
+		</KpiCard>
+		<KpiCard label="Dernière Action" mono tone="info">
+			{#snippet icon()}<Globe size={22} />{/snippet}
+			{events.length > 0 ? formatDate(events[0].timestamp_secs) : 'Aucune'}
+		</KpiCard>
+	</KpiGrid>
 
 	<!-- Main Filter & Table Card -->
 	<div class="card table-card">
 		<div class="toolbar-row">
-			<div class="search-box">
-				<Search size={16} class="search-icon text-muted" />
-				<input
-					type="text"
-					class="search-input"
-					placeholder="Filtrer par action, utilisateur, IP ou détail JSON..."
-					bind:value={searchQuery}
-					oninput={handleSearchInput}
-				/>
-				{#if searchQuery}
-					<button class="clear-btn" onclick={() => { searchQuery = ''; loadAuditLogs(); }}>
-						<X size={14} />
-					</button>
-				{/if}
-			</div>
+			<SearchBar
+				bind:value={searchQuery}
+				oninput={handleSearchInput}
+				placeholder="Filtrer par action, utilisateur, IP ou détail JSON…"
+				label="Filtrer le registre d'audit"
+			/>
 
 			<div class="filter-controls">
 				<select class="select select-sm" bind:value={selectedCategory} onchange={() => handleCategoryChange(selectedCategory)}>
@@ -358,15 +310,20 @@
 </div>
 
 <!-- Modal Détail Événement JSON -->
-{#if showDetailModal && selectedEvent}
-	<div class="modal-backdrop" onclick={() => (showDetailModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+{#if selectedEvent}
+	<Modal
+		open={showDetailModal}
+		onclose={() => (showDetailModal = false)}
+		class="modal-card card"
+		ariaLabelledBy="audit-detail-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
 				<div class="modal-title-with-badge">
-					<h2 class="modal-title font-mono">{selectedEvent.action}</h2>
+					<h2 class="modal-title font-mono" id="audit-detail-title">{selectedEvent.action}</h2>
 					<span class="badge {getCategoryBadgeClass(selectedEvent.category)}">{selectedEvent.category}</span>
 				</div>
-				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (showDetailModal = false)}>
+				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (showDetailModal = false)} aria-label="Fermer">
 					<X size={16} />
 				</button>
 			</div>
@@ -406,66 +363,11 @@
 			<div class="modal-footer">
 				<button class="btn btn-secondary btn-sm" onclick={() => (showDetailModal = false)}>Fermer</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
-	.audit-page-layout {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding-bottom: var(--space-8);
-	}
-
-	/* KPI Grid */
-	.kpi-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-		gap: var(--space-4);
-	}
-
-	.kpi-card {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		padding: var(--space-4);
-		background-color: var(--bg-surface);
-	}
-
-	.kpi-icon-wrapper {
-		width: 42px;
-		height: 42px;
-		border-radius: var(--radius-md);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-
-	.kpi-primary { background-color: var(--accent-blue-bg); color: var(--accent-blue-text); }
-	.kpi-success { background-color: rgba(16, 185, 129, 0.15); color: var(--engine-emerald); }
-	.kpi-info { background-color: rgba(59, 130, 246, 0.15); color: var(--accent-blue-text); }
-	.kpi-danger { background-color: rgba(239, 68, 68, 0.15); color: var(--danger); }
-
-	.kpi-content {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.kpi-label {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-	}
-
-	.kpi-value {
-		font-size: var(--font-size-base);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-	}
 
 	/* Table Card */
 	.table-card {
@@ -479,44 +381,6 @@
 		gap: var(--space-4);
 		padding: var(--space-4) var(--space-6);
 		border-bottom: 1px solid var(--border);
-	}
-
-	.search-box {
-		position: relative;
-		flex: 1;
-		max-width: 480px;
-		display: flex;
-		align-items: center;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: 12px;
-		pointer-events: none;
-	}
-
-	.search-input {
-		width: 100%;
-		padding: 8px 32px 8px 36px;
-		background-color: var(--bg-card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		color: var(--text-primary);
-		font-size: var(--font-size-sm);
-	}
-
-	.search-input:focus {
-		outline: none;
-		border-color: var(--accent-blue-border);
-	}
-
-	.clear-btn {
-		position: absolute;
-		right: 8px;
-		background: none;
-		border: none;
-		color: var(--text-muted);
-		cursor: pointer;
 	}
 
 	.filter-controls {
@@ -555,7 +419,7 @@
 
 	.action-tag {
 		padding: 2px 6px;
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		border: 1px solid var(--border-subtle);
 		border-radius: 4px;
 		font-size: var(--font-size-xs);
@@ -573,7 +437,7 @@
 
 	.status-success {
 		background-color: rgba(16, 185, 129, 0.15);
-		color: var(--engine-emerald);
+		color: var(--accent-green);
 	}
 
 	.status-danger {
@@ -595,16 +459,6 @@
 	.loading-state,
 
 	/* Modal */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-	}
 
 	.modal-card {
 		width: 100%;
@@ -645,7 +499,7 @@
 		grid-template-columns: 1fr 1fr;
 		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		border-radius: var(--radius-sm);
 	}
 
@@ -668,7 +522,7 @@
 
 	.json-code-box {
 		padding: var(--space-4);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-sm);
 		overflow-x: auto;

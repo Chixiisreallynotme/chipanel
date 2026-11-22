@@ -1,9 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
-	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
+	import { apiGet, apiPost, apiDelete } from '$lib/api/client.js';
 	import { auth } from '$lib/stores/auth.svelte.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
 	import {
 		Users,
 		UserPlus,
@@ -322,9 +323,7 @@
 
 	async function deleteUser(userItem) {
 		try {
-			await apiFetch(`/api/auth/users/${userItem.username}`, {
-				method: 'DELETE'
-			});
+			await apiDelete(`/api/auth/users/${userItem.username}`);
 
 			users = users.filter((u) => u.username !== userItem.username);
 			toast.info('Compte supprimé', `Le compte "${userItem.username}" a été révoqué.`);
@@ -376,7 +375,7 @@
 	oncancel={() => (userPendingDelete = null)}
 />
 
-<div class="accounts-page">
+<div class="page-stack">
 	<!-- Hero Header -->
 	<PageHeader
 		title="Comptes & autorisations sur-mesure"
@@ -421,19 +420,13 @@
 						<p>Chargement des comptes utilisateurs...</p>
 					</div>
 				{:else if error}
-					<!-- role="alert" so the failure is announced, and a separate visual treatment for
-					     403: "you may not do this" is a different outcome from "this broke". -->
-					<div
-						class="alert-banner {errorKind === 'forbidden' ? 'alert-forbidden' : 'alert-danger'}"
-						role="alert"
+					<!-- 403 is a different outcome from "this broke": warn, don't alarm. -->
+					<Callout
+						tone={errorKind === 'forbidden' ? 'warning' : 'danger'}
+						title={errorKind === 'forbidden' ? 'Accès refusé' : 'Chargement impossible'}
 					>
-						{#if errorKind === 'forbidden'}
-							<Lock size={18} />
-						{:else}
-							<AlertCircle size={18} />
-						{/if}
-						<span>{error}</span>
-					</div>
+						{error}
+					</Callout>
 				{:else if users.length === 0}
 					<EmptyState title="Aucun compte secondaire" description="Cliquez sur « Nouveau compte sur-mesure » pour créer un profil utilisateur.">
 						{#snippet icon()}
@@ -519,10 +512,7 @@
 		style="max-width:720px"
 	>
 						{#if createError}
-							<div class="alert-banner alert-danger mb-4">
-								<AlertCircle size={18} />
-								<span>{createError}</span>
-							</div>
+							<Callout tone="danger" title="Création impossible">{createError}</Callout>
 						{/if}
 
 						<!-- User Info Fields -->
@@ -660,40 +650,8 @@
 </div>
 
 <style>
-	/* `.alert-banner` was only ever defined inside other components' scoped styles, so the
-	   error state on this page rendered unstyled. Defined locally alongside the two
-	   variants the page can show. */
-	.alert-banner {
-		padding: var(--space-3) var(--space-4);
-		border-radius: var(--radius-btn);
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		font-size: var(--font-size-sm);
-		line-height: var(--line-height-normal);
-	}
-
-	.alert-danger {
-		background-color: var(--danger-bg);
-		border: 1px solid var(--danger-border);
-		color: var(--danger-text);
-	}
-
-	/* Authorisation outcome, not a fault: amber, padlock, no red alarm. */
-	.alert-forbidden {
-		background-color: var(--warning-bg);
-		border: 1px solid var(--warning-border);
-		color: var(--warning);
-	}
-
 	.mb-4 {
 		margin-bottom: var(--space-4);
-	}
-
-	.accounts-page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
 	}
 
 	.semantic-info-alert {

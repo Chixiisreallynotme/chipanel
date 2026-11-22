@@ -456,7 +456,7 @@
 	}
 
 	.log-output-box {
-		background-color: #060609;
+		background-color: var(--bg-terminal);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-input);
 		padding: var(--space-3);

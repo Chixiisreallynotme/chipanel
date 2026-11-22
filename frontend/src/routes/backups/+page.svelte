@@ -1,8 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
-	import { apiGet, apiPost, apiFetch } from '$lib/api/client.js';
+	import { apiGet, apiPost, apiDelete } from '$lib/api/client.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+	import KpiCard from '$lib/components/ui/KpiCard.svelte';
+	import KpiGrid from '$lib/components/ui/KpiGrid.svelte';
 	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		Archive,
@@ -135,16 +139,27 @@
 		}
 	}
 
-	async function handleDeleteBackup(filename) {
-		if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement la sauvegarde "${filename}" ?`)) {
-			return;
-		}
+	/** @type {string | null} */
+	let pendingDelete = $state(null);
+	let isDeleting = $state(false);
+
+	function requestDeleteBackup(filename) {
+		pendingDelete = filename;
+	}
+
+	async function confirmDeleteBackup() {
+		if (!pendingDelete) return;
+		const filename = pendingDelete;
+		isDeleting = true;
 		try {
-			await apiFetch(`/api/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+			await apiDelete(`/api/backups/${encodeURIComponent(filename)}`);
 			toast.success('Sauvegarde supprimée', `L'archive "${filename}" a été supprimée.`);
 			backups = backups.filter((b) => b.filename !== filename);
+			pendingDelete = null;
 		} catch (err) {
 			toast.error('Échec de la suppression', err.message || 'Impossible de supprimer la sauvegarde.');
+		} finally {
+			isDeleting = false;
 		}
 	}
 
@@ -213,7 +228,7 @@
 	<title>Sauvegardes & Snapshots | ChiPanel</title>
 </svelte:head>
 
-<div class="backups-page-layout">
+<div class="page-stack">
 	<!-- Page Header -->
 	<PageHeader
 		title="Sauvegardes & Snapshots"
@@ -236,55 +251,24 @@
 	</PageHeader>
 
 	<!-- KPI Stats Grid -->
-	<div class="kpi-grid">
-		<div class="hardware-shell">
-			<div class="hardware-core kpi-card">
-				<div class="kpi-icon-wrapper kpi-primary">
-					<Archive size={20} />
-				</div>
-				<div class="kpi-content">
-					<span class="kpi-label">Nombre de Sauvegardes</span>
-					<span class="kpi-value font-mono tabular-nums">{backups.length}</span>
-				</div>
-			</div>
-		</div>
-
-		<div class="hardware-shell">
-			<div class="hardware-core kpi-card">
-				<div class="kpi-icon-wrapper kpi-success">
-					<HardDrive size={20} />
-				</div>
-				<div class="kpi-content">
-					<span class="kpi-label">Espace Disque Utilisé</span>
-					<span class="kpi-value font-mono tabular-nums">{formatBytes(totalBytesUsed)}</span>
-				</div>
-			</div>
-		</div>
-
-		<div class="hardware-shell">
-			<div class="hardware-core kpi-card">
-				<div class="kpi-icon-wrapper kpi-info">
-					<ShieldCheck size={20} />
-				</div>
-				<div class="kpi-content">
-					<span class="kpi-label">Rétention Max</span>
-					<span class="kpi-value font-mono tabular-nums">{settings.max_retention_count} archives max</span>
-				</div>
-			</div>
-		</div>
-
-		<div class="hardware-shell">
-			<div class="hardware-core kpi-card">
-				<div class="kpi-icon-wrapper {settings.s3_config?.enabled ? 'kpi-success' : 'kpi-warning'}">
-					<CloudUpload size={20} />
-				</div>
-				<div class="kpi-content">
-					<span class="kpi-label">Export Distant S3 / MinIO</span>
-					<span class="kpi-value">{settings.s3_config?.enabled ? 'Actif' : 'Désactivé'}</span>
-				</div>
-			</div>
-		</div>
-	</div>
+	<KpiGrid>
+		<KpiCard label="Nombre de Sauvegardes" mono>
+			{#snippet icon()}<Archive size={20} />{/snippet}
+			{backups.length}
+		</KpiCard>
+		<KpiCard label="Espace Disque Utilisé" mono tone="success">
+			{#snippet icon()}<HardDrive size={20} />{/snippet}
+			{formatBytes(totalBytesUsed)}
+		</KpiCard>
+		<KpiCard label="Rétention Max" mono>
+			{#snippet icon()}<ShieldCheck size={20} />{/snippet}
+			{settings.max_retention_count} archives max
+		</KpiCard>
+		<KpiCard label="Export Distant S3 / MinIO" tone={settings.s3_config?.enabled ? 'success' : 'warning'}>
+			{#snippet icon()}<CloudUpload size={20} />{/snippet}
+			{settings.s3_config?.enabled ? 'Actif' : 'Désactivé'}
+		</KpiCard>
+	</KpiGrid>
 
 	<!-- Main Backups Table Card -->
 	<div class="card table-card">
@@ -405,7 +389,7 @@
 
 										<button
 											class="btn btn-danger-ghost btn-sm btn-icon"
-											onclick={() => handleDeleteBackup(backup.filename)}
+											onclick={() => requestDeleteBackup(backup.filename)}
 											title="Supprimer"
 											disabled={backup.is_locked}
 										>
@@ -422,12 +406,24 @@
 	</div>
 </div>
 
-<!-- Modal Créer Sauvegarde -->
-{#if showCreateModal}
-	<div class="modal-backdrop" onclick={() => (showCreateModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+<ConfirmDialog
+	open={pendingDelete !== null}
+	title="Supprimer la sauvegarde"
+	message={`Supprimer définitivement l'archive « ${pendingDelete ?? ''} » ? Cette action est irréversible.`}
+	confirmLabel="Supprimer"
+	busy={isDeleting}
+	onconfirm={confirmDeleteBackup}
+	oncancel={() => (pendingDelete = null)}
+/>
+<Modal
+	open={showCreateModal}
+	onclose={() => (showCreateModal = false)}
+	class="modal-card card"
+	ariaLabelledBy="backup-create-title"
+>
+	{#snippet content()}
 			<div class="modal-header">
-				<h2 class="modal-title">Créer une Sauvegarde</h2>
+				<h2 class="modal-title" id="backup-create-title">Créer une Sauvegarde</h2>
 				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (showCreateModal = false)}>
 					<X size={16} />
 				</button>
@@ -507,16 +503,19 @@
 					{/if}
 				</button>
 			</div>
-		</div>
-	</div>
-{/if}
+	{/snippet}
+</Modal>
 
 <!-- Modal Paramètres & S3 -->
-{#if showSettingsModal}
-	<div class="modal-backdrop" onclick={() => (showSettingsModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+<Modal
+	open={showSettingsModal}
+	onclose={() => (showSettingsModal = false)}
+	class="modal-card card"
+	ariaLabelledBy="backup-settings-title"
+>
+	{#snippet content()}
 			<div class="modal-header">
-				<h2 class="modal-title">Paramètres de Rétention & Export S3</h2>
+				<h2 class="modal-title" id="backup-settings-title">Paramètres de Rétention & Export S3</h2>
 				<button class="btn btn-ghost btn-sm btn-icon" onclick={() => (showSettingsModal = false)}>
 					<X size={16} />
 				</button>
@@ -603,16 +602,20 @@
 					Enregistrer les paramètres
 				</button>
 			</div>
-		</div>
-	</div>
-{/if}
+	{/snippet}
+</Modal>
 
 <!-- Modal Confirmation Restauration -->
-{#if showRestoreModal && selectedBackupForRestore}
-	<div class="modal-backdrop" onclick={() => (showRestoreModal = false)} onkeydown={(e) => e.stopPropagation()}  role="presentation">
-		<div class="modal-card card" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" tabindex="-1">
+{#if selectedBackupForRestore}
+	<Modal
+		open={showRestoreModal}
+		onclose={() => (showRestoreModal = false)}
+		class="modal-card card"
+		ariaLabelledBy="backup-restore-title"
+	>
+		{#snippet content()}
 			<div class="modal-header">
-				<h2 class="modal-title text-warning flex items-center gap-2">
+				<h2 class="modal-title text-warning flex items-center gap-2" id="backup-restore-title">
 					<AlertTriangle size={18} />
 					<span>Confirmer la Restauration</span>
 				</h2>
@@ -649,85 +652,11 @@
 					{/if}
 				</button>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
-	.backups-page-layout {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-		padding-bottom: var(--space-8);
-	}
-
-	/* KPI Grid */
-	.kpi-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-		gap: var(--space-4);
-	}
-
-	.kpi-card {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		padding: var(--space-4);
-		background-color: var(--bg-surface);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-	}
-
-	.kpi-icon-wrapper {
-		width: 42px;
-		height: 42px;
-		border-radius: var(--radius-card);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-
-	.kpi-primary {
-		background-color: var(--accent-blue-bg);
-		color: var(--accent-blue-text);
-		border: 1px solid var(--accent-blue-border);
-	}
-	.kpi-success {
-		background-color: var(--accent-green-bg);
-		color: var(--accent-green);
-		border: 1px solid var(--accent-green-border);
-	}
-	.kpi-info {
-		background-color: rgba(59, 130, 246, 0.15);
-		color: #60A5FA;
-		border: 1px solid var(--accent-blue-border);
-	}
-	.kpi-warning {
-		background-color: var(--warning-bg);
-		color: var(--warning);
-		border: 1px solid var(--warning-border);
-	}
-
-	.kpi-content {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.kpi-label {
-		font-size: var(--font-size-xs);
-		color: var(--text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		font-weight: var(--font-weight-medium);
-	}
-
-	.kpi-value {
-		font-size: var(--font-size-base);
-		font-weight: var(--font-weight-bold);
-		color: var(--text-primary);
-		font-variant-numeric: tabular-nums;
-	}
 
 	/* Table Card */
 	.table-card {
@@ -829,16 +758,6 @@
 	.loading-state,
 
 	/* Modals */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(4px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-	}
 
 	.modal-card {
 		width: 100%;
@@ -909,7 +828,7 @@
 
 	.restore-target-box {
 		padding: var(--space-3) var(--space-4);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 		display: flex;
 		flex-direction: column;
 		gap: 2px;

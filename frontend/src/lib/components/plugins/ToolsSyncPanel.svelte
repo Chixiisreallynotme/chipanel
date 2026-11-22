@@ -132,7 +132,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--accent-blue-text, #60a5fa);
+		color: var(--accent-blue-text);
 		flex-shrink: 0;
 	}
 	.tools-title {
@@ -165,12 +165,12 @@
 	.status-ok {
 		background-color: var(--accent-green-bg);
 		border: 1px solid var(--accent-green-border);
-		color: var(--accent-green-text, #34d399);
+		color: var(--accent-green-text);
 	}
 	.status-warn {
 		background-color: var(--warning-bg);
 		border: 1px solid var(--warning-border);
-		color: var(--warning-text, #f59e0b);
+		color: var(--warning-text);
 	}
 	.status-row code {
 		font-family: var(--font-mono);
@@ -218,10 +218,10 @@
 		color: var(--text-muted);
 	}
 	.text-green {
-		color: var(--accent-green, #10b981);
+		color: var(--accent-green);
 	}
 	.text-red {
-		color: var(--danger, #ef4444);
+		color: var(--danger);
 	}
 	.text-muted {
 		color: var(--text-muted);

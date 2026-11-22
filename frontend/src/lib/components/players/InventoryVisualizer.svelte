@@ -645,7 +645,7 @@
 
 	.ender-pill {
 		background-color: rgba(168, 85, 247, 0.2);
-		color: #D8B4FE;
+		color: var(--accent-purple-text);
 	}
 
 	.refresh-btn {
@@ -834,7 +834,7 @@
 
 	.ender-slot.has-item:hover,
 	.item-slot-wrapper:focus .ender-slot.has-item {
-		border-color: var(--accent-purple, #A855F7);
+		border-color: var(--accent-purple);
 		background-color: rgba(168, 85, 247, 0.15);
 		box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
 	}
@@ -884,8 +884,8 @@
 		font-family: var(--font-mono);
 		font-size: 11px;
 		font-weight: var(--font-weight-bold);
-		color: #FFFFFF;
-		text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+		color: var(--text-on-solid);
+		text-shadow: 1px 1px 0 var(--mc-shadow), -1px -1px 0 var(--mc-shadow), 1px -1px 0 var(--mc-shadow), -1px 1px 0 var(--mc-shadow);
 		line-height: 1;
 		pointer-events: none;
 	}
@@ -911,15 +911,15 @@
 	}
 
 	.durability-high {
-		background-color: var(--accent-green, #4ADE80);
+		background-color: var(--accent-green);
 	}
 
 	.durability-medium {
-		background-color: var(--warning, #F59E0B);
+		background-color: var(--warning);
 	}
 
 	.durability-low {
-		background-color: var(--danger, #F43F5E);
+		background-color: var(--danger);
 	}
 
 	/* Ender Banner */
@@ -1000,19 +1000,19 @@
 	.item-display-title {
 		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-semibold);
-		color: #FFFFFF;
+		color: var(--text-on-solid);
 		line-height: 1.3;
 	}
 
 	.item-display-title.is-custom-name {
-		color: #FFAA00;
+		color: var(--mc-gold);
 		font-style: italic;
 	}
 
 	.trim-tag {
 		font-size: 11px;
 		font-family: var(--font-mono);
-		color: #FFAA00;
+		color: var(--mc-gold);
 		background-color: rgba(255, 170, 0, 0.1);
 		border: 1px solid rgba(255, 170, 0, 0.25);
 		border-radius: var(--radius-sm);
@@ -1068,12 +1068,12 @@
 	}
 
 	.aqua-text {
-		color: #55FFFF;
+		color: var(--mc-aqua);
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 	}
 
 	.curse-text {
-		color: #FF5555;
+		color: var(--mc-red);
 		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 	}
 

@@ -244,7 +244,7 @@ impl GameDriver for MinecraftDriver {
     }
 }
 
-fn parse_minecraft_player_list(output: &str) -> (Option<u32>, Option<u32>) {
+pub(crate) fn parse_minecraft_player_list(output: &str) -> (Option<u32>, Option<u32>) {
     if output.is_empty() {
         return (None, None);
     }
@@ -290,7 +290,7 @@ fn parse_minecraft_player_list(output: &str) -> (Option<u32>, Option<u32>) {
     (None, None)
 }
 
-fn parse_minecraft_tps(output: &str) -> Option<f32> {
+pub(crate) fn parse_minecraft_tps(output: &str) -> Option<f32> {
     if output.is_empty() {
         return None;
     }

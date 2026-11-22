@@ -157,7 +157,7 @@
 		justify-content: space-between;
 		padding: var(--space-4) var(--space-6);
 		border-bottom: 1px solid var(--border);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 	}
 
 	.header-left {
@@ -215,13 +215,13 @@
 
 	.badge-added {
 		background-color: rgba(16, 185, 129, 0.15);
-		color: #34D399;
+		color: var(--accent-green-text);
 		border: 1px solid rgba(16, 185, 129, 0.3);
 	}
 
 	.badge-deleted {
 		background-color: rgba(239, 68, 68, 0.15);
-		color: #F87171;
+		color: var(--danger-text);
 		border: 1px solid rgba(239, 68, 68, 0.3);
 	}
 
@@ -229,7 +229,7 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: var(--space-4);
-		background-color: #0d1117;
+		background-color: var(--bg-code);
 		min-height: 250px;
 	}
 
@@ -269,24 +269,24 @@
 	}
 
 	.diff-equal {
-		color: #9CA3AF;
+		color: var(--text-secondary);
 	}
 
 	.diff-insert {
 		background-color: rgba(16, 185, 129, 0.15);
-		color: #A7F3D0;
+		color: var(--accent-green-text);
 	}
 
 	.diff-delete {
 		background-color: rgba(239, 68, 68, 0.15);
-		color: #FECACA;
+		color: var(--danger-text);
 	}
 
 	.line-num {
 		width: 40px;
 		text-align: right;
 		padding-right: var(--space-2);
-		color: #4B5563;
+		color: var(--text-muted);
 		user-select: none;
 		flex-shrink: 0;
 		font-size: 11px;
@@ -301,11 +301,11 @@
 	}
 
 	.diff-insert .line-sign {
-		color: #34D399;
+		color: var(--accent-green-text);
 	}
 
 	.diff-delete .line-sign {
-		color: #F87171;
+		color: var(--danger-text);
 	}
 
 	.line-content {
@@ -321,6 +321,6 @@
 		gap: var(--space-3);
 		padding: var(--space-4) var(--space-6);
 		border-top: 1px solid var(--border);
-		background-color: var(--bg-card);
+		background-color: var(--bg-surface);
 	}
 </style>

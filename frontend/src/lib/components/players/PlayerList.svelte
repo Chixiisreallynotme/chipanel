@@ -1,7 +1,6 @@
 <script>
 	import {
 		Users,
-		Search,
 		LayoutGrid,
 		Table as TableIcon,
 		Heart,
@@ -15,6 +14,7 @@
 	} from '$lib/icons.js';
 	import { UNAVAILABLE } from '$lib/components/dashboard/serverState.js';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 
 	/**
 	 * @typedef {Object} PlayerSummary
@@ -139,13 +139,11 @@
 		<div class="controls-body">
 			<!-- Search Bar -->
 			<div class="search-box">
-				<Search size={16} class="search-icon" />
-				<input
-					type="text"
-					class="input search-input"
-					placeholder="Search players by username or UUID..."
+				<SearchBar
+					compact
 					bind:value={searchQuery}
-					aria-label="Search players"
+					placeholder="Rechercher un joueur par pseudo ou UUID…"
+					label="Rechercher des joueurs"
 				/>
 			</div>
 
@@ -525,22 +523,10 @@
 	}
 
 	.search-box {
-		position: relative;
 		display: flex;
 		align-items: center;
 		flex: 1;
 		min-width: 260px;
-	}
-
-	.search-icon {
-		position: absolute;
-		left: var(--space-3);
-		color: var(--text-muted);
-		pointer-events: none;
-	}
-
-	.search-input {
-		padding-left: var(--space-8);
 	}
 
 	.controls-right {

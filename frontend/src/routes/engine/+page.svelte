@@ -4,6 +4,7 @@
 	import VersionPickerButton from '$lib/components/common/VersionPickerButton.svelte';
 	import EngineLogo from '$lib/components/common/EngineLogo.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import HeroBanner from '$lib/components/ui/HeroBanner.svelte';
 	import KpiCard from '$lib/components/ui/KpiCard.svelte';
@@ -307,7 +308,7 @@
 	<title>Moteurs & Versions | ChiPanel</title>
 </svelte:head>
 
-<div class="engine-page">
+<div class="page-stack">
 	<!-- Page Header -->
 	<PageHeader
 		title="Moteurs & Versions du Serveur"
@@ -610,7 +611,9 @@
 </div>
 
 <!-- Detailed Confirmation Modal -->
-{#if showConfirmModal && selectedEngine}
+{#if selectedEngine}
+	<Modal open={showConfirmModal} onclose={closeConfirmModal} class="modal-dialog" ariaLabelledBy="engine-confirm-title">
+		{#snippet content()}
 	{@const targetType = selectedEngine.id}
 	{@const targetVersion = selectedVersionMap[targetType] || UNKNOWN}
 	{@const targetLoader = selectedLoaderMap[targetType] || 'LATEST'}
@@ -618,24 +621,10 @@
 	{@const hasLoader = LOADER_SUPPORTED_ENGINES.includes(targetType)}
 	{@const modalLoaderData = loaderOptionsMap[targetType]}
 
-	<div
-		class="modal-backdrop"
-		onclick={closeConfirmModal}
-		onkeydown={(e) => e.key === 'Escape' && closeConfirmModal()}
-		role="button"
-		tabindex="0"
-	>
-		<div
-			class="modal-dialog"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={() => {}}
-			role="dialog"
-			tabindex="-1"
-		>
 			<header class="modal-header">
 				<EngineLogo engine={selectedEngine.id} size={36} class="modal-logo" />
 				<div>
-					<h2>{isSameEngine ? `Mise à jour Minecraft (${selectedEngine.name})` : `Passage à ${selectedEngine.name}`}</h2>
+					<h2 id="engine-confirm-title">{isSameEngine ? `Mise à jour Minecraft (${selectedEngine.name})` : `Passage à ${selectedEngine.name}`}</h2>
 					<p class="modal-subtitle">Bilan d'impact et reconfiguration automatique</p>
 				</div>
 			</header>
@@ -792,19 +781,11 @@
 					{/if}
 				</button>
 			</footer>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
 
 <style>
-	.engine-page {
-		display: flex;
-		flex-direction: column;
-		gap: 2rem;
-		max-width: 1380px;
-		margin: 0 auto;
-		padding: 0 0 4rem 0;
-	}
 
 	/* Version Alerts */
 	.version-banner {
@@ -818,8 +799,8 @@
 
 	.release-banner {
 		background: rgba(16, 185, 129, 0.08);
-		border: 1px solid var(--engine-emerald-border);
-		color: var(--accent-emerald-text);
+		border: 1px solid var(--accent-green-border);
+		color: var(--accent-green-text);
 	}
 
 	.snapshot-banner {
@@ -835,7 +816,7 @@
 	}
 
 	.banner-sub {
-		color: var(--engine-slate-400);
+		color: var(--text-secondary);
 		font-size: 0.8125rem;
 	}
 
@@ -853,7 +834,7 @@
 
 	/* Reliure HeroBanner : badge + meta restes locaux (valeurs exactes engine) */
 	.pulse-dot {
-		color: var(--accent-indigo-text);
+		color: var(--accent-blue-text);
 	}
 
 	.tag {
@@ -865,20 +846,20 @@
 	}
 
 	.tag-version {
-		background: var(--accent-indigo-bg);
+		background: var(--accent-blue-bg);
 		color: var(--text-code);
-		border: 1px solid var(--accent-indigo-border);
+		border: 1px solid var(--accent-blue-border);
 	}
 
 	.tag-loader {
-		background: var(--accent-emerald-bg);
-		color: var(--accent-emerald-text);
-		border: 1px solid var(--accent-emerald-border);
+		background: var(--accent-green-bg);
+		color: var(--accent-green-text);
+		border: 1px solid var(--accent-green-border);
 	}
 
 	.identity-desc {
 		font-size: 0.875rem;
-		color: var(--engine-slate-400);
+		color: var(--text-secondary);
 		line-height: 1.5;
 		margin: 0;
 		max-width: 60ch;
@@ -898,9 +879,9 @@
 		flex-shrink: 0;
 	}
 
-	.status-online { background: var(--engine-emerald); box-shadow: 0 0 8px var(--engine-emerald); }
-	.status-hibernating { background: var(--engine-amber); }
-	.status-stopped { background: var(--engine-slate-500); }
+	.status-online { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+	.status-hibernating { background: var(--accent-orange); }
+	.status-stopped { background: var(--text-muted); }
 
 	/* Toolbar */
 	.toolbar {
@@ -922,7 +903,7 @@
 		justify-content: space-between;
 		padding: 1.75rem;
 		border-radius: 16px;
-		background: var(--bg-surface-2);
+		background: var(--bg-surface);
 		border: 1px solid var(--border-subtle);
 		transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 		gap: 1.125rem;
@@ -936,7 +917,7 @@
 
 	.card-active {
 		border-color: rgba(16, 185, 129, 0.4);
-		background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), var(--bg-surface-2) 40%);
+		background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), var(--bg-surface) 40%);
 	}
 
 	.card-header {
@@ -961,7 +942,7 @@
 	.title-row h3 {
 		font-size: 1.15rem;
 		font-weight: 700;
-		color: var(--engine-slate-50);
+		color: var(--text-primary);
 		letter-spacing: -0.01em;
 		margin: 0;
 	}
@@ -975,7 +956,7 @@
 
 	.tag-meta {
 		font-size: 0.75rem;
-		color: var(--engine-slate-400);
+		color: var(--text-secondary);
 		font-weight: 500;
 	}
 
@@ -997,9 +978,9 @@
 		border-radius: 6px;
 		font-size: 0.6875rem;
 		font-weight: 700;
-		background: var(--accent-emerald-bg);
-		color: var(--accent-emerald-text);
-		border: 1px solid var(--accent-emerald-border);
+		background: var(--accent-green-bg);
+		color: var(--accent-green-text);
+		border: 1px solid var(--accent-green-border);
 	}
 
 	/* Minimal Specs */
@@ -1008,20 +989,20 @@
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.8125rem;
-		color: var(--engine-slate-500);
+		color: var(--text-muted);
 	}
 
 	.spec-meta strong {
-		color: var(--engine-slate-300);
+		color: var(--text-secondary);
 	}
 
 	.spec-dot {
-		color: var(--engine-slate-600);
+		color: var(--text-muted);
 	}
 
 	.card-description {
 		font-size: 0.875rem;
-		color: var(--engine-slate-400);
+		color: var(--text-secondary);
 		line-height: 1.5;
 		margin: 0;
 		min-height: 2.75rem;
@@ -1042,7 +1023,7 @@
 	}
 
 	.highlight-pro span {
-		color: var(--engine-slate-300);
+		color: var(--text-secondary);
 	}
 
 	.highlight-con span {
@@ -1057,7 +1038,7 @@
 		border-radius: 8px;
 		background: rgba(16, 185, 129, 0.06);
 		border: 1px solid rgba(16, 185, 129, 0.15);
-		color: var(--accent-emerald-text);
+		color: var(--accent-green-text);
 		font-size: 0.75rem;
 		font-weight: 500;
 	}
@@ -1092,7 +1073,7 @@
 	.input-label {
 		font-size: 0.8125rem;
 		font-weight: 500;
-		color: var(--engine-slate-400);
+		color: var(--text-secondary);
 	}
 
 	.select-wrapper {
@@ -1105,10 +1086,10 @@
 	.select-control {
 		width: 100%;
 		padding: 0.55rem 2rem 0.55rem 0.875rem;
-		background: var(--bg-inset);
+		background: var(--bg-base);
 		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: 8px;
-		color: var(--engine-slate-100);
+		color: var(--text-primary);
 		font-size: 0.8125rem;
 		font-weight: 500;
 		outline: none;
@@ -1118,13 +1099,13 @@
 	}
 
 	.select-control:focus {
-		border-color: var(--engine-indigo);
+		border-color: var(--accent-blue);
 	}
 
 	.select-arrow {
 		position: absolute;
 		right: 0.75rem;
-		color: var(--engine-slate-500);
+		color: var(--text-muted);
 		pointer-events: none;
 	}
 
@@ -1161,22 +1142,22 @@
 	/* Boutons secondaires : gris d'origine sans token exact (rgb a valeur strictement identique, zero approximation) */
 	.btn-secondary {
 		background: rgb(31, 41, 55);
-		border: 1px solid var(--border-engine-08);
-		color: var(--engine-slate-300);
+		border: 1px solid var(--border-subtle);
+		color: var(--text-secondary);
 	}
 
 	.btn-secondary:hover:not(:disabled) {
 		background: rgb(55, 65, 81);
-		color: var(--engine-white);
+		color: var(--text-primary);
 	}
 
 	.btn-primary {
-		background: var(--accent-indigo);
-		color: var(--engine-white);
+		background: var(--accent-blue-solid);
+		color: var(--text-primary);
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		background: var(--accent-indigo-hover);
+		background: var(--accent-blue-solid-hover);
 		transform: translateY(-1px);
 	}
 
@@ -1186,22 +1167,11 @@
 	}
 
 	/* Modal */
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.8);
-		backdrop-filter: blur(8px);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: var(--z-modal);
-		padding: 1rem;
-	}
 
 	.modal-dialog {
 		width: 100%;
 		max-width: 600px;
-		background: var(--bg-surface-2);
+		background: var(--bg-surface);
 		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: var(--radius-lg);
 		padding: 1.75rem;
@@ -1220,13 +1190,13 @@
 	.modal-header h2 {
 		font-size: 1.25rem;
 		font-weight: 700;
-		color: var(--engine-slate-50);
+		color: var(--text-primary);
 		margin: 0;
 	}
 
 	.modal-subtitle {
 		font-size: 0.8125rem;
-		color: var(--engine-slate-400);
+		color: var(--text-secondary);
 		margin: 0.2rem 0 0 0;
 	}
 
@@ -1243,8 +1213,8 @@
 		gap: 1rem;
 		padding: 1rem 1.25rem;
 		border-radius: 12px;
-		background: var(--bg-inset);
-		border: 1px solid var(--border-engine-06);
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
 	}
 
 	.diff-pane {
@@ -1263,14 +1233,14 @@
 		font-size: 0.6875rem;
 		font-weight: 700;
 		text-transform: uppercase;
-		color: var(--engine-slate-500);
+		color: var(--text-muted);
 		display: block;
 	}
 
 	.diff-name {
 		font-size: 1.05rem;
 		font-weight: 700;
-		color: var(--engine-slate-100);
+		color: var(--text-primary);
 	}
 
 	.diff-ver-line {
@@ -1289,7 +1259,7 @@
 	}
 
 	.diff-separator {
-		color: var(--engine-slate-500);
+		color: var(--text-muted);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -1302,8 +1272,8 @@
 		gap: 1rem;
 		padding: 0.75rem 1rem;
 		border-radius: 10px;
-		background: var(--bg-inset);
-		border: 1px solid var(--border-engine-06);
+		background: var(--bg-base);
+		border: 1px solid var(--border-subtle);
 	}
 
 	.modal-field-label {
@@ -1312,7 +1282,7 @@
 		gap: 0.4rem;
 		font-size: 0.8125rem;
 		font-weight: 600;
-		color: var(--engine-slate-200);
+		color: var(--text-primary);
 		white-space: nowrap;
 	}
 
@@ -1332,11 +1302,11 @@
 	.callout-danger {
 		background: rgba(239, 68, 68, 0.1);
 		border: 1px solid rgba(239, 68, 68, 0.25);
-		color: var(--engine-red-300);
+		color: var(--danger-text);
 	}
 
 	.callout-danger strong {
-		color: var(--engine-white);
+		color: var(--text-primary);
 	}
 
 	.callout-danger p {
@@ -1352,7 +1322,7 @@
 	.checklist-heading {
 		font-size: 0.8125rem;
 		font-weight: 700;
-		color: var(--engine-slate-300);
+		color: var(--text-secondary);
 		margin: 0;
 	}
 
@@ -1368,14 +1338,14 @@
 		gap: 0.75rem;
 		margin-top: 1.25rem;
 		padding-top: 1rem;
-		border-top: 1px solid var(--border-engine-06);
+		border-top: 1px solid var(--border-subtle);
 	}
 
 	/* Helpers */
-	.text-emerald { color: var(--accent-emerald-text) !important; }
-	.text-primary { color: var(--accent-indigo-text) !important; }
+	.text-emerald { color: var(--accent-green-text) !important; }
+	.text-primary { color: var(--accent-blue-text) !important; }
 	.text-amber { color: var(--warning-text) !important; }
-	.text-muted { color: var(--engine-slate-500) !important; }
+	.text-muted { color: var(--text-muted) !important; }
 	.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 	.spin {
@@ -1393,7 +1363,7 @@
 		justify-content: center;
 		padding: 4rem 1rem;
 		gap: 0.875rem;
-		color: var(--engine-slate-500);
+		color: var(--text-muted);
 		text-align: center;
 	}
 </style>

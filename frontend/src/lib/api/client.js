@@ -81,49 +81,56 @@ export async function apiFetch(path, options = {}) {
 }
 
 /**
+ * Throw the API's error message, falling back to a generic one.
+ * @param {Response} res
+ * @param {string} fallback
+ * @returns {Promise<never>}
+ */
+async function throwApiError(res, fallback) {
+	const errorData = await res.json().catch(() => ({}));
+	throw new Error(errorData.error || errorData.message || fallback);
+}
+
+/**
+ * Perform an authenticated request and reject on any non-2xx status.
+ * @param {string} path
+ * @param {string} method
+ * @param {any} [body]
+ * @returns {Promise<Response>}
+ */
+async function request(path, method, body) {
+	const res = await apiFetch(path, { method, ...(body !== undefined ? { body } : {}) });
+	if (!res.ok) await throwApiError(res, `${method} ${path} failed (${res.status})`);
+	return res;
+}
+
+/**
  * Perform a GET request to the API.
  * @param {string} path - Endpoint path
  * @returns {Promise<any>} Parsed JSON response
  */
 export async function apiGet(path) {
-	const res = await apiFetch(path, { method: 'GET' });
-	if (!res.ok) {
-		const errorData = await res.json().catch(() => ({ message: 'Request failed' }));
-		throw new Error(errorData.error || errorData.message || `GET ${path} failed (${res.status})`);
-	}
-	return res.json();
+	return (await request(path, 'GET')).json();
 }
 
 /**
- * Perform a POST request to the API with body.
+ * Perform a POST request to the API with body (object or FormData).
  * @param {string} path - Endpoint path
- * @param {any} body - Payload object
+ * @param {any} body - Payload
  * @returns {Promise<any>} Parsed JSON response
  */
 export async function apiPost(path, body) {
-	const res = await apiFetch(path, {
-		method: 'POST',
-		body
-	});
-	if (!res.ok) {
-		const errorData = await res.json().catch(() => ({ message: 'Request failed' }));
-		throw new Error(errorData.error || errorData.message || `POST ${path} failed (${res.status})`);
-	}
-	return res.json();
+	return (await request(path, 'POST', body)).json();
 }
 
 /**
- * Perform a DELETE request to the API.
+ * Perform a DELETE request to the API, with an optional body for batch deletes.
  * @param {string} path - Endpoint path
+ * @param {any} [body] - Optional payload
  * @returns {Promise<any>} Parsed JSON response
  */
-export async function apiDelete(path) {
-	const res = await apiFetch(path, { method: 'DELETE' });
-	if (!res.ok) {
-		const errorData = await res.json().catch(() => ({ message: 'Request failed' }));
-		throw new Error(errorData.error || errorData.message || `DELETE ${path} failed (${res.status})`);
-	}
-	return res.json();
+export async function apiDelete(path, body) {
+	return (await request(path, 'DELETE', body)).json();
 }
 
 /**
@@ -133,11 +140,7 @@ export async function apiDelete(path) {
  * @param {string} [filename]
  */
 export async function apiDownload(path, filename) {
-	const res = await apiFetch(path, { method: 'GET' });
-	if (!res.ok) {
-		const errorData = await res.json().catch(() => ({ message: 'Download failed' }));
-		throw new Error(errorData.error || errorData.message || `GET ${path} failed (${res.status})`);
-	}
+	const res = await request(path, 'GET');
 	const blob = await res.blob();
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
