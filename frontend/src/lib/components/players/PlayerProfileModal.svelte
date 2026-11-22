@@ -1386,17 +1386,17 @@
 			</div>
 		{/snippet}
 	</Modal>
-{/if}
 
-<ConfirmDialog
-	open={confirmClearOpen}
-	title="Vider l'inventaire"
-	message={`Vider complètement l'inventaire de ${confirmClearName} ? Cette action est irréversible.`}
-	confirmLabel="Vider l'inventaire"
-	busy={actionLoading === 'clear'}
-	onconfirm={() => { confirmClearOpen = false; handleExecuteAction('clear'); }}
-	oncancel={() => (confirmClearOpen = false)}
-/>
+	<ConfirmDialog
+		open={confirmClearOpen}
+		title="Vider l'inventaire"
+		message={`Vider complètement l'inventaire de ${confirmClearName} ? Cette action est irréversible.`}
+		confirmLabel="Vider l'inventaire"
+		busy={actionLoading === 'clear'}
+		onconfirm={() => { confirmClearOpen = false; handleExecuteAction('clear'); }}
+		oncancel={() => (confirmClearOpen = false)}
+	/>
+{/if}
 
 <style>
 	.profile-modal-drawer {
