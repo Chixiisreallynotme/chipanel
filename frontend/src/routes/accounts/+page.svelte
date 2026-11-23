@@ -363,7 +363,7 @@
 <svelte:window onkeydown={handleWindowKeydown} />
 
 <svelte:head>
-	<title>Comptes & autorisations panneau - ChiServ</title>
+	<title>Comptes & autorisations du panneau | ChiPanel</title>
 </svelte:head>
 
 <ConfirmDialog
@@ -953,8 +953,6 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+
 
 </style>

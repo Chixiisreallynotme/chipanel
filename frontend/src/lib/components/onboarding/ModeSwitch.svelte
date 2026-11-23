@@ -140,14 +140,17 @@
 		line-height: 1;
 	}
 
-	/* Responsive: Icon-only on mobile < 640px to eliminate horizontal header overflow */
+	/* Responsive: icon-only on mobile < 640px, but every control keeps a
+	   44px WCAG 2.5.5 hit area. The header reserves the extra width by letting
+	   the status label ellipsize instead of shrinking the buttons. */
 	@media (max-width: 640px) {
 		.mode-label {
 			display: none;
 		}
-		.mode-btn {
-			width: 32px;
-			height: 32px;
+		.mode-btn,
+		.compact .mode-btn {
+			width: 44px;
+			height: 44px;
 			padding: 0;
 			justify-content: center;
 		}

@@ -26,7 +26,7 @@
 </script>
 
 <svelte:head>
-	<title>Connexion - ChiPanel Admin</title>
+	<title>Connexion | ChiPanel</title>
 </svelte:head>
 
 <div class="login-container">

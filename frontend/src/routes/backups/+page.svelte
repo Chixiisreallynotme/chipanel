@@ -225,7 +225,7 @@
 </script>
 
 <svelte:head>
-	<title>Sauvegardes & Snapshots | ChiPanel</title>
+	<title>Sauvegardes & snapshots | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">

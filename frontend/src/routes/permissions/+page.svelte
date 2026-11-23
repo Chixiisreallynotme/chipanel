@@ -256,11 +256,15 @@
 	oncancel={() => (groupPendingDelete = null)}
 />
 
-<div class="page-stack permissions-page">
+<svelte:head>
+	<title>Permissions & rôles LuckPerms | ChiPanel</title>
+</svelte:head>
+
+<div class="page-stack">
 	<!-- Page Header -->
 	<PageHeader
-		title="LuckPerms Visual Editor"
-		subtitle="Visual management interface for Minecraft LuckPerms groups, prefixes, permission nodes & inheritance"
+		title="Éditeur visuel LuckPerms"
+		subtitle="Gestion visuelle des groupes LuckPerms, préfixes, nœuds de permission et héritage."
 	>
 		{#snippet icon()}
 			<ShieldCheck size={26} />
@@ -377,10 +381,6 @@
 </div>
 
 <style>
-	.permissions-page {
-		position: relative;
-	}
-
 	/* Quick Stats Bar */
 	.stats-grid {
 		display: grid;
@@ -491,9 +491,5 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
+
 </style>

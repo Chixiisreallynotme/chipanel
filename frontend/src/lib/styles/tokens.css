@@ -222,6 +222,24 @@
   min-width: 0;
 }
 
+/* Full-screen routes (/console, /files) share one height constraint instead of
+   each carrying a local wrapper. 60px = sticky header, 48px = vertical chrome. */
+.page-stack--full {
+  height: calc(100dvh - 60px - 48px);
+  max-height: calc(100dvh - 60px - 48px);
+  min-height: 550px;
+  padding-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .page-stack--full {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    padding-bottom: var(--space-8);
+  }
+}
+
 /* ==========================================================================
    Micro-Stamps d'Ingénierie Gravés
    ========================================================================== */

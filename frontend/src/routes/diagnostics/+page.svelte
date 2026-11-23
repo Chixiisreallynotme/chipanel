@@ -112,7 +112,7 @@
 </script>
 
 <svelte:head>
-	<title>Diagnostics & Auto-Tuner | ChiPanel</title>
+	<title>Diagnostics & auto-tuner | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">
@@ -683,8 +683,5 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
+
 </style>

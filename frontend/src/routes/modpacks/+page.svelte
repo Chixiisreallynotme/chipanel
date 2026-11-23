@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head>
-	<title>Redirection vers Addons - ChiPanel</title>
+	<title>Redirection vers les addons | ChiPanel</title>
 </svelte:head>
 
 <RedirectState

@@ -247,7 +247,11 @@
 
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape') closeModal(); }} />
 
-<div class="page-stack files-page-container">
+<svelte:head>
+	<title>Éditeur de fichiers & configurations | ChiPanel</title>
+</svelte:head>
+
+<div class="page-stack page-stack--full">
 	<!-- Page Header with Preset Chips -->
 	<PageHeader
 		title="Éditeur de Fichiers & Configurations"
@@ -473,12 +477,6 @@
 </Modal>
 
 <style>
-	.files-page-container {
-		flex: 1;
-		min-height: calc(100dvh - 60px - 48px);
-		padding-bottom: 0;
-	}
-
 	/* Preset Chips (Milled Capsule) */
 	.preset-chips-wrapper {
 		display: flex;
@@ -666,8 +664,5 @@
 			height: 280px;
 		}
 
-		.files-page-container {
-			height: auto;
-		}
 	}
 </style>

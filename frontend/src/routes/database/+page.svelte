@@ -93,7 +93,7 @@
 </script>
 
 <svelte:head>
-	<title>Base de Données & Maintenance | ChiPanel</title>
+	<title>Base de données & maintenance | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">
@@ -529,8 +529,5 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
+
 </style>

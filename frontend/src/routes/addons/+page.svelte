@@ -286,7 +286,7 @@
 </script>
 
 <svelte:head>
-	<title>Centre des Addons & Extensions - ChiPanel</title>
+	<title>Centre des addons | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">

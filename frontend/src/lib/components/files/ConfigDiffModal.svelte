@@ -251,10 +251,7 @@
 		color: var(--accent-blue-text);
 	}
 
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
+
 
 	.diff-container {
 		font-size: 13px;

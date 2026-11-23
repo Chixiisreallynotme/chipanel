@@ -305,7 +305,5 @@
 		font-weight: var(--font-weight-semibold);
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 </style>

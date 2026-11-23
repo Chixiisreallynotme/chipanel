@@ -725,3 +725,66 @@ npm run build        → exit 0 (adapter-static)
 - Les `rgba(...)` d'accent (halos, ombres, fonds translucides) restent littéraux : ils demandent des tokens `-bg-soft` par accent. À traiter lors d'une passe dédiée, sans changer les composants.
 - Les couleurs de séries de `MetricsChart.svelte` vivent dans le `<script>` (uPlot) et ne sont donc pas couvertes par le garde-fou.
 - Les icônes Lucide passées en props restent signalées « Unused CSS selector » par `svelte-check` : faux positifs connus, ne pas supprimer.
+
+---
+
+## 17. Session Design Council VI — Un seul code partout (2026-11-23)
+
+Spec complète : [`docs/superpowers/specs/2026-11-23-ui-unification-design.md`](docs/superpowers/specs/2026-11-23-ui-unification-design.md).
+
+### 17.1 Constat mesuré
+
+L'audit croisé source + application live (Playwright, 20 routes, 1440/390) confirme que les cinq councils précédents ont bien unifié la structure : 15/15 routes cockpit en `.page-stack` + `PageHeader`, h1 28px/700, zéro overflow. La dérive restante était **la duplication de CSS scopé** : `.active` ×23, `.modal-header` ×14 (11 variantes), `.loading-state` ×11 (11 variantes), `.tabular-nums` ×12 (1 variante, déjà globale), `@keyframes spin` **×25** (3 variantes dont une incomplète sur `/engine`), `.empty-icon` ×15, `.data-table` ×13.
+
+### 17.2 Décisions d'outillage (recherche + brainstorming)
+
+| Outil évalué | Décision |
+| :--- | :--- |
+| Tailwind / UnoCSS | Écarté : réécriture, runtime, conflit avec les 121 tokens et « zéro framework CSS lourd ». |
+| Stylelint `no-duplicate-selectors` | Écarté : ne détecte les doublons **que dans un seul fichier**, plugin custom + devDep nécessaires. |
+| Docs Svelte 5 (`scoped-styles` / `global-styles`) | Retenues : `<style>` scopé = règles propres au composant, décisions partagées = CSS global. |
+| `@layer` (css.dev) | Non retenu : changer la cascade globale à ce stade est risqué sans runner de test. |
+| `check-tokens.mjs` existant | **Retenus et étendu** : zéro dépendance, déjà branché sur `npm run check`. |
+
+### 17.3 Réductions appliquées
+
+- **25 `@keyframes spin` → 1** : définition unique dans `app.css`. Les `animation: spin …` locales restent (durées contextuelles légitimes) et référencent le keyframe global. Vérifié en live : `getComputedStyle().animationName === "spin"`, une seule `CSSKeyframesRule` dans `document.styleSheets`.
+- **11 copies locales de `.tabular-nums` supprimées** : la règle existait déjà dans `tokens.css`, identique.
+- **3 wrappers morts supprimés** (`players-page`, `worlds-page`, `permissions-page` = `position: relative`) et **2 wrappers plein écran unifiés** (`console-page-layout`, `files-page-container` → `.page-stack--full` dans `tokens.css`).
+- Primitives canoniques ajoutées une fois dans `app.css` : `@keyframes spin`, `.sr-only`, `.btn-md`.
+
+### 17.4 Cohérence transversale
+
+- **Langue** : `<html lang="fr">`, 4 h1/sous-titres anglais traduits, `meta description` ajoutée.
+- **Titres** : 20 routes + `app.html` au format unique `Libellé | ChiPanel`, aucun suffixe `- ChiServ`, aucun tiret cadratin (R-02), 2 titres manquants ajoutés (`/files`, `/permissions`), titre ajouté à la route racine.
+- **`/setup`** : 2 `<main>` imbriqués → 1, `<h1 class="sr-only">` ajouté, hiérarchie H1 → H2 rétablie, `ModeSwitch` du wizard supprimé (la bascule globale du header reste l'unique contrôle).
+- **Mobile 390px** : cibles header ≥ 44×44 (hamburger, console, `ModeSwitch`, déconnexion), zéro overflow. `ModeSwitch` passe de 32px à 44px, y compris la variante `.compact`.
+- **Assets** : aucun asset créé (R-23). `favicon.svg` 404 → `static/favicon.png` existant, dans `app.html` **et** `manifest.webmanifest` (`sizes: "32x32"`, `purpose: "any"`), `theme-color`/`background_color` alignés sur `--bg-base` (`#0B0D13`).
+
+### 17.5 Garde-fou étendu
+
+`frontend/scripts/check-tokens.mjs` échoue désormais si :
+
+1. un `var(--x)` est inconnu, un `:root` est redéfini hors `tokens.css`, un hex non annoté `token-ok:` apparaît dans un `<style>` (contrôles historiques) ;
+2. **un composant redéclare une classe canonique globale et n'est pas enregistré dans `scripts/ui-baseline.json`** (89 sélecteurs canoniques calculés depuis `app.css` + `tokens.css`, 51 variantes locales acceptées et verrouillées) ;
+3. un composant déclare son propre `@keyframes spin` ;
+4. une route n'a pas de `<title>`, n'utilise pas le suffixe ` | ChiPanel`, ou contient un tiret cadratin ;
+5. `app.html` ne déclare pas `lang="fr"`.
+
+Pour autoriser une **nouvelle** variante locale : ajouter le chemin (relatif à `src/`) à la clé du sélecteur dans `ui-baseline.json`, avec la raison dans la PR. Ne jamais régénérer la baseline en silence. Testé : une copie injectée fait échouer le garde-fou, son retrait le fait repasser.
+
+### 17.6 Vérification
+
+```
+npm run check:tokens → OK (121 tokens, 89 canonical selectors, 0 drift)
+npm run check        → 0 erreur / 75 warnings (identique à HEAD : faux positifs « Unused CSS selector »)
+npm run build        → exit 0 (adapter-static)
+Playwright :5173     → 16 routes par click-through SPA : titres/lang/h1/structure OK, 0 overflow
+                       390px : 0 overflow, 0 cible < 44px
+                       0 erreur / 0 warning console sur chargement frais
+                       reduced-motion : animationDuration 0.01ms
+```
+
+### 17.7 Dette restante assumée (verrouillée par baseline)
+
+Les variantes non identiques de `.modal-*`, `.loading-state`, `.data-table`, `.empty-icon` et des utilitaires de couleur restent locales ; elles sont enregistrées dans `ui-baseline.json` pour interdire toute **nouvelle** divergence. Une passe dédiée pourra les migrer vers le kit (`Modal`, `Spinner`, `EmptyState`) sans risquer cette session. Le message d'erreur backend « Server engine configuration is not readable from ChiPanel » (affiché dans un `Callout` FR) et les 401 pré-auth sur `/login` restent hors périmètre frontend.

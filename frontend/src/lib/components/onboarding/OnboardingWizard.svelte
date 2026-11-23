@@ -2,7 +2,6 @@
 	import { goto } from '$app/navigation';
 	import { preferences } from '$lib/stores/preferences.svelte.js';
 	import { apiPost } from '$lib/api/client.js';
-	import ModeSwitch from './ModeSwitch.svelte';
 	import DesktopRuntimeBadge from './DesktopRuntimeBadge.svelte';
 	import GameSelectorStep from './GameSelectorStep.svelte';
 	import EngineSelectorStep from './EngineSelectorStep.svelte';
@@ -124,7 +123,8 @@
 
 <div class="hardware-shell onboarding-outer-shell">
 	<div class="hardware-core onboarding-inner-core">
-		<!-- Top Bar: Logo, Desktop Runtime Badge, Mode Switch -->
+		<h1 class="sr-only">Assistant de configuration 1-clic</h1>
+		<!-- Top Bar: Logo, Desktop Runtime Badge. The mode switch lives in the global header. -->
 		<header class="wizard-header">
 			<div class="header-left">
 				<div class="brand-badge">
@@ -135,10 +135,6 @@
 					</div>
 				</div>
 				<DesktopRuntimeBadge />
-			</div>
-
-			<div class="header-right">
-				<ModeSwitch />
 			</div>
 		</header>
 
@@ -190,7 +186,7 @@
 		</nav>
 
 		<!-- Step Content Body -->
-		<main class="wizard-body">
+		<div class="wizard-body">
 			{#if currentStep === 1}
 				<GameSelectorStep bind:selectedGame />
 			{:else if currentStep === 2}
@@ -220,7 +216,7 @@
 					<strong>Erreur :</strong> {launchError}
 				</div>
 			{/if}
-		</main>
+		</div>
 
 		<!-- Navigation Footer Bar (for steps 1-3) -->
 		{#if currentStep < totalSteps}
@@ -506,9 +502,7 @@
 		color: var(--accent-green);
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 
 	@media (max-width: 640px) {
 		.hardware-shell.onboarding-outer-shell {
@@ -522,7 +516,7 @@
 
 		.wizard-header {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) auto;
+			grid-template-columns: minmax(0, 1fr);
 			align-items: start;
 			gap: var(--space-3);
 		}
@@ -532,10 +526,6 @@
 			flex-direction: column;
 			align-items: flex-start;
 			gap: var(--space-2);
-		}
-
-		.header-right {
-			justify-self: end;
 		}
 
 		.mode-info-banner {

@@ -231,15 +231,15 @@
 </script>
 
 <svelte:head>
-	<title>Player Directory & Moderation - ChiPanel</title>
+	<title>Annuaire des joueurs & modération | ChiPanel</title>
 </svelte:head>
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="page-stack players-page">
+<div class="page-stack">
 	<!-- Top Hero Banner -->
 	<PageHeader
-		title="Player Directory & Moderation"
-		subtitle="Monitor active players, inspect inventories and effects, and execute admin moderation commands in real-time."
+		title="Annuaire des joueurs & modération"
+		subtitle="Surveillez les joueurs actifs, inspectez inventaires et effets, et exécutez les commandes de modération en temps réel."
 	>
 		{#snippet icon()}
 			<Users size={26} />
@@ -422,10 +422,6 @@
 </div>
 
 <style>
-	.players-page {
-		position: relative;
-	}
-
 	.live-status-pill {
 		display: flex;
 		align-items: center;
@@ -501,11 +497,7 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		100% {
-			transform: rotate(360deg);
-		}
-	}
+
 
 	/* Stats Row */
 	.hero-stats-row {

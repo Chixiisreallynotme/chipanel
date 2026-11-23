@@ -142,8 +142,6 @@
 		color: var(--text-primary);
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 </style>
 

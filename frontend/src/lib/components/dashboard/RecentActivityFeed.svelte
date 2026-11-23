@@ -148,10 +148,6 @@
 		font-family: var(--font-mono);
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
-
 	.badge-secondary {
 		background-color: var(--bg-base);
 		color: var(--text-secondary);

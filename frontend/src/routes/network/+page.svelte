@@ -80,7 +80,7 @@
 </script>
 
 <svelte:head>
-	<title>Cross-Play Bedrock & Réseau | ChiPanel</title>
+	<title>Cross-play Bedrock & réseau | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">
@@ -414,8 +414,5 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
+
 </style>

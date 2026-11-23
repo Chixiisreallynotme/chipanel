@@ -363,15 +363,15 @@
 </script>
 
 <svelte:head>
-	<title>World Management & Chunky Control - ChiPanel</title>
+	<title>Mondes & pré-génération Chunky | ChiPanel</title>
 </svelte:head>
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="page-stack worlds-page">
+<div class="page-stack">
 	<!-- Top Hero Header Banner -->
 	<PageHeader
-		title="World Management & Chunky Pre-generation"
-		subtitle="Inspect server dimensions, configure world borders, launch background chunk pre-generation, and manage ZIP backups."
+		title="Mondes & pré-génération Chunky"
+		subtitle="Inspectez les dimensions, configurez les bordures, lancez la pré-génération des chunks et gérez les sauvegardes ZIP."
 	>
 		{#snippet icon()}
 			<Globe size={26} />
@@ -674,10 +674,6 @@
 </div>
 
 <style>
-	.worlds-page {
-		position: relative;
-	}
-
 	.quick-pills-group {
 		display: flex;
 		align-items: center;
@@ -804,9 +800,7 @@
 		animation: spin 3s linear infinite;
 	}
 
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+
 
 	@media (max-width: 640px) {
 		.buttons-group {

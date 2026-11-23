@@ -323,9 +323,7 @@
 		font-family: var(--font-mono);
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 
 	.text-green { color: var(--accent-green-text); }
 	.text-muted { color: var(--text-muted); }

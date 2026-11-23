@@ -125,9 +125,7 @@
 		transform: scale(0.97);
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 
 	.text-green { color: var(--accent-green-text); }
 	.text-danger { color: var(--danger-text); }

@@ -139,7 +139,7 @@
 </script>
 
 <svelte:head>
-	<title>Vue d'ensemble - ChiServ</title>
+	<title>Vue d'ensemble | ChiPanel</title>
 </svelte:head>
 
 <ConfirmDialog

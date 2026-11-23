@@ -305,7 +305,7 @@
 </script>
 
 <svelte:head>
-	<title>Moteurs & Versions | ChiPanel</title>
+	<title>Moteurs & versions | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">
@@ -1352,9 +1352,7 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-	}
+
 
 	.loading-state {
 		display: flex;

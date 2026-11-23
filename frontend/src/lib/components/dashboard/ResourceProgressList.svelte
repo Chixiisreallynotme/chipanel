@@ -178,10 +178,6 @@
 		background-color: var(--accent-green);
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
-
 	.text-blue { color: var(--accent-blue-text); }
 	.text-purple { color: var(--accent-purple-text); }
 	.text-green { color: var(--accent-green-text); }

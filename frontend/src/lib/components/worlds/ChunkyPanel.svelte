@@ -591,9 +591,7 @@
 		animation: spin 3s linear infinite;
 	}
 
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+
 
 	.live-actions-group {
 		display: flex;

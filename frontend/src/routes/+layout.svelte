@@ -928,6 +928,15 @@
 			padding: 4px 6px;
 		}
 
+		/* WCAG 2.5.5: icon-only header controls must not shrink below 44px.
+		   flex-shrink:0 stops .header-left from squeezing the hamburger. */
+		.header-bar button,
+		.header-bar .btn-icon {
+			min-width: 44px;
+			min-height: 44px;
+			flex-shrink: 0;
+		}
+
 		.header-user-profile {
 			padding-left: var(--space-1);
 		}

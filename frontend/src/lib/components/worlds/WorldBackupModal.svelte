@@ -700,9 +700,7 @@
 		animation: spin 3s linear infinite;
 	}
 
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+
 
 	/* Sub-Modal / Double Confirmation Overlays */
 	.sub-modal-backdrop {

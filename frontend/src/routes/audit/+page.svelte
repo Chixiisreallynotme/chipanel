@@ -160,7 +160,7 @@
 </script>
 
 <svelte:head>
-	<title>Registre d'Audit & Sécurité | ChiPanel</title>
+	<title>Registre d'audit & sécurité | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">
@@ -542,8 +542,5 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
+
 </style>

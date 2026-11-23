@@ -597,11 +597,7 @@
 		color: var(--accent-blue-text);
 	}
 
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
+
 
 	.empty-icon {
 		color: var(--text-muted);

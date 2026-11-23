@@ -302,9 +302,7 @@
 		gap: 4px;
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 
 	.text-green { color: var(--accent-green-text); }
 	.text-warning { color: var(--warning-text); }

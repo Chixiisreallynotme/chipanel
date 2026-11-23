@@ -220,3 +220,35 @@ Exemples : `formWorld` (ChunkyPanel), `filterTargetDir` (InstalledPluginsList), 
 - **Toast enfant** : passer `onToast={toast.forward}` (mappe `danger` → `error`).
 - **Piège CRLF** : les scripts de remplacement doivent matcher `\r?\n` ; un regex en `\n` seule
   échoue silencieusement sur ces fichiers (c'est ce qui avait laissé des wrappers de page en place).
+
+## Design Council VI — garde-fou anti-duplication (2026-11-23)
+
+Voir `design.md` §17 et `docs/superpowers/specs/2026-11-23-ui-unification-design.md`.
+
+- **Un seul `@keyframes spin`** : il vit dans `src/app.css`. Les 25 copies locales ont été supprimées.
+  Piège Svelte vérifié en live : quand aucun `@keyframes` local n'est déclaré, le compilateur
+  **ne renomme pas** `animation: spin …` ; la règle référence donc bien le keyframe global
+  (`getComputedStyle(el).animationName === "spin"`). Ne pas réintroduire de keyframe local.
+- **`npm run check:tokens` fait plus que les tokens** : il calcule les 89 sélecteurs canoniques
+  depuis `app.css` + `tokens.css`, compare les redéfinitions locales à
+  `frontend/scripts/ui-baseline.json`, impose le format `<title> … | ChiPanel</title>` sur toutes
+  les routes et `lang="fr"` dans `app.html`. Pour autoriser une nouvelle variante locale, ajouter
+  le chemin (relatif à `src/`) dans `ui-baseline.json` avec la raison, jamais en régénérant en silence.
+- **Wrappers de page** : `.page-stack` partout ; `.page-stack--full` (dans `tokens.css`) **uniquement**
+  pour `/console` et `/files`. Aucune classe `xxx-page` locale.
+- **`.sr-only` et `.btn-md`** sont des primitives globales (`app.css`) ; ne pas les redéfinir.
+- **Titres / langue** : un `<title>` par route, suffixe ` | ChiPanel`, aucun tiret cadratin (R-02),
+  `lang="fr"`. `routes/+page.svelte` (ré-export du dashboard) a aussi son `<title>`.
+- **`/setup`** : un seul `<main>` (celui de `+layout.svelte`), un `<h1 class="sr-only">` dans le
+  wizard, une seule bascule de mode (header global). Le wizard ne monte plus `ModeSwitch`.
+- **Mobile ≤ 640px** : les contrôles du header font au moins 44×44 (`+layout.svelte` +
+  `ModeSwitch.svelte`, y compris la variante `.compact` qui sinon reste à 26px de haut).
+- **Favicon** : `static/favicon.png` (32×32) est la seule icône, référencée dans `app.html` et
+  `manifest.webmanifest` (`sizes: "32x32"`, `purpose: "any"`). `sizes: "any"` avec un PNG
+  déclenche un warning Chrome « Resource size is not correct ».
+- **Vérification live** : `:25500` sert l'image conteneur (potentiellement stale). Pour valider le
+  source, lancer `npm run dev` (`:5173`, proxy `/api` → `:25500`) et naviguer **en SPA par clics**
+  sur les liens de la sidebar : les `page.goto` répétés rejouent `auth.init()` et finissent par
+  perdre le jeton `sessionStorage` sur le preview, ce qui renvoie vers `/login` et pollue la console
+  de 401. À 390px la sidebar est hors écran : utiliser `page.evaluate` + `a.click()` plutôt qu'un
+  clic Playwright (qui exige la visibilité).

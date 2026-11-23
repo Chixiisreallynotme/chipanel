@@ -424,11 +424,7 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
+
 
 	/* Toolbar Header */
 	.editor-toolbar {

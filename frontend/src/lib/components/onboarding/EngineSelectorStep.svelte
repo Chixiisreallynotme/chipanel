@@ -634,8 +634,6 @@
 		justify-content: center;
 	}
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 </style>
 

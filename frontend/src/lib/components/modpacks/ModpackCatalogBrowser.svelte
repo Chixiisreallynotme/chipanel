@@ -683,9 +683,7 @@
 		animation: spin 1s linear infinite;
 	}
 
-	@keyframes spin {
-		to { transform: rotate(360deg); }
-	}
+
 
 	.catalog-empty-state {
 		text-align: center;

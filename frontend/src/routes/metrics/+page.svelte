@@ -213,14 +213,14 @@
 </script>
 
 <svelte:head>
-	<title>Time-Series Metrics & Spark Profiler - ChiPanel</title>
+	<title>Métriques & profilage Spark | ChiPanel</title>
 </svelte:head>
 
 <div class="page-stack">
 	<!-- Page Header -->
 	<PageHeader
-		title="Time-Series Metrics & Spark Profiler"
-		subtitle="Real-time canvas performance telemetry, historical analysis, and Spark CPU/RAM profiling."
+		title="Métriques & profilage Spark"
+		subtitle="Télémétrie temps réel, historique des mesures et profilage CPU/RAM Spark."
 	>
 		<!-- Telemetry Status Indicator -->
 		<div class="telemetry-status-pill">

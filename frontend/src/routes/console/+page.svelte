@@ -25,10 +25,10 @@
 </script>
 
 <svelte:head>
-	<title>Server Console | ChiPanel</title>
+	<title>Console serveur | ChiPanel</title>
 </svelte:head>
 
-<div class="page-stack console-page-layout">
+<div class="page-stack page-stack--full">
 	<!-- Page Header -->
 	<PageHeader
 		title="Console Serveur"
@@ -94,15 +94,6 @@
 </div>
 
 <style>
-	.console-page-layout {
-		height: calc(100vh - 60px - 48px);
-		height: calc(100dvh - 60px - 48px);
-		max-height: calc(100vh - 60px - 48px);
-		max-height: calc(100dvh - 60px - 48px);
-		min-height: 550px;
-		padding-bottom: 0;
-	}
-
 	.status-indicator-badge {
 		font-size: 11px;
 		padding: 2px 9px;
@@ -208,11 +199,6 @@
 	}
 
 	@media (max-width: 768px) {
-		.console-page-layout {
-			height: auto;
-			max-height: none;
-		}
-
 		.header-stats-group {
 			width: 100%;
 			justify-content: center;

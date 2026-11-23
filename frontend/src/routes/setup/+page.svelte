@@ -8,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>Assistant de Configuration 1-Click — ChiPanel</title>
+	<title>Assistant de configuration 1-clic | ChiPanel</title>
 </svelte:head>
 
 <div class="setup-page-wrapper">

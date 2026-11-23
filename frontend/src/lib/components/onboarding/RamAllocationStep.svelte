@@ -337,9 +337,7 @@
 	.dot-heap { background-color: var(--accent-blue-solid); }
 	.dot-free { background-color: var(--bg-elevated); border: 1px solid var(--border-focus); }
 
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
+
 
 	.slider-control-card {
 		background-color: var(--bg-surface);
