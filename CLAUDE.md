@@ -47,6 +47,39 @@ Two preview-only gotchas (the deployed quadlet mounts real host dirs, so it neve
 - A fresh named volume is root-owned too — `chown -R 1000:1000` it once from a throwaway container before first run.
 - Browser calls go to `:25501` but the default `ALLOWED_ORIGINS` only lists `:25500` — pass `-e ALLOWED_ORIGINS=*` for local preview or API calls get CORS-rejected.
 
+### Local preview on Windows / Docker Desktop (no Podman, no local Rust toolchain)
+
+On a Windows dev box the daemon is Docker Desktop (WSL2); `podman` and `cargo` are absent
+on the host and in WSL. The recipe above translates 1:1, with these specifics:
+
+```bash
+docker build --no-cache -t localhost/chipanel:latest -f Containerfile .
+docker rm -f chipanel-local 2>/dev/null
+docker run -d --name chipanel-local -p 127.0.0.1:25500:25500 \
+  -e HOST=0.0.0.0 -e PORT=25500 \
+  -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=preview \
+  -e DATA_DIR=/tmp/chipanel-data \
+  -e RUST_LOG=info \
+  localhost/chipanel:latest
+```
+
+- Map **25500 → 25500**, not 25501. The frontend calls relative `/api/*`, so same-origin
+  means no CORS at all and the default `ALLOWED_ORIGINS` (`:25500`) already matches. The
+  `ALLOWED_ORIGINS=*` gotcha above only applies when the host port differs from 25500.
+  Binding `127.0.0.1:` keeps the preview on localhost only.
+- `DATA_DIR=/tmp/chipanel-data` sidesteps the root-owned `/app/data` + `USER 1000` boot
+  failure without mounting/chowning a volume: `/tmp` is mode 1777 in
+  `debian:bookworm-slim`. Data is ephemeral, which is fine for a preview.
+- There is no `.dockerignore` in this repo, so `frontend/node_modules` (~64 MB here) is
+  shipped in the build context and copied into the frontend builder before `npm ci` wipes
+  it. Harmless but wasteful; adding one is the obvious fix if build times matter.
+- Verified end-to-end: `GET /` → 200, `GET /api/health` → `{"status":"ok"}`, and
+  `POST /api/auth/login` with `admin` / `preview` → JWT. As above, no Podman socket,
+  Minecraft volumes or RCON are mounted, so telemetry/players read as disconnected.
+- Observed harness quirk: `docker build ... *>&1 | Tee-Object -FilePath ...` returned
+  **exit code 1** in PowerShell even though the build completed and the image was created.
+  Confirm with `docker images` and grep the log for `ERROR`; don't trust that exit code.
+
 ## Architecture
 
 **One container serves both halves.** The Axum backend serves `/api/*` and the `/ws` WebSocket, and falls back to `ServeDir`/`ServeFile` of the SvelteKit static build for everything else (`main.rs`) — there's no separate web server or reverse proxy for the frontend in production. `vite.config.js`'s dev proxy is what lets `npm run dev` and `cargo run` work together locally.
