@@ -847,6 +847,8 @@ Playwright 390px     → 5 routes : 0 overflow, 0 cible < 44px, 1 <main>, 1 <h1>
 Console              → 0 erreur JS ; 404/500 uniquement sur les endpoints sans données du preview
 ```
 
+**Déploiement preview** : image reconstruite avec `docker build --no-cache -t localhost/chipanel:latest -f Containerfile .`, conteneur `chipanel-local` recréé (`DATA_DIR=/tmp/chipanel-data`). Vérifié sur **`:25500`** (l'URL réellement utilisée) : `lang=fr`, `Connexion | ChiPanel`, `favicon.png`, 15 routes en click-through SPA, `.card`/`.kpi-card`/`.banner-card` à 12px + 1px + biseau, `/engine` 41 biseaux / 50 éléments bordés, zéro overflow, mobile 390px sans cible < 44px. Sans `--no-cache`, l'ancien frontend restait servi (piège `CLAUDE.md`).
+
 ### 18.9 Dette restante
 
 Les grands vides sous les états vides sont inhérents à un preview sans données (R-38 interdit de les remplir avec du contenu fictif). Quelques tooltips anglais subsistent dans des composants secondaires ; `localizeServerError()` est le point d'entrée pour tout nouveau message backend. Le message d'audit §17.7 est mis à jour en conséquence.
