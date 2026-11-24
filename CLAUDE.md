@@ -281,3 +281,11 @@ Voir `design.md` §18. Le cadre de `/engine` est désormais **global**, pas reco
   `docker rm -f chipanel-local` + `docker run` avec `DATA_DIR=/tmp/chipanel-data`). Sans
   `--no-cache`, Podman/Docker sert l'ancien build. Vérifier ensuite `lang="fr"`, le titre et le
   favicon sur `:25500` pour confirmer que l'image est fraîche.
+- **Piège conteneur après redémarrage du harness** : un redémarrage du serveur/agent peut tuer
+  `chipanel-local` (`Exited (255)`) sans qu'il y ait de panic backend (les logs ne montrent que
+  les WARN « fichier absent » du preview). `docker start chipanel-local` suffit à le relancer
+  sur la même image : **ne pas reconstruire** inutilement. Toujours confirmer avec
+  `docker ps --filter name=chipanel-local` avant de conclure qu'une vérification `:25500` est
+  valide. Les 404 `/raclette-table.png`, `/src/App.jsx` et les `ws proxy ECONNREFUSED` vus dans
+  les logs Vite viennent d'un autre onglet/projet et de la brève coupure du conteneur, pas de
+  ChiPanel.
