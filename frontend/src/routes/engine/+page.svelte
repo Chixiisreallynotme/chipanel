@@ -12,6 +12,8 @@
 	import SearchBar from '$lib/components/ui/SearchBar.svelte';
 	import CategoryTabs from '$lib/components/ui/CategoryTabs.svelte';
 	import ChecklistCard from '$lib/components/ui/ChecklistCard.svelte';
+	import Callout from '$lib/components/ui/Callout.svelte';
+	import { localizeServerError } from '$lib/utils/apiMessages.js';
 	import { toast } from '$lib/stores/toast.svelte.js';
 	import {
 		RefreshCw,
@@ -321,10 +323,7 @@
 	</PageHeader>
 
 	{#if configError}
-		<div class="config-alert" role="alert">
-			<AlertTriangle size={16} />
-			<span>{configError}</span>
-		</div>
+		<Callout tone="warning">{localizeServerError(configError)}</Callout>
 	{/if}
 
 	<!-- New version alerts (background Mojang watcher) -->
@@ -362,9 +361,9 @@
 			<span>MOTEUR EN COURS D'EXÉCUTION</span>
 		{/snippet}
 		{#snippet titleExtra()}
-			<span class="tag tag-version">{currentVersion ?? UNKNOWN}</span>
+			<span class="tag tag-blue">{currentVersion ?? UNKNOWN}</span>
 			{#if currentLoaderVersion && currentLoaderVersion !== 'LATEST'}
-				<span class="tag tag-loader">Loader {currentLoaderVersion}</span>
+				<span class="tag tag-green">Loader {currentLoaderVersion}</span>
 			{/if}
 		{/snippet}
 		{#snippet visual()}
@@ -447,7 +446,7 @@
 			<p>Chargement des moteurs et versions...</p>
 		</div>
 	{:else if filteredEngines.length === 0}
-		<EmptyState description={`Aucun moteur ne correspond à "${searchQuery}".`}>
+		<EmptyState framed description={`Aucun moteur ne correspond à "${searchQuery}".`}>
 			{#snippet icon()}
 				<Info size={28} class="text-muted" />
 			{/snippet}
@@ -793,20 +792,21 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 0.875rem 1.25rem;
-		border-radius: 12px;
+		border-radius: var(--radius-card);
+		box-shadow: var(--bevel-top);
 		font-size: 0.875rem;
 	}
 
 	.release-banner {
-		background: rgba(16, 185, 129, 0.08);
+		background-color: var(--accent-green-bg);
 		border: 1px solid var(--accent-green-border);
 		color: var(--accent-green-text);
 	}
 
 	.snapshot-banner {
-		background: rgba(99, 102, 241, 0.08);
-		border: 1px solid rgba(99, 102, 241, 0.25);
-		color: var(--text-code);
+		background-color: var(--accent-blue-bg);
+		border: 1px solid var(--accent-blue-border);
+		color: var(--accent-blue-text);
 	}
 
 	.version-banner-text {
@@ -820,42 +820,12 @@
 		font-size: 0.8125rem;
 	}
 
-	.config-alert {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1.25rem;
-		border-radius: 10px;
-		background: rgba(245, 158, 11, 0.08);
-		border: 1px solid rgba(245, 158, 11, 0.25);
-		color: var(--warning-text);
-		font-size: 0.875rem;
-	}
-
 	/* Reliure HeroBanner : badge + meta restes locaux (valeurs exactes engine) */
 	.pulse-dot {
 		color: var(--accent-blue-text);
 	}
 
-	.tag {
-		padding: 0.2rem 0.6rem;
-		border-radius: 6px;
-		font-size: 0.8125rem;
-		font-family: var(--font-mono, monospace);
-		font-weight: 600;
-	}
-
-	.tag-version {
-		background: var(--accent-blue-bg);
-		color: var(--text-code);
-		border: 1px solid var(--accent-blue-border);
-	}
-
-	.tag-loader {
-		background: var(--accent-green-bg);
-		color: var(--accent-green-text);
-		border: 1px solid var(--accent-green-border);
-	}
+	/* Tags use the canonical global .tag / .tag-blue / .tag-green (app.css). */
 
 	.identity-desc {
 		font-size: 0.875rem;
@@ -883,12 +853,7 @@
 	.status-hibernating { background: var(--accent-orange); }
 	.status-stopped { background: var(--text-muted); }
 
-	/* Toolbar */
-	.toolbar {
-		display: flex;
-		flex-direction: column;
-		gap: 0.875rem;
-	}
+	/* Toolbar uses the canonical global .toolbar (app.css). */
 
 	/* Engine Grid */
 	.engine-grid {
@@ -902,22 +867,23 @@
 		flex-direction: column;
 		justify-content: space-between;
 		padding: 1.75rem;
-		border-radius: 16px;
-		background: var(--bg-surface);
+		border-radius: var(--radius-card);
+		background-color: var(--bg-surface);
 		border: 1px solid var(--border-subtle);
-		transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+		box-shadow: var(--bevel-top);
+		transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 		gap: 1.125rem;
 	}
 
 	.engine-card:hover {
-		border-color: rgba(99, 102, 241, 0.35);
+		border-color: var(--border-focus);
 		transform: translateY(-2px);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+		box-shadow: var(--elevation-shadow);
 	}
 
 	.card-active {
-		border-color: rgba(16, 185, 129, 0.4);
-		background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), var(--bg-surface) 40%);
+		border-color: var(--accent-green-border);
+		background-color: var(--accent-green-bg);
 	}
 
 	.card-header {
@@ -964,10 +930,10 @@
 		font-size: 0.6875rem;
 		font-weight: 600;
 		padding: 0.1rem 0.45rem;
-		border-radius: 4px;
-		background: rgba(99, 102, 241, 0.1);
-		color: var(--text-code);
-		border: 1px solid rgba(99, 102, 241, 0.2);
+		border-radius: var(--radius-sm);
+		background-color: var(--accent-blue-bg);
+		color: var(--accent-blue-text);
+		border: 1px solid var(--accent-blue-border);
 	}
 
 	.badge-status-active {
@@ -975,7 +941,7 @@
 		align-items: center;
 		gap: 0.25rem;
 		padding: 0.15rem 0.5rem;
-		border-radius: 6px;
+		border-radius: var(--radius-input);
 		font-size: 0.6875rem;
 		font-weight: 700;
 		background: var(--accent-green-bg);
@@ -1035,9 +1001,10 @@
 		align-items: center;
 		gap: 0.45rem;
 		padding: 0.4rem 0.75rem;
-		border-radius: 8px;
-		background: rgba(16, 185, 129, 0.06);
-		border: 1px solid rgba(16, 185, 129, 0.15);
+		border-radius: var(--radius-btn);
+		background-color: var(--accent-green-bg);
+		border: 1px solid var(--accent-green-border);
+		box-shadow: var(--bevel-top);
 		color: var(--accent-green-text);
 		font-size: 0.75rem;
 		font-weight: 500;
@@ -1086,9 +1053,9 @@
 	.select-control {
 		width: 100%;
 		padding: 0.55rem 2rem 0.55rem 0.875rem;
-		background: var(--bg-base);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 8px;
+		background-color: var(--bg-base);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-btn);
 		color: var(--text-primary);
 		font-size: 0.8125rem;
 		font-weight: 500;
@@ -1172,10 +1139,10 @@
 		width: 100%;
 		max-width: 600px;
 		background: var(--bg-surface);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-lg);
 		padding: 1.75rem;
-		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+		box-shadow: var(--modal-shadow);
 		max-height: 90vh;
 		overflow-y: auto;
 	}
@@ -1212,7 +1179,7 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 1rem 1.25rem;
-		border-radius: 12px;
+		border-radius: var(--radius-card);
 		background: var(--bg-base);
 		border: 1px solid var(--border-subtle);
 	}
@@ -1254,8 +1221,8 @@
 	.diff-pill {
 		font-size: 0.75rem;
 		padding: 0.1rem 0.4rem;
-		border-radius: 4px;
-		background: rgba(255, 255, 255, 0.05);
+		border-radius: var(--radius-sm);
+		background-color: var(--bg-elevated);
 	}
 
 	.diff-separator {
@@ -1271,7 +1238,7 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 0.75rem 1rem;
-		border-radius: 10px;
+		border-radius: var(--radius-card);
 		background: var(--bg-base);
 		border: 1px solid var(--border-subtle);
 	}
@@ -1295,13 +1262,14 @@
 		align-items: flex-start;
 		gap: 0.75rem;
 		padding: 0.875rem 1rem;
-		border-radius: 10px;
+		border-radius: var(--radius-card);
+		box-shadow: var(--bevel-top);
 		font-size: 0.8125rem;
 	}
 
 	.callout-danger {
-		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.25);
+		background-color: var(--danger-bg);
+		border: 1px solid var(--danger-border);
 		color: var(--danger-text);
 	}
 

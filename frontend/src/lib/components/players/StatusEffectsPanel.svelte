@@ -245,7 +245,7 @@
 			<span>Loading active player status effects...</span>
 		</div>
 	{:else if effects.length === 0}
-		<EmptyState dashed title="No Active Status Effects" description="This player currently has no active status potion effects.">
+		<EmptyState dashed title="Aucun effet de statut actif" description="Ce joueur n'a aucun effet de potion actif pour le moment.">
 			{#snippet icon()}
 				<Sparkles size={36} class="icon-muted" />
 			{/snippet}

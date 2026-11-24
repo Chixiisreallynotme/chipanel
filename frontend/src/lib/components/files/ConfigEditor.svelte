@@ -238,7 +238,7 @@
 	{:else if !fileData}
 		<div class="editor-placeholder-state">
 			<FileCode size={48} class="placeholder-icon" />
-			<h3>No File Selected</h3>
+			<h3>Aucun fichier sélectionné</h3>
 			<p>Select a configuration file from the directory tree on the left to edit content.</p>
 		</div>
 	{:else}
@@ -258,7 +258,7 @@
 				</div>
 
 				<!-- File Meta Badges -->
-				<span class="badge badge-secondary file-size-badge" title="File Size">
+				<span class="badge badge-secondary file-size-badge" title="Taille du fichier">
 					{formatBytes(fileData.size_bytes || currentContent.length)}
 				</span>
 
@@ -292,7 +292,7 @@
 				</div>
 
 				<!-- Reload RCON Checkbox Toggle -->
-				<label class="checkbox-group rcon-toggle" title="Trigger RCON reload command on save">
+				<label class="checkbox-group rcon-toggle" title="Déclencher un rechargement RCON à la sauvegarde">
 					<input type="checkbox" class="checkbox" bind:checked={triggerReload} />
 					<span class="rcon-toggle-label">
 						<RotateCw size={13} class="rcon-icon" />

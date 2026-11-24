@@ -395,10 +395,10 @@
 				class="btn btn-secondary"
 				onclick={loadWorldsData}
 				disabled={loading}
-				title="Reload worlds & backups"
+				title="Recharger les mondes et les sauvegardes"
 			>
 				<RefreshCw size={16} class={loading ? 'spin-slow' : ''} />
-				<span>Refresh</span>
+				<span>Actualiser</span>
 			</button>
 
 			<button
@@ -407,7 +407,7 @@
 				onclick={() => (createModalOpen = true)}
 			>
 				<Plus size={16} />
-				<span>New World</span>
+				<span>Nouveau monde</span>
 			</button>
 
 			<button
@@ -416,7 +416,7 @@
 				onclick={() => (importModalOpen = true)}
 			>
 				<Upload size={16} />
-				<span>Import</span>
+				<span>Importer</span>
 			</button>
 
 			<button
@@ -425,7 +425,7 @@
 				onclick={() => (backupModalOpen = true)}
 			>
 				<Archive size={16} />
-				<span>Backups ({backups.length})</span>
+				<span>Sauvegardes ({backups.length})</span>
 			</button>
 		</div>
 	</PageHeader>
@@ -433,17 +433,17 @@
 	<!-- Main Worlds Grid Section -->
 	<div class="page-section">
 		<div class="section-title-row">
-			<h2 class="section-title">Worlds ({totalWorldsCount})</h2>
+			<h2 class="section-title">Mondes ({totalWorldsCount})</h2>
 		</div>
 
 		{#if loading && worlds.length === 0 && pendingWorlds.length === 0}
-			<EmptyState card title="Loading worlds..." description="Fetching worlds data from the server.">
+			<EmptyState card title="Chargement des mondes…" description="Récupération des mondes depuis le serveur.">
 				{#snippet icon()}
 					<RefreshCw size={36} class="spin-slow empty-icon" />
 				{/snippet}
 			</EmptyState>
 		{:else if worlds.length === 0 && pendingWorlds.length === 0}
-			<EmptyState card title="No worlds on the server" description="Create a world to get started.">
+			<EmptyState card framed title="Aucun monde sur le serveur" description="Créez un monde pour commencer.">
 				{#snippet icon()}
 					<Globe size={36} class="empty-icon" />
 				{/snippet}

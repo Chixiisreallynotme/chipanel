@@ -248,10 +248,10 @@
 
 <ConfirmDialog
 	open={groupPendingDelete !== null}
-	title="Delete group"
-	message={`Are you sure you want to delete LuckPerms group "${groupPendingDelete?.name ?? ''}"?`}
-	confirmLabel="Delete"
-	cancelLabel="Cancel"
+	title="Supprimer le groupe"
+	message={`Voulez-vous vraiment supprimer le groupe LuckPerms « ${groupPendingDelete?.name ?? ''} » ?`}
+	confirmLabel="Supprimer"
+	cancelLabel="Annuler"
 	onconfirm={confirmDeleteGroup}
 	oncancel={() => (groupPendingDelete = null)}
 />
@@ -271,19 +271,19 @@
 		{/snippet}
 		{#snippet badge()}
 			{#if loadError}
-				<span class="badge badge-danger font-mono">Unavailable</span>
+				<span class="badge badge-danger font-mono">Indisponible</span>
 			{:else}
-				<span class="badge badge-blue font-mono">{totalGroupsCount} Groups</span>
+				<span class="badge badge-blue font-mono">{totalGroupsCount} groupes</span>
 			{/if}
 		{/snippet}
-		<button class="btn btn-ghost btn-sm" onclick={loadGroups} disabled={loading} title="Refresh LuckPerms groups">
+		<button class="btn btn-ghost btn-sm" onclick={loadGroups} disabled={loading} title="Actualiser les groupes LuckPerms">
 			<RefreshCw size={14} class={loading ? 'spinner' : ''} />
-			<span>Refresh</span>
+			<span>Actualiser</span>
 		</button>
 
 		<button class="btn btn-primary" onclick={handleOpenCreateModal}>
 			<Plus size={16} />
-			<span>Create Group</span>
+			<span>Créer un groupe</span>
 		</button>
 	</PageHeader>
 
@@ -315,7 +315,7 @@
 						<Layers size={20} />
 					</div>
 					<div class="stat-details">
-						<span class="stat-label">Total Groups</span>
+						<span class="stat-label">Groupes au total</span>
 						<span class="stat-value font-mono tabular-nums">{loadError ? '—' : totalGroupsCount}</span>
 					</div>
 				</div>

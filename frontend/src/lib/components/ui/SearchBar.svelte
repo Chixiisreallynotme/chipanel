@@ -50,8 +50,9 @@
 		width: 100%;
 		padding: var(--space-3) 4.5rem var(--space-3) 2.75rem;
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
+		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-card);
+		box-shadow: var(--bevel-top);
 		color: var(--text-primary);
 		font-size: var(--font-size-base);
 		outline: none;

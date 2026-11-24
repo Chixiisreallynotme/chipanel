@@ -10,6 +10,7 @@
 	import MetricsChart from '$lib/components/metrics/MetricsChart.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import Callout from '$lib/components/ui/Callout.svelte';
+	import { localizeServerError } from '$lib/utils/apiMessages.js';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import { Play, Moon, Power, RotateCw, X, Sparkles } from '$lib/icons.js';
 
@@ -225,7 +226,7 @@
 
 	{#if engineError}
 		<Callout tone="warning" title="Configuration du moteur illisible">
-			{engineError}
+			{localizeServerError(engineError)}
 		</Callout>
 	{/if}
 

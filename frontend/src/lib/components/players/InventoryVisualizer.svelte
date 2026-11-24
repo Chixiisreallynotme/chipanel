@@ -270,9 +270,9 @@
 			</button>
 		</div>
 
-		<button class="btn btn-ghost btn-sm refresh-btn" onclick={onRefresh} disabled={loading} title="Reload NBT Inventory Data">
+		<button class="btn btn-ghost btn-sm refresh-btn" onclick={onRefresh} disabled={loading} title="Recharger les données NBT de l'inventaire">
 			<RefreshCw size={14} class={loading ? 'spinner' : ''} />
-			<span>Refresh</span>
+			<span>Actualiser</span>
 		</button>
 	</div>
 

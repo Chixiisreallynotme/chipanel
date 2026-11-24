@@ -252,3 +252,32 @@ Voir `design.md` §17 et `docs/superpowers/specs/2026-11-23-ui-unification-desig
   perdre le jeton `sessionStorage` sur le preview, ce qui renvoie vers `/login` et pollue la console
   de 401. À 390px la sidebar est hors écran : utiliser `page.evaluate` + `a.click()` plutôt qu'un
   clic Playwright (qui exige la visibilité).
+
+## Design Council VII — grammaire Double-Bezel (2026-11-24)
+
+Voir `design.md` §18. Le cadre de `/engine` est désormais **global**, pas recopié par page.
+
+- **Sélecteurs canoniques ajoutés à `app.css`** : `.bezel-frame`, `.bezel-panel`, `.micro-label`,
+  `.toolbar`, `.tag` + variantes `.tag-blue/green/purple/orange/danger`. Ne jamais les redéfinir
+  dans un `<style>` scopé : `check-tokens.mjs` bloque (baseline `scripts/ui-baseline.json`).
+- **`.card` / `.card-header`** : bordure `--border-subtle` + `var(--bevel-top)`. C'est le contrat
+  unique de toutes les cartes, y compris `/engine` (revenu de 16px à `var(--radius-card)`).
+- **`KpiGrid`** : `framed=true` par défaut → cadre `.bezel-frame` autour des `KpiCard`. Passer
+  `framed={false}` uniquement si la grille est déjà dans un autre bezel.
+- **`EmptyState`** : nouveau prop `framed` → `.bezel-panel` + médaillon d'icône. Utilisé sur les
+  états vides de page (`/players`, `/worlds`, `/audit`, `/backups`, `/engine`).
+- **`/engine` normalisé** : plus aucun `rgba(...)` littéral, gradient ou 16px ; `.config-alert` →
+  `Callout`, `.tag`/`.toolbar` locaux supprimés. Les couleurs passent par `--accent-*-bg/border/text`.
+- **`localizeServerError()`** (`src/lib/utils/apiMessages.js`) : point d'entrée unique pour traduire
+  les messages d'erreur Rust affichés tels quels. Ajouter une entrée là, pas dans deux routes.
+- **Garde-fou** : `check-tokens.mjs` n'analyse que le contenu `<style>` et ne matche que les
+  sélecteurs **simples** (`.tag-meta` ≠ `.tag`, `.group-avatar.badge-danger` ≠ `.badge-danger`).
+  Si un nouveau sélecteur canonique est ajouté à `app.css`, régénérer `ui-baseline.json` avec la
+  même logique, sinon les variantes locales existantes échouent à tort.
+- **Langue** : tout nouveau libellé est en français. Les tooltips anglais restants dans des
+  composants secondaires sont une dette mineure, pas un motif de régression.
+- **Preview** : après un changement frontend, `:25500` doit être reconstruit
+  (`docker build --no-cache -t localhost/chipanel:latest -f Containerfile .`, puis
+  `docker rm -f chipanel-local` + `docker run` avec `DATA_DIR=/tmp/chipanel-data`). Sans
+  `--no-cache`, Podman/Docker sert l'ancien build. Vérifier ensuite `lang="fr"`, le titre et le
+  favicon sur `:25500` pour confirmer que l'image est fraîche.

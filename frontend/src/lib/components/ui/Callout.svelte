@@ -40,6 +40,7 @@
 		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-card);
+		box-shadow: var(--bevel-top);
 		font-size: var(--font-size-sm);
 	}
 

@@ -787,4 +787,66 @@ Playwright :5173     → 16 routes par click-through SPA : titres/lang/h1/struct
 
 ### 17.7 Dette restante assumée (verrouillée par baseline)
 
-Les variantes non identiques de `.modal-*`, `.loading-state`, `.data-table`, `.empty-icon` et des utilitaires de couleur restent locales ; elles sont enregistrées dans `ui-baseline.json` pour interdire toute **nouvelle** divergence. Une passe dédiée pourra les migrer vers le kit (`Modal`, `Spinner`, `EmptyState`) sans risquer cette session. Le message d'erreur backend « Server engine configuration is not readable from ChiPanel » (affiché dans un `Callout` FR) et les 401 pré-auth sur `/login` restent hors périmètre frontend.
+Les variantes non identiques de `.modal-*`, `.loading-state`, `.data-table`, `.empty-icon` et des utilitaires de couleur restent locales ; elles sont enregistrées dans `ui-baseline.json` pour interdire toute **nouvelle** divergence. Une passe dédiée pourra les migrer vers le kit (`Modal`, `Spinner`, `EmptyState`) sans risquer cette session. Les 401 pré-auth sur `/login` et les 404/500 des endpoints sans données du preview restent hors périmètre frontend. Le message backend « Server engine configuration is not readable from ChiPanel » est désormais localisé via `$lib/utils/apiMessages.js` (Council VII).
+
+---
+
+## 18. Session Design Council VII — Le cadre de `/engine` partout (2026-11-24)
+
+### 18.1 Demande et cadrage
+
+« La page est moche, je veux les bordures et le travail du design de la page moteur répliqués à tout ChiPanel. » Cadrage délégué : normaliser `/engine` puis répliquer « un peu tout » via le kit, décider des défauts, reconstruire `:25500`.
+
+### 18.2 Mesure Playwright avant (15 routes, 1440px)
+
+| | `/engine` | Autres |
+| :--- | :--- | :--- |
+| Éléments bordés | 48 | 6 à 30 |
+| Sous-panneaux imbriqués | 21 | 0 à 4 |
+| Ombres `inset` (biseau) | 1 | 2 à 19 |
+| `HeroBanner` | 1 (seule page) | 0 |
+
+Le biseau 1px était déjà global (`app.css`), mais `/engine` était la seule page à **structurer** ses panneaux, avec `HeroBanner` + `KpiGrid`, une barre d'outils bordée et des tuiles à 16px. `:25500` était stale (`lang=en`, ancien titre, `favicon.svg`).
+
+### 18.3 Brainstorm : 3 approches
+
+1. Copier le CSS de `/engine` page par page → **rejeté** (dérive, contraire au Council VI).
+2. Ajouter `HeroBanner` + eyebrow sur chaque route → **rejeté** (`design.md` §1 interdit la répétition systématique d'eyebrows ; R-38 interdit d'inventer du contenu).
+3. **Canonicaliser la grammaire Double-Bezel dans `app.css` + le kit, puis normaliser `/engine`** → **retenu** : une seule source, les 16 routes héritent.
+
+Dials **ENERGY 1 / RHYTHM 1 / MOTION 1** (cockpit calme, §7.1).
+
+### 18.4 Normalisation de `/engine` (préalable)
+
+`border-radius: 16px → var(--radius-card)` (plafond 12px), tous les `rgba(...)` indigo/ambre/rouge/vert remplacés par les tokens sémantiques, gradient décoratif de `.card-active` supprimé, `.config-alert` migré vers `Callout`, `.tag`/`.toolbar` locaux supprimés au profit des classes globales, `box-shadow` de la modale → `var(--modal-shadow)`. Aucun `rgba`/gradient/16px ne reste dans la page.
+
+### 18.5 Grammaire canonique (`app.css`)
+
+`.bezel-frame` (cadre extérieur), `.bezel-panel` (panneau interne), `.micro-label`, `.toolbar` (barre bordée), `.tag` + `.tag-blue/green/purple/orange/danger`. `.card` et `.card-header` passent en bordure capillaire `--border-subtle` + biseau spéculaire.
+
+Kit mis à niveau une seule fois : `KpiGrid` (`framed=true` par défaut → `.bezel-frame`), `KpiCard` (bordure + biseau + hover + `.micro-label`), `Callout`, `CategoryTabs`, `SearchBar`, `HeroBanner`, `EmptyState` (nouveau prop `framed` → `.bezel-panel` + médaillon d'icône).
+
+### 18.6 Défauts traités (décision déléguée)
+
+Les 5 : densité (états vides cadrés sur `/players`, `/worlds`, `/audit`, `/backups`, `/engine`), cartes plates (biseau global), barres d'outils (`.toolbar` global, appliqué à `/engine`), badges (`.tag` canonique), et mélange FR/EN (traduction des libellés visibles de `/players`, `/worlds`, `/permissions`, `/files`, `/console`, `/metrics`, `/network` + composants `ChunkyPanel`, `PlayerList`, `LogViewer`, `CommandBar`, `ConfigEditor` ; `localizeServerError()` pour les messages backend).
+
+### 18.7 Correction du garde-fou
+
+`check-tokens.mjs` ne matche plus que les **sélecteurs simples réels** : extraction du contenu `<style>` seul, en-têtes entre accolades, commentaires retirés, token de classe délimité par espace/virgule/`>+~`. `.tag-meta` n'est plus compté comme copie de `.tag`, `.group-avatar.badge-danger` comme copie de `.badge-danger`, et les `{#if}` du template Svelte ne sont plus des sélecteurs. Baseline régénérée : **99 sélecteurs canoniques, 45 variantes locales acceptées**.
+
+### 18.8 Vérification
+
+```
+npm run check:tokens → OK (121 tokens, 99 canonical selectors, 0 drift)
+npm run check        → 0 erreur / 75 warnings (inchangé vs HEAD)
+npm run build        → exit 0 (adapter-static)
+Playwright :5173     → 15 routes en click-through SPA : lang=fr, 1 <h1>, titres conformes,
+                       0 overflow, biseau inset sur 13/15 pages (1 → 41 sur /engine),
+                       /engine rayon 12px, états vides cadrés
+Playwright 390px     → 5 routes : 0 overflow, 0 cible < 44px, 1 <main>, 1 <h1>
+Console              → 0 erreur JS ; 404/500 uniquement sur les endpoints sans données du preview
+```
+
+### 18.9 Dette restante
+
+Les grands vides sous les états vides sont inhérents à un preview sans données (R-38 interdit de les remplir avec du contenu fictif). Quelques tooltips anglais subsistent dans des composants secondaires ; `localizeServerError()` est le point d'entrée pour tout nouveau message backend. Le message d'audit §17.7 est mis à jour en conséquence.

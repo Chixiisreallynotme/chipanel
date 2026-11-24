@@ -233,7 +233,7 @@
 				<span>Chargement des événements d'audit...</span>
 			</div>
 		{:else if events.length === 0}
-			<EmptyState description="Aucun événement ne correspond aux critères de recherche.">
+			<EmptyState framed description="Aucun événement ne correspond aux critères de recherche.">
 				{#snippet icon()}
 					<ShieldCheck size={40} class="text-muted" />
 				{/snippet}

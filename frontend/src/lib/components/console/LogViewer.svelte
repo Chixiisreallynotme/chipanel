@@ -276,7 +276,7 @@
 
 		<div class="toolbar-right">
 			<!-- Auto-scroll Pin Checkbox -->
-			<label class="checkbox-group auto-scroll-label" title="Pin viewport to bottom on incoming logs">
+			<label class="checkbox-group auto-scroll-label" title="Garder la vue en bas à la réception des logs">
 				<input type="checkbox" class="checkbox" bind:checked={autoScroll} />
 				<span class="checkbox-text">Auto-scroll</span>
 			</label>
@@ -297,7 +297,7 @@
 				class="btn btn-secondary btn-sm"
 				onclick={exportLogs}
 				disabled={filteredLogs.length === 0}
-				title="Download filtered console logs as .txt"
+				title="Télécharger les logs filtrés en .txt"
 			>
 				<Download size={14} />
 				<span>Export .txt</span>
@@ -308,7 +308,7 @@
 				class="btn btn-ghost btn-sm btn-icon"
 				onclick={clearLogs}
 				disabled={wsStore.consoleLogs.length === 0}
-				title="Clear output view"
+				title="Effacer l'affichage"
 				aria-label="Clear console log stream"
 			>
 				<Trash2 size={14} />
@@ -355,7 +355,7 @@
 						<span class="empty-subtext">Logs streaming live via WebSocket connection</span>
 					{:else}
 						<Filter size={24} class="empty-icon" />
-						<p>No log messages match active filters.</p>
+						<p>Aucun log ne correspond aux filtres actifs.</p>
 						<span class="empty-subtext">Try clearing your search query or severity filter</span>
 					{/if}
 				</div>

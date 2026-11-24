@@ -6,11 +6,12 @@
 	 * @property {boolean} [compact]
 	 * @property {boolean} [card]
 	 * @property {boolean} [dashed]
+	 * @property {boolean} [framed]
 	 */
-	let { title = '', description = '', compact = false, card = false, dashed = false, class: klass = '', icon, action } = $props();
+	let { title = '', description = '', compact = false, card = false, dashed = false, framed = false, class: klass = '', icon, action } = $props();
 </script>
 
-<div class="empty-state {card ? 'empty-state-card' : ''} {compact ? 'empty-state-compact' : ''} {dashed ? 'empty-state-dashed' : ''} {klass}">
+<div class="empty-state {card ? 'empty-state-card' : ''} {compact ? 'empty-state-compact' : ''} {dashed ? 'empty-state-dashed' : ''} {framed ? 'empty-state-framed bezel-panel' : ''} {klass}">
 	{#if icon}
 		<div class="empty-icon-box">
 			{@render icon?.()}
@@ -45,6 +46,21 @@
 		gap: var(--space-3);
 		text-align: center;
 		color: var(--text-muted);
+	}
+
+	/* Page-level empty state: the frame comes from the global .bezel-panel;
+	   only the padding and the icon medallion are specific here. */
+	.empty-state-framed {
+		padding: var(--space-10) var(--space-6);
+	}
+
+	.empty-state-framed .empty-icon-box {
+		width: 56px;
+		height: 56px;
+		border-radius: var(--radius-card);
+		background-color: var(--bg-elevated);
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--bevel-top);
 	}
 	.empty-state-card {
 		border: 1px solid var(--border);

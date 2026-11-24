@@ -156,10 +156,10 @@
 						bind:value={statusFilter}
 						aria-label="Filter players by status"
 					>
-						<option value="all">All Players</option>
+						<option value="all">Tous les joueurs</option>
 						<option value="online">Online Only</option>
 						<option value="banned">Banned Only</option>
-						<option value="op">Operators Only</option>
+						<option value="op">Opérateurs uniquement</option>
 					</select>
 				</div>
 
@@ -188,12 +188,12 @@
 					class="btn btn-secondary btn-sm {loading ? 'btn-loading' : ''}"
 					onclick={onRefresh}
 					disabled={loading}
-					title="Refresh Player List"
+					title="Actualiser la liste des joueurs"
 				>
 					{#if !loading}
 						<RefreshCw size={14} />
 					{/if}
-					<span class="refresh-label">Refresh</span>
+					<span class="refresh-label">Actualiser</span>
 				</button>
 			</div>
 		</div>
@@ -203,13 +203,14 @@
 	{#if loading && players.length === 0}
 		<div class="loading-state card">
 			<RefreshCw size={32} class="spinner" />
-			<p>Loading player data from Minecraft server...</p>
+			<p>Chargement des données des joueurs depuis le serveur Minecraft…</p>
 		</div>
 	{:else if filteredPlayers.length === 0}
 		<EmptyState
 			card
-			title="No Players Found"
-			description={searchQuery.trim() || statusFilter !== 'all' ? 'No players match your active search query or status filter.' : 'No player data files have been recorded on this server yet.'}
+			framed
+			title="Aucun joueur trouvé"
+			description={searchQuery.trim() || statusFilter !== 'all' ? 'Aucun joueur ne correspond à votre recherche ou au filtre de statut actif.' : 'Aucune donnée de joueur enregistrée pour le moment sur ce serveur.'}
 		>
 			{#snippet icon()}
 				<Users size={48} class="empty-icon" />

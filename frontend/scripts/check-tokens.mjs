@@ -102,9 +102,26 @@ for await (const file of walk(src)) {
 
 	if (!rel.endsWith('.svelte')) continue;
 
+	// Restrict the scan to the CSS itself: the slice after `<style` also contains
+	// Svelte template braces (`{#if}`) which are not selectors.
+	const cssOnly = rel.endsWith('.svelte')
+		? [...text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n')
+		: style;
+
+	// Collect real selector headers (text between two braces), comments stripped.
+	const selectorHeaders = [];
+	let cursor = 0;
+	for (const brace of cssOnly.matchAll(/[{}]/g)) {
+		if (brace[0] === '{') {
+			selectorHeaders.push(cssOnly.slice(cursor, brace.index).replace(/\/\*[\s\S]*?\*\//g, ''));
+		}
+		cursor = brace.index + 1;
+	}
 	for (const cls of canonical) {
-		const re = new RegExp('(?:^|\\n)\\s*(?:\\.|[^\\n]*\\s)\\.' + cls + '\\b[^{}]*\\{', 'm');
-		if (!re.test(style)) continue;
+		// Standalone simple selector only. `.tag-meta` and `.group-avatar.badge-danger`
+		// are variants, not copies of `.tag` / `.badge-danger`.
+		const token = new RegExp('(?:^|[\\s,>+~])\\.' + cls + '(?![\\w-])');
+		if (!selectorHeaders.some((header) => token.test(header))) continue;
 		// Undeclared in the baseline => known is empty => any local copy fails below.
 		if (!localDefs.has(cls)) localDefs.set(cls, []);
 		// ui-baseline.json stores paths relative to src/, not to frontend/.

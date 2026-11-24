@@ -6,6 +6,8 @@
     "badge-danger",
     "badge-success",
     "badge-warning",
+    "bezel-frame",
+    "bezel-panel",
     "btn",
     "btn-danger",
     "btn-ghost",
@@ -48,6 +50,7 @@
     "log-line",
     "log-time",
     "log-warn",
+    "micro-label",
     "micro-stamp",
     "micro-stamp-active",
     "micro-stamp-danger",
@@ -79,6 +82,12 @@
     "table-container",
     "table-empty",
     "tabular-nums",
+    "tag",
+    "tag-blue",
+    "tag-danger",
+    "tag-green",
+    "tag-orange",
+    "tag-purple",
     "telemetry-led",
     "telemetry-led-active",
     "telemetry-led-busy",
@@ -88,26 +97,15 @@
     "text-balance",
     "textarea",
     "toggle-slider",
-    "toggle-switch"
+    "toggle-switch",
+    "toolbar"
   ],
   "local": {
     "app-layout": [
       "routes/+layout.svelte"
     ],
     "badge": [
-      "lib/components/common/VersionPickerModal.svelte",
-      "lib/components/console/LogViewer.svelte",
-      "lib/components/dashboard/RecentActivityFeed.svelte",
-      "lib/components/dashboard/TelemetryGauges.svelte",
-      "lib/components/files/ConfigDiffModal.svelte",
-      "lib/components/metrics/SparkProfilerCard.svelte",
-      "lib/components/players/BasicPermissionsPanel.svelte",
-      "lib/components/players/PlayerList.svelte",
-      "lib/components/players/PlayerProfileModal.svelte",
-      "lib/components/worlds/WorldCard.svelte",
-      "routes/addons/+page.svelte",
-      "routes/backups/+page.svelte",
-      "routes/engine/+page.svelte"
+      "lib/components/common/VersionPickerModal.svelte"
     ],
     "badge-blue": [
       "lib/components/dashboard/TelemetryGauges.svelte"
@@ -117,16 +115,9 @@
     ],
     "btn": [
       "lib/components/common/VersionPickerModal.svelte",
-      "lib/components/console/QuickCommands.svelte",
-      "lib/components/permissions/GroupEditorModal.svelte",
-      "lib/components/players/PlayerProfileModal.svelte",
       "lib/components/ui/RedirectState.svelte",
-      "routes/+layout.svelte",
       "routes/engine/+page.svelte",
       "routes/worlds/+page.svelte"
-    ],
-    "btn-danger": [
-      "lib/components/permissions/GroupEditorModal.svelte"
     ],
     "btn-icon": [
       "routes/+layout.svelte"
@@ -142,16 +133,6 @@
     "btn-sm": [
       "routes/engine/+page.svelte"
     ],
-    "card": [
-      "lib/components/modpacks/ProfileManager.svelte",
-      "lib/components/onboarding/GameSelectorStep.svelte",
-      "lib/components/ui/ChecklistCard.svelte",
-      "routes/database/+page.svelte",
-      "routes/diagnostics/+page.svelte",
-      "routes/engine/+page.svelte",
-      "routes/metrics/+page.svelte",
-      "routes/network/+page.svelte"
-    ],
     "card-body": [
       "routes/network/+page.svelte"
     ],
@@ -160,12 +141,10 @@
     ],
     "card-header": [
       "routes/database/+page.svelte",
-      "routes/diagnostics/+page.svelte",
       "routes/engine/+page.svelte",
       "routes/network/+page.svelte"
     ],
     "card-subtitle": [
-      "lib/components/onboarding/GameSelectorStep.svelte",
       "routes/database/+page.svelte",
       "routes/network/+page.svelte"
     ],
@@ -175,11 +154,6 @@
       "routes/diagnostics/+page.svelte",
       "routes/metrics/+page.svelte",
       "routes/network/+page.svelte"
-    ],
-    "checkbox": [
-      "lib/components/console/LogViewer.svelte",
-      "lib/components/onboarding/LaunchReviewStep.svelte",
-      "lib/components/worlds/ConfigureWorldModal.svelte"
     ],
     "console-output": [
       "lib/components/console/LogViewer.svelte"
@@ -215,16 +189,8 @@
       "routes/+layout.svelte"
     ],
     "input": [
-      "lib/components/dashboard/QuickRconBar.svelte",
-      "lib/components/metrics/AlertSettingsModal.svelte",
       "lib/components/modpacks/ModpackCatalogBrowser.svelte",
-      "lib/components/permissions/GroupEditorModal.svelte",
-      "routes/database/+page.svelte",
-      "routes/engine/+page.svelte",
       "routes/login/+page.svelte"
-    ],
-    "label": [
-      "lib/components/permissions/GroupEditorModal.svelte"
     ],
     "log-error": [
       "lib/components/console/QuakeTerminalHUD.svelte"
@@ -241,27 +207,7 @@
     "log-warn": [
       "lib/components/console/QuakeTerminalHUD.svelte"
     ],
-    "modal": [
-      "lib/components/common/VersionPickerModal.svelte",
-      "lib/components/console/QuickCommands.svelte",
-      "lib/components/files/ConfigDiffModal.svelte",
-      "lib/components/metrics/AlertSettingsModal.svelte",
-      "lib/components/modpacks/ModpackCatalogBrowser.svelte",
-      "lib/components/modpacks/ProfileManager.svelte",
-      "lib/components/permissions/GroupEditorModal.svelte",
-      "lib/components/players/PlayerProfileModal.svelte",
-      "lib/components/plugins/InstalledPluginsList.svelte",
-      "lib/components/plugins/ModrinthCatalogBrowser.svelte",
-      "lib/components/worlds/WorldBackupModal.svelte",
-      "routes/addons/+page.svelte",
-      "routes/audit/+page.svelte",
-      "routes/backups/+page.svelte",
-      "routes/database/+page.svelte",
-      "routes/diagnostics/+page.svelte",
-      "routes/engine/+page.svelte"
-    ],
     "modal-body": [
-      "lib/components/common/VersionPickerModal.svelte",
       "lib/components/files/ConfigDiffModal.svelte",
       "lib/components/modpacks/ProfileManager.svelte",
       "lib/components/permissions/GroupEditorModal.svelte",
@@ -288,7 +234,6 @@
     "modal-header": [
       "lib/components/common/VersionPickerModal.svelte",
       "lib/components/files/ConfigDiffModal.svelte",
-      "lib/components/modpacks/ModpackCatalogBrowser.svelte",
       "lib/components/modpacks/ProfileManager.svelte",
       "lib/components/permissions/GroupEditorModal.svelte",
       "lib/components/players/PlayerProfileModal.svelte",
@@ -303,26 +248,14 @@
     ],
     "modal-title": [
       "lib/components/common/VersionPickerModal.svelte",
-      "lib/components/console/QuickCommands.svelte",
       "lib/components/files/ConfigDiffModal.svelte",
-      "lib/components/metrics/AlertSettingsModal.svelte",
-      "lib/components/modpacks/ProfileManager.svelte",
-      "lib/components/permissions/GroupEditorModal.svelte",
       "lib/components/players/PlayerProfileModal.svelte",
-      "lib/components/plugins/InstalledPluginsList.svelte",
-      "lib/components/worlds/WorldBackupModal.svelte",
       "routes/audit/+page.svelte",
       "routes/backups/+page.svelte",
       "routes/diagnostics/+page.svelte"
     ],
     "nav-item": [
       "routes/+layout.svelte"
-    ],
-    "select": [
-      "lib/components/onboarding/GameSelectorStep.svelte",
-      "lib/components/players/BasicPermissionsPanel.svelte",
-      "lib/components/plugins/ModrinthCatalogBrowser.svelte",
-      "routes/engine/+page.svelte"
     ],
     "sidebar": [
       "routes/+layout.svelte"
@@ -350,14 +283,8 @@
       "routes/addons/+page.svelte"
     ],
     "table": [
-      "lib/components/permissions/GroupList.svelte",
-      "lib/components/players/PlayerList.svelte",
       "lib/components/plugins/InstalledPluginsList.svelte",
-      "routes/accounts/+page.svelte",
-      "routes/audit/+page.svelte",
-      "routes/backups/+page.svelte",
-      "routes/database/+page.svelte",
-      "routes/diagnostics/+page.svelte"
+      "routes/accounts/+page.svelte"
     ],
     "table-container": [
       "lib/components/plugins/InstalledPluginsList.svelte",

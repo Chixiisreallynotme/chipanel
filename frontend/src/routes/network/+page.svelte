@@ -175,7 +175,7 @@
 					<label for="auth-mode" class="form-label">Mode d'Authentification Joueurs Bedrock :</label>
 					<select id="auth-mode" class="select" bind:value={authType}>
 						<option value="floodgate">Floodgate (Recommandé - Sans compte Java obligatoire)</option>
-						<option value="online">Online (Compte Microsoft Java requis)</option>
+						<option value="online">En ligne (compte Microsoft Java requis)</option>
 						<option value="offline">Offline / Insecure</option>
 					</select>
 					<span class="form-hint">

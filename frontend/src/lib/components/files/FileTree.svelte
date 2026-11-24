@@ -266,8 +266,8 @@
 				type="button"
 				class="btn btn-secondary btn-icon btn-sm"
 				onclick={onRefreshTree}
-				title="Refresh file tree"
-				aria-label="Refresh file tree"
+				title="Actualiser l'arborescence"
+				aria-label="Actualiser l'arborescence"
 			>
 				<RefreshCw size={15} />
 			</button>

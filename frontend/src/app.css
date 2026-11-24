@@ -250,14 +250,17 @@ code, kbd, samp, pre {
 
 .card {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border);
+  /* Capillary hairline + zenithal bevel: the Machined Hardware signature of /engine,
+     now the single global card contract (Design Council VII). */
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
-  box-shadow: var(--card-shadow);
+  box-shadow: var(--bevel-top), 0 2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: border-color var(--transition-fast),
-              transform var(--transition-fast);
+              transform var(--transition-fast),
+              box-shadow var(--transition-fast);
 }
 
 .card-interactive {
@@ -273,6 +276,8 @@ code, kbd, samp, pre {
 .card-header {
   padding: var(--space-4) var(--space-6);
   border-bottom: 1px solid var(--border-subtle);
+  background-color: rgba(255, 255, 255, 0.02);
+  box-shadow: var(--bevel-top);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1017,6 +1022,71 @@ code, kbd, samp, pre {
 .btn-md {
 	height: 38px;
 }
+
+/* ==========================================================================
+   Double-Bezel grammar — the /engine design work, canonicalised (Council VII)
+   One definition, used by every route through the kit. A local copy is a drift.
+   ========================================================================== */
+
+/* Outer machined shell: translucent frame around one or more inner panels. */
+.bezel-frame {
+  padding: var(--space-2);
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+/* Inner panel: flat slate, hairline edge, 1px specular highlight on top. */
+.bezel-panel {
+  padding: var(--space-4);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--bevel-top);
+}
+
+/* Uppercase engineering micro-label (the "MOTEUR EN COURS…" register, without
+   repeating the eyebrow itself on every page — design.md §1 parcimony rule). */
+.micro-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Bordered tool container: search + filters read as one machined module. */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--bevel-top);
+}
+
+/* Canonical technical tag, with the 3-role accent variants. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.tag-blue   { background-color: var(--accent-blue-bg);   border-color: var(--accent-blue-border);   color: var(--accent-blue-text); }
+.tag-green  { background-color: var(--accent-green-bg);  border-color: var(--accent-green-border);  color: var(--accent-green-text); }
+.tag-purple { background-color: var(--accent-purple-bg); border-color: var(--accent-purple-border); color: var(--accent-purple-text); }
+.tag-orange { background-color: var(--warning-bg);       border-color: var(--warning-border);       color: var(--warning-text); }
+.tag-danger { background-color: var(--danger-bg);        border-color: var(--danger-border);        color: var(--danger-text); }
 
 /* Respect OS-level motion sensitivity: kill pulses/spinners/transitions site-wide */
 @media (prefers-reduced-motion: reduce) {

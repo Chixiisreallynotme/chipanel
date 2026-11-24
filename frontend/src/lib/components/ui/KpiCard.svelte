@@ -20,7 +20,7 @@
 		<div class="kpi-icon kpi-{tone}">{@render icon()}</div>
 	{/if}
 	<div class="kpi-content">
-		<span class="kpi-label">{label}</span>
+		<span class="kpi-label micro-label">{label}</span>
 		<div class="kpi-value {mono ? 'kpi-mono' : ''}">
 			{#if children}{@render children()}{:else}{value}{/if}
 		</div>
@@ -35,8 +35,15 @@
 		padding: var(--space-4);
 		border-radius: var(--radius-card);
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
+		/* Hairline + specular bevel: same nested-panel treatment as /engine. */
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--bevel-top);
 		min-width: 0;
+		transition: border-color var(--transition-fast), transform var(--transition-fast);
+	}
+
+	.kpi-card:hover {
+		border-color: var(--border-focus);
 	}
 
 	.kpi-icon {

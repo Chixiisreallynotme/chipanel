@@ -192,7 +192,7 @@
 				bind:this={inputEl}
 				type="text"
 				class="input command-input"
-				placeholder="Enter server command... (e.g. say Hello, op player, time set day)"
+				placeholder="Saisir une commande serveur… (ex : say Bonjour, op joueur, time set day)"
 				value={commandValue}
 				oninput={handleInput}
 				onkeydown={handleKeyDown}
@@ -200,7 +200,7 @@
 					if (filteredSuggestions.length > 0) showSuggestions = true;
 				}}
 				onblur={handleBlur}
-				aria-label="Minecraft console command input"
+				aria-label="Saisie de commande console Minecraft"
 				role="combobox"
 				aria-expanded={showSuggestions && filteredSuggestions.length > 0}
 				aria-autocomplete="list"
@@ -214,10 +214,10 @@
 			type="submit"
 			class="btn btn-primary send-button {isSubmitting ? 'btn-loading' : ''}"
 			disabled={!commandValue.trim() || isSubmitting}
-			title="Execute console command"
+			title="Exécuter la commande console"
 		>
 			<Send size={16} />
-			<span>Send</span>
+			<span>Envoyer</span>
 		</button>
 	</form>
 </div>

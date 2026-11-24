@@ -248,10 +248,10 @@
 			type="button"
 			class="btn btn-secondary btn-sm"
 			onclick={() => (isAlertModalOpen = true)}
-			title="Configure Alert Rules"
+			title="Configurer les règles d'alerte"
 		>
 			<Sliders size={14} />
-			<span>Alert Settings</span>
+			<span>Alertes</span>
 		</button>
 
 		<!-- Refresh Button -->
@@ -259,7 +259,7 @@
 			type="button"
 			class="btn btn-secondary btn-icon btn-sm {isRefreshing ? 'btn-loading' : ''}"
 			onclick={loadMetricsHistory}
-			title="Refresh Metrics Data"
+			title="Actualiser les métriques"
 		>
 			{#if !isRefreshing}
 				<RefreshCw size={14} />

@@ -153,8 +153,8 @@
 				<Compass size={22} />
 			</div>
 			<div>
-				<h3 class="card-title">Chunky World Pre-generator</h3>
-				<p class="card-subtitle">Generate world terrain chunks in background to eliminate server lag during exploration</p>
+				<h3 class="card-title">Pré-générateur Chunky</h3>
+				<p class="card-subtitle">Génère les chunks de terrain en arrière-plan pour éviter les ralentissements lors de l'exploration</p>
 			</div>
 		</div>
 
@@ -163,17 +163,17 @@
 			{#if chunkyStatus.is_running}
 				<span class="badge badge-success">
 					<span class="status-dot status-dot-success status-dot-pulse"></span>
-					<span>Running ({chunkyStatus.world || 'Active World'})</span>
+					<span>En cours ({chunkyStatus.world || 'Monde actif'})</span>
 				</span>
 			{:else if chunkyStatus.is_paused}
 				<span class="badge badge-warning">
 					<span class="status-dot status-dot-warning status-dot-pulse"></span>
-					<span>Paused</span>
+					<span>En pause</span>
 				</span>
 			{:else}
 				<span class="badge badge-secondary">
 					<span class="status-dot"></span>
-					<span>Idle</span>
+					<span>Inactif</span>
 				</span>
 			{/if}
 		</div>
@@ -188,7 +188,7 @@
 					<Layers size={18} class="icon-blue" />
 				</div>
 				<div class="hud-metric-info">
-					<span class="hud-metric-label">Rendered Chunks</span>
+					<span class="hud-metric-label">Chunks générés</span>
 					<span class="hud-metric-value font-mono">
 						{(chunkyStatus.chunks_rendered || 0).toLocaleString()} / {(chunkyStatus.chunks_total || 0).toLocaleString()}
 					</span>
@@ -201,7 +201,7 @@
 					<Gauge size={18} class="icon-green" />
 				</div>
 				<div class="hud-metric-info">
-					<span class="hud-metric-label">Generation Speed</span>
+					<span class="hud-metric-label">Vitesse de génération</span>
 					<span class="hud-metric-value font-mono">
 						{(chunkyStatus.current_cps || 0).toFixed(1)} <span class="unit">CPS</span>
 					</span>
@@ -214,7 +214,7 @@
 					<Clock size={18} class="icon-purple" />
 				</div>
 				<div class="hud-metric-info">
-					<span class="hud-metric-label">Estimated Time Left</span>
+					<span class="hud-metric-label">Temps restant estimé</span>
 					<span class="hud-metric-value font-mono">
 						{formatEta(chunkyStatus.eta_seconds)}
 					</span>
@@ -227,7 +227,7 @@
 					<Compass size={18} class="icon-warning" />
 				</div>
 				<div class="hud-metric-info">
-					<span class="hud-metric-label">Target Dimension</span>
+					<span class="hud-metric-label">Dimension cible</span>
 					<span class="hud-metric-value font-mono">
 						{chunkyStatus.world || (formWorld || 'None')}
 					</span>
@@ -238,7 +238,7 @@
 		<!-- Progress Bar HUD -->
 		<div class="hud-progress-container">
 			<div class="progress-info-row">
-				<span class="progress-title">Overall Generation Progress</span>
+				<span class="progress-title">Progression globale</span>
 				<span class="progress-percentage font-mono">{progressPercent.toFixed(1)}%</span>
 			</div>
 			<div class="gauge-bar chunky-gauge-bar">
@@ -301,7 +301,7 @@
 
 	<!-- Start Pre-generation Form -->
 	<div class="card-body chunky-form-body">
-		<h4 class="form-section-title">Configure & Start New Pre-generation</h4>
+		<h4 class="form-section-title">Configurer et lancer une pré-génération</h4>
 
 		<form onsubmit={handleStart} class="pregen-form">
 			<div class="form-grid-3">

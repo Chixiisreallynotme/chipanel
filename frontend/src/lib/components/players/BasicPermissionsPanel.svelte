@@ -191,10 +191,10 @@
 				class="btn btn-ghost btn-sm"
 				onclick={fetchPermissions}
 				disabled={loading}
-				title="Refresh LuckPerms state"
+				title="Actualiser l'état LuckPerms"
 			>
 				<RefreshCw size={14} class={loading ? 'spinner' : ''} />
-				<span>Refresh</span>
+				<span>Actualiser</span>
 			</button>
 		</div>
 

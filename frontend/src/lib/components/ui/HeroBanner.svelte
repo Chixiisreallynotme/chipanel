@@ -39,8 +39,9 @@
 		padding: var(--space-6);
 		border-radius: var(--radius-card);
 		background-color: var(--bg-surface);
-		border: 1px solid var(--border);
-		box-shadow: var(--card-shadow);
+		/* Canonical Double-Bezel frame (same contract as .card / .kpi-card). */
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--bevel-top), 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
 	.banner-primary {
@@ -55,7 +56,8 @@
 		gap: var(--space-2);
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-bold);
-		letter-spacing: 0.05em;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		color: var(--accent-blue-text);
 	}
 

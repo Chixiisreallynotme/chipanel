@@ -300,7 +300,7 @@
 				<span>Chargement des archives...</span>
 			</div>
 		{:else if filteredBackups.length === 0}
-			<EmptyState description="Aucune sauvegarde disponible pour ce filtre.">
+			<EmptyState framed description="Aucune sauvegarde disponible pour ce filtre.">
 				{#snippet icon()}
 					<Archive size={40} class="text-muted" />
 				{/snippet}

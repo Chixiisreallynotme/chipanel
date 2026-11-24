@@ -345,7 +345,7 @@
 			<form onsubmit={(e) => { e.preventDefault(); handleCreateItemSubmit(); }}>
 				<div class="modal-body">
 					<div class="form-group">
-						<span class="label">Target Directory</span>
+						<span class="label">Dossier cible</span>
 						<span class="badge badge-secondary parent-path-badge">
 							{createParentPath || 'root (/)'}
 						</span>

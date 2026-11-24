@@ -32,7 +32,8 @@
 		background-color: var(--bg-surface);
 		padding: var(--space-1);
 		border-radius: var(--radius-card);
-		border: 1px solid var(--border);
+		border: 1px solid var(--border-subtle);
+		box-shadow: var(--bevel-top);
 		overflow-x: auto;
 	}
 

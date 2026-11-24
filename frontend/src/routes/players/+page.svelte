@@ -251,17 +251,17 @@
 				autoRefreshEnabled = !autoRefreshEnabled;
 				if (autoRefreshEnabled) setupAutoRefresh();
 			}}
-			title="Toggle 10s auto-refresh"
+			title="Basculer l'actualisation automatique (10 s)"
 		>
 			<span class="live-dot {autoRefreshEnabled ? 'pulse' : ''}"></span>
 			<span class="live-text"
-				>{autoRefreshEnabled ? 'Live Sync (10s)' : 'Auto-refresh Paused'}</span
+				>{autoRefreshEnabled ? 'Sync live (10 s)' : 'Actualisation en pause'}</span
 			>
 		</button>
 
 		{#if lastUpdatedTime}
-			<span class="last-sync-time" title="Last synced with Minecraft server">
-				Sync: {lastUpdatedTime}
+			<span class="last-sync-time" title="Dernière synchronisation avec le serveur Minecraft">
+				Sync : {lastUpdatedTime}
 			</span>
 		{/if}
 
@@ -271,7 +271,7 @@
 				: ''}"
 			onclick={() => loadPlayers(false)}
 			disabled={isSilentRefreshing || loading}
-			title="Refresh now"
+			title="Actualiser maintenant"
 		>
 			<RefreshCw size={14} class={isSilentRefreshing ? 'spinning' : ''} />
 		</button>
@@ -285,7 +285,7 @@
 				</div>
 				<div class="stat-info">
 					<span class="stat-val">{totalCount}</span>
-					<span class="stat-lbl">Total Players</span>
+					<span class="stat-lbl">Joueurs au total</span>
 				</div>
 			</div>
 
@@ -295,7 +295,7 @@
 				</div>
 				<div class="stat-info">
 					<span class="stat-val">{onlineCount}</span>
-					<span class="stat-lbl">Online Players</span>
+					<span class="stat-lbl">Joueurs en ligne</span>
 				</div>
 			</div>
 
@@ -305,7 +305,7 @@
 				</div>
 				<div class="stat-info">
 					<span class="stat-val">{bannedCount}</span>
-					<span class="stat-lbl">Banned Players</span>
+					<span class="stat-lbl">Joueurs bannis</span>
 				</div>
 			</div>
 
@@ -315,7 +315,7 @@
 				</div>
 				<div class="stat-info">
 					<span class="stat-val">{opCount}</span>
-					<span class="stat-lbl">Operators</span>
+					<span class="stat-lbl">Opérateurs</span>
 				</div>
 			</div>
 		</div>
@@ -384,7 +384,7 @@
 							id="quick-reason-input"
 							type="text"
 							class="input"
-							placeholder="Enter reason..."
+							placeholder="Saisir le motif…"
 							bind:value={quickActionReason}
 						/>
 					</div>
